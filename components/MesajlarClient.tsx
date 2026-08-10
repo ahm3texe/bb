@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getTalep, talepNo, fiyatText } from "@/lib/data";
+import { gelenSunumlar } from "@/lib/gelen-sunumlar";
+import { ButtonLink } from "@/components/ui/Button";
 
 const SEED_TALEP = getTalep("dawn-fm-imzali-cd")!;
 
@@ -27,7 +29,7 @@ function seed(): Msg[] {
   return [
     {
       k: "sys",
-      text: "emre.k, plakdukkani34'ün sunumundan teklif istedi — sohbet açıldı.",
+      text: `${nameOf("seller")} size bir sunum teklifi gönderdi.`,
       time: "Dün 14:02",
     },
     { k: "sunum", by: "seller", time: "Dün 14:02" },
@@ -64,15 +66,46 @@ function seed(): Msg[] {
 const polaroidBaslik =
   getTalep("polaroid-600-film")?.baslik ?? "Polaroid 600 arıyorum";
 
-const konusmalar = [
+type Konusma = {
+  id: string;
+  ad: string;
+  harf: string;
+  ilan: string;
+  son?: string;
+  saat: string;
+};
+
+const sabitKonusmalar: Konusma[] = [
   { id: "seed", ad: "plakdukkani34", harf: "PD", ilan: SEED_TALEP.baslik, saat: "14:25" },
   { id: "muzikmarket", ad: "muzikmarket", harf: "MM", ilan: SEED_TALEP.baslik, son: "Teklif istendi — yanıt bekleniyor", saat: "Dün" },
   { id: "mert", ad: "koleksiyoner.mert", harf: "KM", ilan: SEED_TALEP.baslik, son: "Yeni sunum gönderdi", saat: "Dün" },
   { id: "analog", ad: "analogmarket", harf: "AM", ilan: polaroidBaslik, son: "Anlaşıldı ✓ — kargolandı", saat: "Salı" },
 ];
 
-export function MesajlarClient() {
-  const [activeId, setActiveId] = useState("seed");
+// Sunum gönderen her satıcının bir sohbeti var: karşılaştırma ekranındaki
+// "Sohbete Geç" doğrudan o satıcının konuşmasını açar.
+const konusmalar: Konusma[] = [
+  ...sabitKonusmalar,
+  ...gelenSunumlar
+    .filter((s) => !sabitKonusmalar.some((k) => k.ad === s.satici))
+    .map((s) => ({
+      id: s.id,
+      ad: s.satici,
+      harf: s.harf,
+      ilan: getTalep(s.talepId)?.baslik ?? SEED_TALEP.baslik,
+      son: "Sunum gönderdi",
+      saat: s.ne,
+    })),
+];
+
+/** ?satici=... ile gelen kullanıcıyı doğrudan o sohbete düşür. */
+function konusmaIdBul(satici?: string) {
+  if (!satici) return "seed";
+  return konusmalar.find((k) => k.ad === satici)?.id ?? "seed";
+}
+
+export function MesajlarClient({ satici }: { satici?: string }) {
+  const [activeId, setActiveId] = useState(() => konusmaIdBul(satici));
   const [msgs, setMsgs] = useState<Msg[]>(() => seed());
   const [deal, setDeal] = useState<"negotiating" | "accepted">("negotiating");
   const [offerOpen, setOfferOpen] = useState(false);
@@ -92,10 +125,6 @@ export function MesajlarClient() {
     .find((m) => m.k === "offer" && m.st === "pending") as
     | Extract<Msg, { k: "offer" }>
     | undefined;
-  const lastOffer = [...msgs]
-    .reverse()
-    .find((m) => m.k === "offer") as Extract<Msg, { k: "offer" }> | undefined;
-
   const accept = () => {
     if (!pending) return;
     const amount = pending.amount;
@@ -160,45 +189,6 @@ export function MesajlarClient() {
     setMsgText("");
   };
 
-  // Header durum rozeti (seed konuşması)
-  let statusText = "Pazarlık sürüyor";
-  let statusCls = "bg-accent-soft text-accent-ink";
-  if (deal === "accepted") {
-    statusText = "Anlaşıldı — ödeme adımında";
-    statusCls = "bg-primary-soft text-primary-hover";
-  } else if (deal === "negotiating" && !pending) {
-    statusText = "Yeni teklif bekleniyor";
-    statusCls = "bg-page text-ink-500";
-  }
-
-  // Pazarlık özeti adımları
-  const adimlar = [
-    {
-      n: "1",
-      ad: "Sunum & teklif",
-      sub: "Sunum beğenildi, teklif istendi",
-      cls: "bg-primary text-white",
-    },
-    {
-      n: "2",
-      ad: "Pazarlık & anlaşma",
-      sub:
-        deal === "accepted"
-          ? "Anlaşıldı: " + (lastOffer ? lastOffer.amount : "") + " TL"
-          : "Sohbette teklifleşme sürüyor",
-      cls: deal === "accepted" ? "bg-primary text-white" : "bg-accent text-ink-900",
-    },
-    {
-      n: "3",
-      ad: "Kargo & teslim",
-      sub:
-        deal === "accepted"
-          ? "Ödemenin ardından, 3 gün içinde"
-          : "Anlaşınca ödeme adımı açılır",
-      cls: deal === "accepted" ? "bg-accent text-ink-900" : "bg-page text-ink-300",
-    },
-  ];
-
   const offerNum = parseInt(offerVal, 10);
 
   const activeConv = konusmalar.find((c) => c.id === activeId)!;
@@ -207,10 +197,10 @@ export function MesajlarClient() {
     <main className="mx-auto max-w-[1180px] px-6 pb-16 pt-6">
       <div className="grid items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)_272px]">
         {/* ── Sohbet listesi ── */}
-        <aside className="overflow-hidden rounded-card border border-border bg-card lg:sticky lg:top-[150px]">
+        <aside className="overflow-hidden rounded-card border border-border bg-card lg:sticky lg:top-[120px]">
           <div className="flex items-baseline justify-between border-b border-hairline px-4 pb-3 pt-4">
             <span className="text-base font-extrabold text-ink-900">Mesajlar</span>
-            <span className="rounded-full bg-accent px-2 py-[5px] text-[11px] font-bold text-ink-900">
+            <span className="rounded-full bg-accent px-2 py-[5px] text-[12px] font-bold text-ink-900">
               3 yeni
             </span>
           </div>
@@ -234,7 +224,7 @@ export function MesajlarClient() {
                 }`}
               >
                 <span
-                  className={`flex h-[38px] w-[38px] flex-none items-center justify-center rounded-full text-[12px] font-bold ${
+                  className={`flex h-[38px] w-[38px] flex-none items-center justify-center rounded-full text-[13px] font-bold ${
                     aktif
                       ? "bg-ink-900 text-accent"
                       : "bg-primary-soft text-primary-hover"
@@ -244,21 +234,21 @@ export function MesajlarClient() {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex justify-between gap-2">
-                    <span className="truncate text-[13px] font-bold text-ink-900">
+                    <span className="truncate text-[14px] font-bold text-ink-900">
                       {c.ad}
                     </span>
-                    <span className="flex-none text-[10.5px] font-medium text-ink-400">
+                    <span className="flex-none text-[11.5px] font-medium text-ink-400">
                       {c.saat}
                     </span>
                   </span>
                   <span
-                    className={`mt-[3px] block truncate text-[11px] font-semibold ${
+                    className={`mt-[3px] block truncate text-[12px] font-semibold ${
                       aktif ? "text-primary-hover" : "text-ink-400"
                     }`}
                   >
                     {c.ilan}
                   </span>
-                  <span className="mt-[3px] block truncate text-[11.5px] font-medium text-ink-500">
+                  <span className="mt-[3px] block truncate text-[12.5px] font-medium text-ink-500">
                     {onizleme}
                   </span>
                 </span>
@@ -271,7 +261,7 @@ export function MesajlarClient() {
         <section className="flex flex-col overflow-hidden rounded-card border border-border bg-card">
           {/* İlan bağlamı */}
           <div className="flex items-center gap-3 border-b border-hairline px-4 py-3">
-            <div className="ref-image flex h-11 w-11 flex-none items-center justify-center rounded-control font-mono text-[8px] text-[#968cac]">
+            <div className="ref-image flex h-11 w-11 flex-none items-center justify-center rounded-control font-mono text-[9px] text-[#968cac]">
               görsel
             </div>
             <div className="min-w-0 flex-1">
@@ -281,7 +271,7 @@ export function MesajlarClient() {
               >
                 {activeConv.ilan}
               </Link>
-              <div className="mt-[3px] text-[11.5px] font-medium text-ink-400">
+              <div className="mt-[3px] text-[12.5px] font-medium text-ink-400">
                 Alıcının fiyatı:{" "}
                 <span className="font-bold text-ink-900">
                   {fiyatText(SEED_TALEP.fiyatNum)}
@@ -289,16 +279,9 @@ export function MesajlarClient() {
                 · İlan {talepNo(SEED_TALEP.id)}
               </div>
             </div>
-            {isSeed && (
-              <span
-                className={`flex-none rounded-full px-[11px] py-[7px] text-[11.5px] font-bold ${statusCls}`}
-              >
-                {statusText}
-              </span>
-            )}
             <Link
               href="/ilan/dawn-fm-imzali-cd"
-              className="flex-none text-[12px] font-semibold"
+              className="flex-none text-[13px] font-semibold"
             >
               İlanı Gör
             </Link>
@@ -309,14 +292,14 @@ export function MesajlarClient() {
               {/* Mesaj akışı */}
               <div
                 ref={threadRef}
-                className="flex h-[calc(100vh-380px)] min-h-[440px] flex-col gap-3.5 overflow-y-auto bg-subtle px-[18px] pb-2 pt-[18px]"
+                className="flex h-[calc(100vh-330px)] min-h-[220px] flex-col gap-3.5 overflow-y-auto bg-subtle px-[18px] pb-2 pt-[18px]"
               >
                 {msgs.map((m, i) => {
                   if (m.k === "sys") {
                     return (
                       <div
                         key={i}
-                        className="max-w-[520px] self-center rounded-full bg-[#efebf5] px-3.5 py-2 text-center text-[11.5px] font-semibold leading-relaxed text-ink-500"
+                        className="max-w-[520px] self-center rounded-full bg-accent px-4 py-2.5 text-center text-[13.5px] font-bold leading-relaxed text-ink-900"
                       >
                         {m.text}
                       </div>
@@ -326,37 +309,32 @@ export function MesajlarClient() {
                     return (
                       <div
                         key={i}
-                        className="max-w-[400px] self-start rounded-card border border-border bg-card p-3"
+                        className="max-w-[440px] self-start rounded-card border border-border bg-card p-3.5"
                       >
-                        <div className="text-[11px] font-bold uppercase tracking-[1px] text-ink-400">
-                          Gönderilen Sunum
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex flex-1 gap-1.5">
+                            {["foto 1", "foto 2", "foto 3"].map((f) => (
+                              <div
+                                key={f}
+                                className="ref-image flex aspect-[3/4] w-[46px] flex-none items-center justify-center rounded-lg font-mono text-[9px] text-[#968cac]"
+                              >
+                                {f}
+                              </div>
+                            ))}
+                            <div className="flex aspect-[3/4] w-[46px] flex-none items-center justify-center rounded-lg bg-page text-[12px] font-bold text-ink-500">
+                              +3
+                            </div>
+                          </div>
+                          <ButtonLink
+                            href="/sunum-detay"
+                            variant="primary"
+                            size="sm"
+                            className="flex-none"
+                          >
+                            Sunumu Gör ›
+                          </ButtonLink>
                         </div>
-                        <div className="mt-2.5 flex gap-1.5">
-                          <div className="ref-image flex h-[62px] w-[62px] items-center justify-center rounded-lg font-mono text-[8.5px] text-[#968cac]">
-                            foto 1
-                          </div>
-                          <div className="ref-image flex h-[62px] w-[62px] items-center justify-center rounded-lg font-mono text-[8.5px] text-[#968cac]">
-                            foto 2
-                          </div>
-                          <div className="ref-image flex h-[62px] w-[62px] items-center justify-center rounded-lg font-mono text-[8.5px] text-[#968cac]">
-                            foto 3
-                          </div>
-                          <div className="flex h-[62px] w-[62px] items-center justify-center rounded-lg bg-page text-[12px] font-bold text-ink-500">
-                            +4
-                          </div>
-                        </div>
-                        <div className="mt-2.5 flex flex-wrap gap-1.5">
-                          <span className="rounded-md bg-page px-2 py-[5px] text-[10.5px] font-semibold text-ink-900">
-                            Durum: Yeni
-                          </span>
-                          <span className="rounded-md bg-page px-2 py-[5px] text-[10.5px] font-semibold text-ink-900">
-                            COA sertifikalı
-                          </span>
-                          <span className="rounded-md bg-page px-2 py-[5px] text-[10.5px] font-semibold text-ink-900">
-                            ▸ Video
-                          </span>
-                        </div>
-                        <div className="mt-2 text-[10.5px] font-medium text-ink-300">
+                        <div className="mt-2 text-[11.5px] font-medium text-ink-300">
                           {m.time}
                         </div>
                       </div>
@@ -367,10 +345,10 @@ export function MesajlarClient() {
                     if (mine) {
                       return (
                         <div key={i} className="max-w-[430px] self-end text-right">
-                          <div className="rounded-[14px_4px_14px_14px] bg-primary px-3.5 py-[11px] text-left text-[13.5px] font-medium leading-relaxed text-white">
+                          <div className="rounded-[14px_4px_14px_14px] bg-primary px-3.5 py-[11px] text-left text-[14.5px] font-medium leading-relaxed text-white">
                             {m.text}
                           </div>
-                          <div className="mt-[5px] text-[10.5px] font-medium text-ink-300">
+                          <div className="mt-[5px] text-[11.5px] font-medium text-ink-300">
                             {m.time}
                           </div>
                         </div>
@@ -378,14 +356,14 @@ export function MesajlarClient() {
                     }
                     return (
                       <div key={i} className="flex max-w-[430px] gap-2 self-start">
-                        <div className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-full bg-ink-900 text-[9.5px] font-bold text-accent">
+                        <div className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-full bg-ink-900 text-[10.5px] font-bold text-accent">
                           {avOf(m.by)}
                         </div>
                         <div>
-                          <div className="rounded-[4px_14px_14px_14px] border border-border bg-card px-3.5 py-[11px] text-[13.5px] font-medium leading-relaxed text-ink-900">
+                          <div className="rounded-[4px_14px_14px_14px] border border-border bg-card px-3.5 py-[11px] text-[14.5px] font-medium leading-relaxed text-ink-900">
                             {m.text}
                           </div>
-                          <div className="mt-[5px] text-[10.5px] font-medium text-ink-300">
+                          <div className="mt-[5px] text-[11.5px] font-medium text-ink-300">
                             {nameOf(m.by)} · {m.time}
                           </div>
                         </div>
@@ -406,10 +384,10 @@ export function MesajlarClient() {
                       className={`w-[380px] max-w-full self-center rounded-panel border-[1.5px] bg-card px-4 py-3.5 ${border}`}
                     >
                       <div className="flex items-baseline justify-between gap-2.5">
-                        <span className="text-[11px] font-bold uppercase tracking-[0.8px] text-ink-400">
+                        <span className="text-[12px] font-bold uppercase tracking-[0.8px] text-ink-400">
                           {m.note} · {nameOf(m.by)}
                         </span>
-                        <span className="flex-none text-[10.5px] font-medium text-ink-300">
+                        <span className="flex-none text-[11.5px] font-medium text-ink-300">
                           {m.time}
                         </span>
                       </div>
@@ -418,7 +396,7 @@ export function MesajlarClient() {
                           <div className="mt-2 text-2xl font-extrabold text-ink-300 line-through">
                             {m.amount} TL
                           </div>
-                          <div className="mt-1.5 text-[11.5px] font-semibold text-ink-300">
+                          <div className="mt-1.5 text-[12.5px] font-semibold text-ink-300">
                             Üzerine yeni teklif verildi
                           </div>
                         </>
@@ -428,7 +406,7 @@ export function MesajlarClient() {
                           <div className="mt-2 text-2xl font-extrabold text-ink-900">
                             {m.amount} TL
                           </div>
-                          <div className="mt-2 inline-block rounded-full bg-primary-soft px-2.5 py-1.5 text-[11.5px] font-bold text-primary-hover">
+                          <div className="mt-2 inline-block rounded-full bg-primary-soft px-2.5 py-1.5 text-[12.5px] font-bold text-primary-hover">
                             Kabul edildi ✓
                           </div>
                         </>
@@ -438,7 +416,7 @@ export function MesajlarClient() {
                           <div className="mt-2 text-2xl font-extrabold text-ink-300 line-through">
                             {m.amount} TL
                           </div>
-                          <div className="mt-2 inline-block rounded-full bg-danger-soft px-2.5 py-1.5 text-[11.5px] font-bold text-danger">
+                          <div className="mt-2 inline-block rounded-full bg-danger-soft px-2.5 py-1.5 text-[12.5px] font-bold text-danger">
                             Reddedildi
                           </div>
                         </>
@@ -448,7 +426,7 @@ export function MesajlarClient() {
                           <div className="mt-2 text-2xl font-extrabold text-ink-900">
                             {m.amount} TL
                           </div>
-                          <div className="mt-2 inline-block rounded-full bg-accent-soft px-2.5 py-1.5 text-[11.5px] font-bold text-accent-ink">
+                          <div className="mt-2 inline-block rounded-full bg-accent-soft px-2.5 py-1.5 text-[12.5px] font-bold text-accent-ink">
                             Karşı tarafın yanıtı bekleniyor
                           </div>
                         </>
@@ -462,21 +440,21 @@ export function MesajlarClient() {
                             <button
                               type="button"
                               onClick={accept}
-                              className="flex-1 cursor-pointer rounded-control bg-primary px-3 py-3 text-[13px] font-bold text-white hover:bg-primary-hover"
+                              className="flex-1 cursor-pointer rounded-control bg-primary px-3 py-3 text-[14px] font-bold text-white hover:bg-primary-hover"
                             >
                               Kabul Et
                             </button>
                             <button
                               type="button"
                               onClick={() => setOfferOpen(true)}
-                              className="flex-1 cursor-pointer rounded-control border-[1.5px] border-border-input bg-card px-3 py-3 text-[13px] font-bold text-ink-900 hover:border-primary hover:text-primary"
+                              className="flex-1 cursor-pointer rounded-control bg-accent px-3 py-3 text-[14px] font-bold text-ink-900 hover:brightness-95"
                             >
                               Revize Teklif
                             </button>
                             <button
                               type="button"
                               onClick={reject}
-                              className="flex-none cursor-pointer rounded-control border-[1.5px] border-danger-line bg-card px-3.5 py-3 text-[13px] font-bold text-danger hover:bg-danger-soft"
+                              className="flex-none cursor-pointer rounded-control border-[1.5px] border-danger-line bg-card px-3.5 py-3 text-[14px] font-bold text-danger hover:bg-danger-soft"
                             >
                               Reddet
                             </button>
@@ -493,17 +471,17 @@ export function MesajlarClient() {
                 <div className="border-t border-hairline bg-primary-soft px-4 py-3.5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-[13.5px] font-extrabold leading-snug text-primary-hover">
+                      <div className="text-[14.5px] font-extrabold leading-snug text-primary-hover">
                         Anlaşma tamam ✓ — sıra ödemede
                       </div>
-                      <div className="mt-1 text-[12px] font-medium leading-snug text-primary-hover/80">
+                      <div className="mt-1 text-[13px] font-medium leading-snug text-primary-hover/80">
                         Ödemeni güvenceye al; satıcı 3 gün içinde kargolar, sen
                         teslim alıp onaylayınca ödeme aktarılır.
                       </div>
                     </div>
                     <Link
                       href="/siparis"
-                      className="flex-none rounded-control bg-primary px-[18px] py-3 text-[13px] font-bold text-white hover:bg-primary-hover"
+                      className="flex-none rounded-control bg-primary px-[18px] py-3 text-[14px] font-bold text-white hover:bg-primary-hover"
                     >
                       Ödemeye Geç ›
                     </Link>
@@ -516,7 +494,7 @@ export function MesajlarClient() {
                 <div className="flex flex-wrap items-center gap-2.5 border-t border-hairline bg-accent-soft px-4 py-3">
                   <label
                     htmlFor="revize-teklif"
-                    className="flex-none text-[12.5px] font-bold text-accent-ink"
+                    className="flex-none text-[13.5px] font-bold text-accent-ink"
                   >
                     Teklifin (TL):
                   </label>
@@ -528,16 +506,16 @@ export function MesajlarClient() {
                     }
                     inputMode="numeric"
                     placeholder="örn. 4400"
-                    className="w-[130px] rounded-control border-[1.5px] border-border-input bg-card px-3 py-[11px] text-[14px] font-bold text-ink-900 outline-none focus:border-primary"
+                    className="w-[130px] rounded-control border-[1.5px] border-border-input bg-card px-3 py-[11px] text-[15px] font-bold text-ink-900 outline-none focus:border-primary"
                   />
-                  <span className="text-[11.5px] font-medium leading-snug text-accent-ink">
+                  <span className="text-[12.5px] font-medium leading-snug text-accent-ink">
                     Yeni teklifin öncekini geçersiz kılar; ek ücret yok.
                   </span>
                   <div className="ml-auto flex gap-2">
                     <button
                       type="button"
                       onClick={() => setOfferOpen(false)}
-                      className="cursor-pointer bg-transparent p-2.5 text-[12.5px] font-semibold text-ink-400"
+                      className="cursor-pointer bg-transparent p-2.5 text-[13.5px] font-semibold text-ink-400"
                     >
                       Vazgeç
                     </button>
@@ -545,7 +523,7 @@ export function MesajlarClient() {
                       type="button"
                       onClick={counterSend}
                       disabled={!offerNum || offerNum <= 0}
-                      className={`rounded-control px-[18px] py-3 text-[13px] font-bold ${
+                      className={`rounded-control px-[18px] py-3 text-[14px] font-bold ${
                         offerNum > 0
                           ? "cursor-pointer bg-ink-900 text-white hover:bg-footer"
                           : "cursor-not-allowed bg-[#efebf5] text-ink-300"
@@ -563,7 +541,7 @@ export function MesajlarClient() {
                   <button
                     type="button"
                     onClick={() => setOfferOpen(true)}
-                    className="flex-none cursor-pointer rounded-control bg-accent-soft px-3.5 py-3 text-[12.5px] font-bold text-accent-ink hover:bg-accent-hover"
+                    className="flex-none cursor-pointer rounded-control bg-accent-soft px-3.5 py-3 text-[13.5px] font-bold text-accent-ink hover:brightness-95"
                   >
                     + Teklif Ver
                   </button>
@@ -576,12 +554,12 @@ export function MesajlarClient() {
                     if (e.key === "Enter") sendText();
                   }}
                   placeholder="Mesaj yaz..."
-                  className="flex-1 rounded-control border-[1.5px] border-border-input bg-card px-3.5 py-3 text-[13.5px] font-medium text-ink-900 outline-none focus:border-primary"
+                  className="flex-1 rounded-control border-[1.5px] border-border-input bg-card px-3.5 py-3 text-[14.5px] font-medium text-ink-900 outline-none focus:border-primary"
                 />
                 <button
                   type="button"
                   onClick={sendText}
-                  className="flex-none cursor-pointer rounded-control bg-primary px-5 py-3 text-[13.5px] font-bold text-white hover:bg-primary-hover"
+                  className="flex-none cursor-pointer rounded-control bg-primary px-5 py-3 text-[14.5px] font-bold text-white hover:bg-primary-hover"
                 >
                   Gönder
                 </button>
@@ -589,21 +567,21 @@ export function MesajlarClient() {
             </>
           ) : (
             /* Placeholder konuşma */
-            <div className="flex h-[calc(100vh-380px)] min-h-[440px] flex-col items-center justify-center gap-3 bg-subtle px-8 text-center">
+            <div className="flex h-[calc(100vh-330px)] min-h-[220px] flex-col items-center justify-center gap-3 bg-subtle px-8 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-xl font-bold text-primary-hover">
                 {activeConv.harf}
               </div>
               <div className="text-base font-bold text-ink-900">
                 {activeConv.ad} ile sohbet
               </div>
-              <p className="max-w-[320px] text-[13px] font-medium leading-relaxed text-ink-400">
+              <p className="max-w-[320px] text-[14px] font-medium leading-relaxed text-ink-400">
                 Bu önizlemede yalnızca plakdukkani34 ile olan sohbetin tam geçmişi
                 yüklü. Bu konuşmayı açmak için seç.
               </p>
               <button
                 type="button"
                 onClick={() => setActiveId("seed")}
-                className="cursor-pointer rounded-control border-[1.5px] border-border-input bg-card px-4 py-2.5 text-[13px] font-bold text-ink-900 hover:border-primary hover:text-primary"
+                className="cursor-pointer rounded-control border-[1.5px] border-border-input bg-card px-4 py-2.5 text-[14px] font-bold text-ink-900 hover:border-primary hover:text-primary"
               >
                 Bu konuşmayı aç
               </button>
@@ -611,77 +589,49 @@ export function MesajlarClient() {
           )}
         </section>
 
-        {/* ── Pazarlık özeti ── */}
-        <aside className="flex flex-col gap-3.5 lg:sticky lg:top-[150px]">
-          <div className="rounded-card border border-border bg-card p-[18px]">
-            <div className="text-[14.5px] font-extrabold text-ink-900">
-              Pazarlık Özeti
-            </div>
-            <div className="mt-3.5 flex flex-col gap-2">
-              <div className="flex justify-between text-[12.5px] font-medium">
-                <span className="text-ink-400">İlan fiyatı (alıcı)</span>
-                <span className="font-bold text-ink-900">4.500 TL</span>
-              </div>
-              <div className="flex justify-between text-[12.5px] font-medium">
-                <span className="text-ink-400">Güncel teklif</span>
-                <span className="font-extrabold text-primary-hover">
-                  {lastOffer ? lastOffer.amount + " TL" : "—"}
-                </span>
-              </div>
-              <div className="flex justify-between text-[12.5px] font-medium">
-                <span className="text-ink-400">Teklif veren</span>
-                <span className="font-semibold text-ink-900">
-                  {lastOffer ? nameOf(lastOffer.by) : "—"}
-                </span>
+        {/* ── Yan panel ── */}
+        <aside className="flex flex-col gap-3.5 lg:sticky lg:top-[120px]">
+          {/* Platform dışına çıkma uyarısı */}
+          <div className="rounded-card bg-footer p-4">
+            <div className="flex items-center gap-2">
+              <span aria-hidden className="text-[15px] leading-none">
+                ⚠️
+              </span>
+              <div className="text-[13px] font-extrabold uppercase tracking-[1px] text-accent">
+                Alışverişi dışarı taşıma
               </div>
             </div>
-            <div className="mt-3.5 flex flex-col gap-3 border-t border-hairline pt-3.5">
-              {adimlar.map((s) => (
-                <div key={s.n} className="flex items-start gap-2.5">
-                  <div
-                    className={`flex h-6 w-6 flex-none items-center justify-center rounded-full text-[11px] font-extrabold ${s.cls}`}
-                  >
-                    {s.n}
-                  </div>
-                  <div>
-                    <div className="text-[12.5px] font-bold text-ink-900">
-                      {s.ad}
-                    </div>
-                    <div className="mt-0.5 text-[11px] font-medium leading-snug text-ink-400">
-                      {s.sub}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-card bg-ink-900 p-[18px] text-white">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full bg-accent text-[13px] font-extrabold text-ink-900">
-                ✓
-              </div>
-              <div className="text-[13.5px] font-extrabold">
-                BulBana Güvencesi
-              </div>
-            </div>
-            <p className="mt-2.5 text-[11.5px] font-medium leading-relaxed text-[#cfc5e8]">
-              Ödeme, alıcı ürünü onaylayana kadar güvende tutulur. Anlaşılan fiyat
-              üzerinden %7 komisyon satıştan düşülür; revize teklifler için ek
-              ücret alınmaz.
+            <p className="mt-2 text-[13px] font-medium leading-relaxed text-white">
+              Pazarlık, ödeme ve teslimat{" "}
+              <strong className="font-extrabold text-accent">
+                yalnızca BulBana üzerinden
+              </strong>{" "}
+              yürütülmelidir. Karşı taraf seni IBAN&apos;a havale, kapıda nakit
+              ya da başka bir uygulamaya geçmeye çağırıyorsa kabul etme.
+            </p>
+            <p className="mt-2 text-[13px] font-medium leading-relaxed text-white">
+              Uygulama dışında yapılan ödemelerde güvenli ödeme, iade ve itiraz
+              hakkın işlemez; doğabilecek dolandırıcılık ve kayıplardan{" "}
+              <strong className="font-extrabold text-accent">
+                BulBana sorumlu değildir
+              </strong>
+              .
             </p>
           </div>
 
-          <div className="rounded-card border border-border bg-card p-4">
-            <div className="text-[12px] font-bold uppercase tracking-[1px] text-ink-400">
+          <div className="overflow-hidden rounded-card border-l-[4px] border-l-primary bg-primary-soft p-4">
+            <div className="text-[13px] font-extrabold uppercase tracking-[1px] text-primary-hover">
               3 Gün Kuralı
             </div>
-            <p className="mt-2 text-[12px] font-medium leading-relaxed text-ink-500">
+            <p className="mt-2 text-[13px] font-medium leading-relaxed text-ink-700">
               Teklif kabul edilince satıcı ürünü{" "}
-              <strong className="text-ink-900">3 gün içinde</strong> kargoya
-              verir, takip numarasını sohbete işler.
+              <strong className="font-extrabold text-primary-hover">
+                3 gün içinde
+              </strong>{" "}
+              kargoya verir, takip numarasını sohbete işler.
             </p>
           </div>
+
         </aside>
       </div>
     </main>

@@ -24,7 +24,7 @@ const dokumanlar: Dokuman[] = [
       {
         baslik: "Komisyon",
         metin:
-          "Üyelik, ilan, sunum, teklif ve pazarlık ücretsizdir. BulBana yalnızca gerçekleşen satışta, anlaşılan bedelin %7'unu satış bedelinden düşerek komisyon olarak alır.",
+          "Üyelik, ilan, sunum, teklif ve pazarlık ücretsizdir. BulBana yalnızca gerçekleşen satışta, anlaşılan bedelin %4'ünü satış bedelinden düşerek komisyon olarak alır.",
       },
       {
         baslik: "Kargo yükümlülüğü",

@@ -36,7 +36,7 @@ const huni = [
   { ad: "Takip eden", sag: "34 · %2,6", sagMuted: true, w: 42, renk: "#9f6ff0" },
   { ad: "Sunum gönderen", sag: "12 · %0,9", sagMuted: true, w: 26, renk: "#c4a5f7" },
   { ad: "Teklif istediğin", sag: "2", sagMuted: true, w: 13, renk: "#bef264" },
-  { ad: "Aktif sohbet", sag: "1", sagMuted: true, w: 7, renk: "#ddf6a8" },
+  { ad: "Aktif sohbet", sag: "1", sagMuted: true, w: 7, renk: "#bef264" },
 ];
 
 const statCards = [
@@ -171,7 +171,7 @@ export function IlanYonetimiClient() {
               <span>6 Tem</span>
               <span>Bugün</span>
             </div>
-            <p className="mt-3.5 rounded-control bg-accent-soft px-3 py-2.5 text-xs font-medium leading-relaxed text-ink-400">
+            <p className="mt-3.5 rounded-control bg-accent-soft px-3 py-2.5 text-xs font-medium leading-relaxed text-accent-ink">
               <strong className="text-accent-ink">
                 10 Temmuz&apos;daki sıçrama
               </strong>
@@ -324,7 +324,7 @@ export function IlanYonetimiClient() {
                 <button
                   type="button"
                   onClick={() => setDurum("yayinda")}
-                  className="mt-2 w-full cursor-pointer rounded-xl border-[1.5px] border-[#d9ebaa] bg-accent-soft px-[18px] py-3.5 text-[13.5px] font-bold text-accent-ink"
+                  className="mt-2 w-full cursor-pointer rounded-xl border-[1.5px] border-accent bg-accent-soft px-[18px] py-3.5 text-[13.5px] font-bold text-accent-ink hover:brightness-95"
                 >
                   Yayına Devam Et ▸
                 </button>
@@ -397,7 +397,7 @@ export function IlanYonetimiClient() {
               variant="lime"
               className="mt-3 w-full"
             >
-              ⇄ Sunumları Karşılaştır
+              ⇄ Sunum Karşılaştırma
             </ButtonLink>
           </div>
         </aside>

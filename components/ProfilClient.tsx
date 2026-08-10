@@ -2,16 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { getTalep } from "@/lib/data";
+import { getTalep, fiyatText } from "@/lib/data";
 import type { Talep } from "@/lib/data";
 import { TalepCard } from "@/components/TalepCard";
 import { Chip } from "@/components/ui/Chip";
 import { ButtonLink } from "@/components/ui/Button";
 import { HesapNav } from "@/components/HesapNav";
 import { HesapKart } from "@/components/HesapKart";
+import { eslesmeOzeti, kunyeSatirlari } from "@/components/SunumOnizleme";
+import { GELEN_TALEP_ID, gelenSunumlar } from "@/lib/gelen-sunumlar";
+import { sunumlarim } from "@/lib/sunumlarim";
 
-type Tab = "talepler" | "sunumlar" | "takip" | "yorumlar";
+type Tab = "talepler" | "gelen" | "sunumlar" | "takip" | "yorumlar";
 
 const pill =
   "inline-flex flex-none items-center rounded-full px-[11px] py-[7px] text-[11.5px] font-bold leading-none";
@@ -28,57 +30,6 @@ const takipIds = [
   "polaroid-600-film",
 ];
 
-// Satıcı olarak gönderdiğim sunumlar — aciliyet sırasına dizili.
-const sunumlarim = [
-  {
-    talep: "Commodore 64 arıyorum — çalışır, kutulu",
-    sahibi: "retro.adana",
-    butce: "5.500 TL",
-    tarih: "5 gün önce",
-    grup: "kargo" as const,
-    st: "Ödeme alındı · kargo bekliyor",
-    stCls: "bg-accent text-ink-900",
-    href: "/siparislerim",
-    aksiyon: { label: "Kargoya Ver", variant: "lime" as const, href: "/siparislerim" },
-    not: "Alıcı ödemeyi güvenceye aldı — 3 gün içinde kargola.",
-  },
-  {
-    talep: "Sega Dreamcast tam set arıyorum (2 kol)",
-    sahibi: "egem.izmir",
-    butce: "4.250 TL",
-    tarih: "2 gün önce",
-    grup: "sohbet" as const,
-    st: "Pazarlık sürüyor",
-    stCls: "bg-primary-soft text-primary-hover",
-    href: "/mesajlar",
-    aksiyon: { label: "Sohbete Git", variant: "primary" as const, href: "/mesajlar" },
-    not: "Sohbette fiyatta anlaşmaya çalışıyorsunuz.",
-  },
-  {
-    talep: "Nokia 3310 arıyorum — kutulu, çalışır",
-    sahibi: "aysenur.a",
-    butce: "1.500 TL",
-    tarih: "Dün",
-    grup: "sohbet" as const,
-    st: "Teklif istendi · yanıt bekliyor",
-    stCls: "bg-accent-soft text-accent-ink",
-    href: "/mesajlar",
-    aksiyon: { label: "Sohbete Git", variant: "primary" as const, href: "/mesajlar" },
-    not: "Alıcı senden teklif istedi — yanıtla.",
-  },
-  {
-    talep: 'Daft Punk "Discovery" ilk baskı plak arıyorum',
-    sahibi: "berk.plak",
-    butce: "6.000 TL",
-    tarih: "3 gün önce",
-    grup: "inceleme" as const,
-    st: "İnceleniyor",
-    stCls: "bg-page text-ink-500",
-    href: "/ilan/daft-punk-discovery-plak",
-    aksiyon: null,
-    not: "Alıcı gönderdiğin sunumu inceliyor.",
-  },
-];
 
 const yorumlar = [
   {
@@ -110,14 +61,11 @@ const yorumlar = [
   },
 ];
 
-const kisayollar = [
-  { label: "Talep Alarmlarım", href: "/talep-alarmlari" },
-  { label: "Performans Panelim", href: "/satici-performansi" },
-];
+
 
 // Küçük, sade çizgi ikonlar (renkli/zıplayan değil — işi tatlandıran dokunuş).
 function TabIcon({ tip }: { tip: Tab }) {
-  const cls = "h-[15px] w-[15px] flex-none";
+  const cls = "h-[17px] w-[17px] flex-none";
   const p = {
     fill: "none" as const,
     stroke: "currentColor",
@@ -141,11 +89,19 @@ function TabIcon({ tip }: { tip: Tab }) {
         <path d="M3.3 8L12 13l8.7-5M12 13v8.5" />
       </svg>
     );
-  if (tip === "takip")
-    // yer imi — takip
+  if (tip === "gelen")
+    // gelen kutusu — ilanıma gelen sunumlar
     return (
       <svg viewBox="0 0 24 24" className={cls} aria-hidden {...p}>
-        <path d="M6 3h12a1 1 0 011 1v17l-7-4-7 4V4a1 1 0 011-1z" />
+        <path d="M3 13h5l1.5 2.5h5L16 13h5" />
+        <path d="M5.5 5h13l2.5 8v6H3v-6z" />
+      </svg>
+    );
+  if (tip === "takip")
+    // kalp — favorilerim
+    return (
+      <svg viewBox="0 0 24 24" className={cls} aria-hidden {...p}>
+        <path d="M12 20.3l-7.1-7.1a4.5 4.5 0 116.4-6.4l.7.7.7-.7a4.5 4.5 0 116.4 6.4z" />
       </svg>
     );
   // yıldız — değerlendirmeler
@@ -156,13 +112,19 @@ function TabIcon({ tip }: { tip: Tab }) {
   );
 }
 
-// Rol rengi: alıcı=mor (talepler/takip), satıcı=yeşil (sunumlar), nötr (yorumlar).
-type TabRenk = "mor" | "yesil" | "notr";
+// Rol rengi: alıcı=mor, satıcı=yeşil, favoriler=kırmızı (kalp), nötr (yorumlar).
+type TabRenk = "mor" | "yesil" | "kirmizi" | "notr";
 const tabs: { value: Tab; label: string; renk: TabRenk }[] = [
   { value: "talepler", label: "Taleplerim (3)", renk: "mor" },
+  {
+    value: "gelen",
+    label: `Gelen Sunumlar (${gelenSunumlar.length})`,
+    renk: "mor",
+  },
   { value: "sunumlar", label: "Sunumlarım (4)", renk: "yesil" },
-  { value: "takip", label: "Takip Ettiklerim (3)", renk: "mor" },
-  { value: "yorumlar", label: "Değerlendirmeler (15)", renk: "notr" },
+  { value: "takip", label: "Favorilerim (3)", renk: "kirmizi" },
+  // Değerlendirmeler sekmesi yok; kimlik kartındaki "15 değerlendirme"
+  // bağlantısı (?tab=yorumlar) bu panele götürür.
 ];
 
 // Aktif ve hover renk sınıfları — renk eşlemesini hissettirir.
@@ -175,22 +137,32 @@ const tabRenkCls: Record<TabRenk, { aktif: string; pasif: string }> = {
     aktif: "border-accent-ink font-bold text-accent-ink",
     pasif: "border-transparent font-semibold text-ink-400 hover:text-accent-ink",
   },
+  kirmizi: {
+    aktif: "border-danger font-bold text-danger",
+    pasif: "border-transparent font-semibold text-ink-400 hover:text-danger",
+  },
   notr: {
     aktif: "border-ink-900 font-bold text-ink-900",
     pasif: "border-transparent font-semibold text-ink-400 hover:text-ink-900",
   },
 };
 
-const tabValues: Tab[] = ["talepler", "sunumlar", "takip", "yorumlar"];
+const tabValues: Tab[] = [
+  "talepler",
+  "gelen",
+  "sunumlar",
+  "takip",
+  "yorumlar",
+];
 
-export function ProfilClient() {
-  const params = useSearchParams();
-  const istenenTab = params.get("tab");
-  const baslangicTab: Tab = tabValues.includes(istenenTab as Tab)
-    ? (istenenTab as Tab)
-    : "talepler";
-  const [tab, setTab] = useState<Tab>(baslangicTab);
+export function ProfilClient({ baslangicTab }: { baslangicTab?: string }) {
+  const [tab, setTab] = useState<Tab>(
+    tabValues.includes(baslangicTab as Tab)
+      ? (baslangicTab as Tab)
+      : "talepler",
+  );
 
+  const gelenTalep = getTalep(GELEN_TALEP_ID);
   const taleplerim = taleplerimIds
     .map((id) => getTalep(id))
     .filter((t): t is Talep => Boolean(t));
@@ -207,13 +179,31 @@ export function ProfilClient() {
 
         {/* ── Sağ: sekmeler + içerik ── */}
         <div className="min-w-0">
-      <div className="mb-4">
-        <h1 className="text-[24px] font-extrabold tracking-[-0.5px] text-ink-900">
-          Profilim
-        </h1>
-        <p className="mt-1 text-[13px] font-medium text-ink-400">
-          Taleplerin, sunumların ve değerlendirmelerin — hepsi tek yerde.
-        </p>
+      {/* Başlık + sağda hızlı erişim butonları */}
+      <div className="mb-1.5 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-[24px] font-extrabold tracking-[-0.5px] text-ink-900">
+            Profilim
+          </h1>
+        </div>
+        <div className="ml-auto flex flex-none flex-col items-end gap-2">
+          <ButtonLink
+            href="/satici-performansi"
+            variant="primary"
+            size="sm"
+            className="min-h-[42px] w-[172px] text-[14px]"
+          >
+            Performans Panelim
+          </ButtonLink>
+          <ButtonLink
+            href="/talep-alarmlari"
+            variant="lime"
+            size="sm"
+            className="min-h-[42px] w-[172px] text-[14px]"
+          >
+            Talep Alarmı Kur
+          </ButtonLink>
+        </div>
       </div>
       {/* ── Sekmeler ── */}
       <div role="tablist" className="flex flex-wrap gap-1 border-b border-border">
@@ -227,7 +217,7 @@ export function ProfilClient() {
               role="tab"
               aria-selected={active}
               onClick={() => setTab(t.value)}
-              className={`-mb-px flex cursor-pointer items-center gap-1.5 border-b-[2.5px] px-3.5 py-2.5 text-[13px] leading-none transition-colors ${
+              className={`-mb-px flex cursor-pointer items-center gap-1.5 border-b-[2.5px] px-[11px] py-2.5 text-[15px] leading-none transition-colors ${
                 active ? renk.aktif : renk.pasif
               }`}
             >
@@ -240,12 +230,14 @@ export function ProfilClient() {
 
       {/* ── Taleplerim ── */}
       {tab === "talepler" && (
-        <section className="mt-4">
-          <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[13px] font-medium text-ink-500">
-              Açık taleplerin — satıcılar buralara sunum gönderiyor.
-            </p>
-            <ButtonLink href="/ilan-ac" variant="primary" size="sm">
+        <section className="mt-3">
+          <div className="mb-2.5 flex flex-wrap items-center justify-end gap-2">
+            <ButtonLink
+              href="/ilan-ac"
+              variant="primary"
+              size="sm"
+              className="min-h-[42px] w-[172px] text-[14px]"
+            >
               + Yeni Talep Aç
             </ButtonLink>
           </div>
@@ -257,38 +249,89 @@ export function ProfilClient() {
         </section>
       )}
 
-      {/* ── Sunumlarım ── */}
-      {tab === "sunumlar" && (
-        <section className="mt-4">
-          <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
-            <p className="max-w-[560px] text-[13px] font-medium leading-relaxed text-ink-500">
-              Satıcı olarak başka alıcıların taleplerine gönderdiğin sunumlar —
-              en acil olan üstte. Süreç{" "}
-              <Link href="/mesajlar" className="font-bold">
-                Mesajlar
-              </Link>
-              &apos;da yürür.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {kisayollar.map((k) => (
-                <Link
-                  key={k.href}
-                  href={k.href}
-                  className="rounded-full bg-primary-soft px-[13px] py-[9px] text-xs font-bold text-primary-hover hover:bg-primary-soft-hover"
-                >
-                  {k.label} ›
-                </Link>
-              ))}
-            </div>
+      {/* ── Gelen Sunumlar — kendi ilanıma satıcıların gönderdikleri ── */}
+      {tab === "gelen" && (
+        <section className="mt-3">
+          <div className="mb-2.5 flex flex-wrap items-center justify-end gap-2">
+            <ButtonLink
+              href="/sunum-karsilastirma"
+              variant="lime"
+              size="sm"
+              className="min-h-[42px] text-[14px]"
+            >
+              ⇄ Sunum Karşılaştırma
+            </ButtonLink>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {gelenSunumlar.map((s) => {
+              const satirlar = kunyeSatirlari(s, gelenTalep);
+              const { uyan, toplam, farkli } = eslesmeOzeti(satirlar, gelenTalep);
+              return (
+                <Link
+                  key={s.satici}
+                  href="/sunum-detay"
+                  className="group flex flex-col overflow-hidden rounded-card border border-border bg-card transition-colors hover:border-primary"
+                >
+                  <div className="ref-image relative flex aspect-[3/4] items-center justify-center">
+                    <span className="absolute left-2.5 top-2.5 rounded-lg bg-ink-900/[0.82] px-2 py-1 text-[10.5px] font-semibold text-white">
+                      {s.fotolar} foto{s.video ? " · video" : ""}
+                    </span>
+                    <span
+                      className={`absolute right-2.5 top-2.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                        farkli.length === 0
+                          ? "bg-accent text-ink-900"
+                          : "bg-primary-soft text-primary-hover"
+                      }`}
+                    >
+                      {uyan}/{toplam} uyuyor
+                    </span>
+                    <span className="font-mono text-[10.5px] text-[#968cac]">
+                      sunum görseli
+                    </span>
+                  </div>
+                  <div className="flex flex-1 flex-col p-3.5">
+                    <div className="text-[19px] font-extrabold text-primary-hover">
+                      {fiyatText(s.fiyatNum)}
+                    </div>
+                    <div className="mt-1 text-[13px] font-semibold text-ink-900">
+                      {s.satici}{" "}
+                      <span className="font-bold text-star">★ {s.puan}</span>
+                    </div>
+                    {/* Sabit yükseklikler: "Sunumu incele" her kartta aynı hizada. */}
+                    <p className="mt-1.5 line-clamp-2 h-[38px] text-[13.5px] font-medium leading-snug text-ink-700">
+                      {s.baslik}
+                    </p>
+                    <div className="mt-2 line-clamp-2 h-[34px] text-[12.5px] font-medium leading-snug text-ink-400">
+                      {s.durum} · {s.teslim} · {s.ne}
+                    </div>
+                    <div className="mt-1.5 line-clamp-1 h-[17px] text-[12.5px] font-semibold leading-[17px] text-danger">
+                      {farkli.length > 0
+                        ? `⚠ ${farkli.map((r) => r.k).join(", ")} farklı`
+                        : ""}
+                    </div>
+                    <span className="mt-3 text-[13px] font-bold text-primary group-hover:text-primary-hover">
+                      Sunumu incele ›
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ── Sunumlarım ── */}
+      {tab === "sunumlar" && (
+        <section className="mt-3">
+          {/* Kart ölçüsü Taleplerim sekmesiyle birebir aynı. */}
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
             {sunumlarim.map((s) => (
               <article
-                key={s.talep}
-                className="flex flex-col overflow-hidden rounded-card border border-border bg-card transition-colors hover:border-primary"
+                key={s.id}
+                className="relative flex flex-col overflow-hidden rounded-card border border-border bg-card transition-colors hover:border-primary"
               >
-                <div className="ref-image relative flex aspect-[4/3] items-center justify-center">
+                <div className="ref-image relative flex aspect-[3/4] items-center justify-center">
                   <span className="font-mono text-[10px] text-[#968cac]">
                     sunum görseli
                   </span>
@@ -297,11 +340,12 @@ export function ProfilClient() {
                   </span>
                 </div>
                 <div className="flex flex-1 flex-col p-4">
+                  {/* Kartın tamamı ilanın inceleme sayfasına gider. */}
                   <Link
-                    href={s.href}
-                    className="text-[13.5px] font-bold leading-snug text-ink-900 hover:text-primary"
+                    href={`/sunumum/${s.id}`}
+                    className="text-[13.5px] font-bold leading-snug text-ink-900 after:absolute after:inset-0 after:content-[''] hover:text-primary"
                   >
-                    {s.talep}
+                    {getTalep(s.talepId)?.baslik ?? s.sunum.baslik}
                   </Link>
                   <div className="mt-1.5 text-[11.5px] font-medium text-ink-400">
                     İlan sahibi:{" "}
@@ -312,12 +356,14 @@ export function ProfilClient() {
                   </div>
                   <div className="mt-0.5 text-[11.5px] font-medium text-ink-400">
                     Alıcının fiyatı:{" "}
-                    <span className="font-bold text-ink-900">{s.butce}</span>
+                    <span className="font-bold text-ink-900">
+                      {fiyatText(getTalep(s.talepId)?.fiyatNum ?? 0)}
+                    </span>
                   </div>
                   <p className="mt-2 text-[11.5px] font-medium leading-snug text-ink-400">
                     {s.not}
                   </p>
-                  <div className="mt-auto pt-3.5">
+                  <div className="relative z-10 mt-auto pt-3.5">
                     {s.aksiyon ? (
                       <ButtonLink
                         href={s.aksiyon.href}
@@ -340,16 +386,12 @@ export function ProfilClient() {
         </section>
       )}
 
-      {/* ── Takip Ettiklerim ── */}
+      {/* ── Favorilerim ── */}
       {tab === "takip" && (
-        <section className="mt-4">
-          <p className="mb-3.5 text-[13px] font-medium leading-relaxed text-ink-500">
-            Takip ettiğin taleplerde yeni gelişme olduğunda (yeni sunum, fiyat
-            güncellemesi) bildirim alırsın.
-          </p>
+        <section className="mt-3">
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
             {takipEttiklerim.map((t) => (
-              <TalepCard key={t.id} talep={t} />
+              <TalepCard key={t.id} talep={t} favoride />
             ))}
           </div>
         </section>
@@ -357,7 +399,7 @@ export function ProfilClient() {
 
       {/* ── Değerlendirmeler ── */}
       {tab === "yorumlar" && (
-        <section className="mt-4">
+        <section className="mt-3">
           <div className="mb-3.5 flex items-center gap-2 text-[13px] font-semibold text-ink-500">
             <span className="text-[15px] font-extrabold text-star">★ 4,9</span>
             <span>· 15 değerlendirme — alım ve satış işlemlerinden</span>

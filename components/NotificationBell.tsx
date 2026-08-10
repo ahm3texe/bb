@@ -31,7 +31,7 @@ const bildirimler: Bildirim[] = [
     renk: "bg-ink-900 text-accent",
     text: "Commodore 64 — kargo için son 2 gün",
     zaman: "3 saat önce",
-    href: "/siparislerim",
+    href: "/siparis",
   },
 ];
 

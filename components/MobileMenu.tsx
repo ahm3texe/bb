@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { kategoriler } from "@/lib/data";
+import { kategoriIkonlar } from "@/components/KategoriIkon";
 
 const navItems = [
   { label: "Talepleri Keşfet", href: "/kesfet" },
@@ -99,18 +100,21 @@ export function MobileMenu() {
                 Kategoriler
               </div>
               <div className="grid grid-cols-2 gap-1.5">
-                {kategoriler.map((k) => (
+                {kategoriler.map((k) => {
+                  const Ikon = kategoriIkonlar[k.ad];
+                  return (
                   <Link
                     key={k.ad}
                     href={`/kesfet?kategori=${encodeURIComponent(k.ad)}`}
                     className="flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold text-ink-700 hover:bg-page"
                   >
                     <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary-soft text-[11px] font-extrabold text-primary-hover">
-                      {k.harf}
+                      {Ikon ? <Ikon className="h-[13px] w-[13px]" /> : k.harf}
                     </span>
                     {k.ad}
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

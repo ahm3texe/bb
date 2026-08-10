@@ -12,7 +12,7 @@ const nedenList = [
 ];
 
 const kanitDolu =
-  "repeating-linear-gradient(45deg,#F3DEDD 0px,#F3DEDD 8px,#EDD0CE 8px,#EDD0CE 16px)";
+  "repeating-linear-gradient(45deg, #bef264 0px, #bef264 8px, rgb(190 242 100 / 0.55) 8px, rgb(190 242 100 / 0.55) 16px)";
 
 type Adim = {
   n: string;
@@ -113,8 +113,8 @@ export function ItirazClient() {
                       onClick={() => setNeden(n)}
                       className={`cursor-pointer rounded-full border-[1.5px] px-3.5 py-[11px] text-[12.5px] transition-colors ${
                         active
-                          ? "border-danger bg-danger-soft font-bold text-danger"
-                          : "border-border-input bg-card font-semibold text-ink-500 hover:border-danger hover:text-danger"
+                          ? "border-primary bg-primary-soft font-bold text-primary-hover"
+                          : "border-border-input bg-card font-semibold text-ink-500 hover:border-primary hover:text-primary"
                       }`}
                     >
                       {n}
@@ -172,8 +172,8 @@ export function ItirazClient() {
                       style={filled ? { background: kanitDolu } : undefined}
                       className={`flex aspect-square cursor-pointer items-center justify-center rounded-[10px] ${
                         filled
-                          ? "text-[10.5px] font-bold text-danger"
-                          : "border-[1.5px] border-dashed border-[#CDC2E0] bg-subtle text-[17px] font-medium text-ink-300 hover:border-danger hover:text-danger"
+                          ? "text-[10.5px] font-bold text-primary-hover"
+                          : "border-[1.5px] border-dashed border-border-input bg-subtle text-[17px] font-medium text-ink-300 hover:border-primary hover:text-primary"
                       }`}
                     >
                       {filled ? `kanıt ${i + 1} ✓` : "+"}
@@ -193,8 +193,8 @@ export function ItirazClient() {
                   disabled={!canSend}
                   className={`rounded-[13px] px-6 py-4 text-[14.5px] font-extrabold ${
                     canSend
-                      ? "cursor-pointer bg-danger text-white hover:bg-[#9a3833]"
-                      : "cursor-not-allowed bg-page text-ink-300"
+                      ? "cursor-pointer bg-primary text-white hover:bg-primary-hover"
+                      : "cursor-not-allowed bg-[#efebf5] text-ink-300"
                   }`}
                 >
                   İtirazı Gönder

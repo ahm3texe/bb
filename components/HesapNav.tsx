@@ -2,11 +2,15 @@ import Link from "next/link";
 
 const items = [
   { label: "Profilim", href: "/profil" },
-  { label: "Siparişlerim", href: "/siparislerim" },
-  { label: "Kazançlarım", href: "/cuzdan" },
+  { label: "Mali Tablom", href: "/cuzdan" },
+  { label: "Aldıklarım", href: "/aldiklarim" },
+  { label: "Sattıklarım", href: "/sattiklarim" },
 ];
 
-/** Hesap sayfaları arası ortak üst menü (Profilim · Siparişlerim · Kazançlarım). */
+/**
+ * Hesap sayfaları arası ortak üst menü
+ * (Profilim · Mali Tablom · Aldıklarım · Sattıklarım).
+ */
 export function HesapNav({ active }: { active: string }) {
   return (
     <nav className="mb-5 flex flex-wrap gap-1.5">

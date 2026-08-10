@@ -139,11 +139,6 @@ const gruplar: Grup[] = [
         aciklama: "Taleplerim · Sunumlarım · Takip Ettiklerim · Değerlendirmeler",
       },
       {
-        href: "/siparislerim",
-        ad: "Siparişlerim",
-        aciklama: "Alımlarım + satışlarım sekmeleri",
-      },
-      {
         href: "/cuzdan",
         ad: "Cüzdan",
         aciklama: "Bakiye, komisyon dökümü, IBAN çekim",
@@ -166,7 +161,7 @@ const gruplar: Grup[] = [
       {
         href: "/davet-et",
         ad: "Davet Et",
-        aciklama: "Referans programı: %5 komisyon hakkı",
+        aciklama: "Referans programı: %2 komisyon hakkı",
       },
     ],
   },
@@ -178,7 +173,7 @@ const gruplar: Grup[] = [
       {
         href: "/nasil-calisir",
         ad: "Nasıl Çalışır?",
-        aciklama: "Ters pazar modeli + %7 komisyon",
+        aciklama: "Ters pazar modeli + %4 komisyon",
       },
       {
         href: "/yardim",

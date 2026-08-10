@@ -4,11 +4,17 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { Talep } from "@/lib/data";
-import { fiyatText, talepGorselleri, talepNo } from "@/lib/data";
+import {
+  KENDI_TALEP_ID,
+  SUNUM_YAPTIGIM_TALEPLER,
+  fiyatText,
+  ilanTarihi,
+  talepGorselleri,
+  talepNo,
+} from "@/lib/data";
 import { Chip } from "@/components/ui/Chip";
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { ButtonLink } from "@/components/ui/Button";
 import { TalepCard } from "@/components/TalepCard";
-import { SunumModal } from "@/components/SunumModal";
 
 // İlan Aç formundaki alanların birebir yansıması — alıcının aradığı ürünün
 // tarifi. Değeri olmayan satırlar gizlenir.
@@ -28,6 +34,7 @@ const detaySatirlari = (t: Talep) => {
     { k: "Kabul edilen durum", v: t.durum },
     { k: "Ürün defosu", v: defo },
     { k: "Konum", v: `${t.ilce}, ${t.il}` },
+    { k: "İlan tarihi", v: ilanTarihi(t.eklendi) },
   ].filter((r): r is { k: string; v: string } => Boolean(r.v));
 };
 
@@ -78,8 +85,12 @@ export function IlanDetay({
   talep: Talep;
   benzer: Talep[];
 }) {
+  const kendiIlanim = talep.id === KENDI_TALEP_ID;
+  // Bu talebe zaten sunum gönderdiysem yeniden sunum yapamam.
+  const sunumGonderdim = (SUNUM_YAPTIGIM_TALEPLER as readonly string[]).includes(
+    talep.id,
+  );
   const [aktifFoto, setAktifFoto] = useState(0);
-  const [modal, setModal] = useState(false);
   const [takip, setTakip] = useState(false);
   const [kopyalandi, setKopyalandi] = useState(false);
   const [bildirildi, setBildirildi] = useState(false);
@@ -200,9 +211,6 @@ export function IlanDetay({
                       referans görsel {aktifFoto + 1}
                     </span>
                   )}
-                  <span className="pointer-events-none absolute left-3 top-3 z-10 rounded-md bg-accent px-2.5 py-1.5 text-[10.5px] font-extrabold uppercase tracking-[1.2px] text-ink-900">
-                    Talep
-                  </span>
                   {varMi && (
                     <span className="pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-full bg-ink-900/75 px-2.5 py-1.5 text-[11px] font-semibold text-white opacity-0 backdrop-blur transition-opacity group-hover:opacity-100">
                       🔍 İncele
@@ -222,8 +230,8 @@ export function IlanDetay({
                       Talep detayları
                     </h2>
                   </div>
-                  <span className="whitespace-nowrap rounded-md bg-page px-2 py-1 text-[11px] font-bold text-ink-400">
-                    {varMi ? `${gorseller.length} görsel` : "3 görsel"}
+                  <span className="whitespace-nowrap rounded-md bg-primary px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-white">
+                    Talep
                   </span>
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-x-5">
@@ -248,9 +256,13 @@ export function IlanDetay({
                     ));
                   })()}
                 </dl>
-                <p className="mt-3 text-[12px] leading-relaxed text-ink-400">
+                <p className="mt-3 rounded-card bg-subtle px-3.5 py-3 text-[13.5px] font-semibold leading-relaxed text-ink-900">
                   Görseller yalnızca modeli ve beklenen genel kondisyonu anlatmak
-                  için eklendi; teslimatta ürünün açıklamaya uygunluğu esastır.
+                  için eklendi; teslimatta{" "}
+                  <strong className="font-extrabold text-primary-hover">
+                    ürünün açıklamaya uygunluğu esastır
+                  </strong>
+                  .
                 </p>
               </div>
             </div>
@@ -278,9 +290,10 @@ export function IlanDetay({
             <div className="mt-5 rounded-2xl border border-accent-soft bg-accent-soft/60 p-4">
               <h3 className="text-sm font-bold text-ink-900">Olmazsa olmazlar</h3>
               <ul className="mt-2.5 flex flex-wrap gap-x-5 gap-y-2 text-[13px] font-semibold text-ink-700">
+                <li>
+                  ✓ {talep.defoKabul ? "Defolu ürün kabul edilir" : "Ürün defosuz olmalı"}
+                </li>
                 <li>✓ Açıklamaya uygun kondisyon</li>
-                <li>✓ Orijinal ürün</li>
-                <li>✓ Kutu ve fatura tercihli</li>
               </ul>
             </div>
           </section>
@@ -289,8 +302,12 @@ export function IlanDetay({
         {/* ── Sağ sütun (sticky) ── */}
         <aside className="lg:sticky lg:top-[150px]">
           <div className="rounded-[24px] border border-primary/25 bg-gradient-to-b from-primary-soft/40 to-card p-6 shadow-[var(--shadow-pop)]">
-            {/* Talep sahibi */}
-            <div className="flex items-center gap-3.5">
+            {/* Talep sahibi — tıklayınca profiline gider */}
+            <Link
+              href="/satici-profili"
+              className="group flex items-center gap-3.5 rounded-[14px] outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              aria-label="Talep sahibi Elif Doğan'ın profiline git"
+            >
               <div className="relative flex-none">
                 <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-[18px] font-extrabold text-primary">
                   ED
@@ -320,7 +337,7 @@ export function IlanDetay({
                   Talep sahibi
                 </p>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
-                  <h3 className="text-[19px] font-extrabold leading-tight text-ink-900">
+                  <h3 className="text-[19px] font-extrabold leading-tight text-ink-900 group-hover:text-primary">
                     Elif Doğan
                   </h3>
                   <span className="flex items-center gap-1.5">
@@ -331,10 +348,13 @@ export function IlanDetay({
                   </span>
                 </div>
                 <div className="mt-1 text-[13px] font-medium text-ink-400">
-                  12 talep tamamladı · 2024&apos;ten beri
+                  12 talep tamamladı
+                </div>
+                <div className="mt-0.5 text-[13px] font-medium text-ink-400">
+                  2024&apos;ten beri
                 </div>
               </div>
-            </div>
+            </Link>
             {/* Güven rozetleri */}
             <div className="mt-3.5 flex flex-wrap gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5 text-[12px] font-bold text-accent-ink">
@@ -373,48 +393,72 @@ export function IlanDetay({
             <p className="mt-5 border-t border-hairline pt-5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-ink-400">
               Alıcının belirlediği fiyat
             </p>
-            <div className="mt-2 flex items-baseline gap-2.5">
+            {/* Acil etiketi fiyatın sağında durur; üst sıra yalnızca sıralama
+                önceliğidir, etiket olarak gösterilmez. */}
+            <div className="mt-2 flex flex-wrap items-center gap-2.5">
               <div className="text-[38px] font-extrabold tracking-[-1px] text-ink-900">
                 {fiyatText(talep.fiyatNum)}
               </div>
-              <Chip variant="lime" className="text-[11px]">
-                Tek fiyat
-              </Chip>
+              {talep.acil && (
+                <Chip variant="acil" className="text-[12px]">
+                  ! Acil
+                </Chip>
+              )}
             </div>
 
-            {(talep.pazarlik || talep.acil) && (
-              <div className="mt-3.5 flex flex-wrap gap-1.5">
-                {talep.pazarlik && (
-                  <Chip variant="pazarlik" className="text-[12px]">
-                    Pazarlığa açık
-                  </Chip>
-                )}
-                {talep.acil && (
-                  <Chip variant="acil" className="text-[12px]">
-                    ! Acil
-                  </Chip>
-                )}
+            {/* Kendi talebine sunum yapılamaz — aksiyonlar yerine sahiplik bilgisi. */}
+            {kendiIlanim ? (
+              <div className="mt-5 w-full cursor-default rounded-control bg-primary px-6 py-4 text-center text-[15.5px] font-extrabold text-white">
+                Bu ilan size ait.
               </div>
+            ) : (
+              <>
+                {sunumGonderdim ? (
+                  <div className="mt-5 w-full cursor-default rounded-control bg-primary px-6 py-4 text-center text-[15.5px] font-extrabold text-white">
+                    Bu sunum size ait.
+                  </div>
+                ) : (
+                  <ButtonLink
+                    href={`/sunum-yap/${talep.id}`}
+                    variant="lime"
+                    size="lg"
+                    className="mt-5 w-full"
+                  >
+                    Sunum Yap
+                  </ButtonLink>
+                )}
+                {/* Favori — kalp üzerine gelince kırmızıya döner. */}
+                <button
+                  type="button"
+                  onClick={() => setTakip((v) => !v)}
+                  aria-pressed={takip}
+                  className={`group/fav mt-2.5 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl border px-6 py-[15px] text-[15px] font-bold leading-none transition-colors ${
+                    takip
+                      ? "border-danger-line bg-danger-soft text-danger"
+                      : "border-border-input bg-card text-ink-900 hover:border-danger hover:text-danger"
+                  }`}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                    className={`h-[18px] w-[18px] flex-none transition-colors ${
+                      takip
+                        ? "fill-danger text-danger"
+                        : "fill-none group-hover/fav:fill-danger group-hover/fav:text-danger"
+                    }`}
+                  >
+                    <path d="M12 20.5s-7.3-4.6-9.3-9.2A5.1 5.1 0 0112 5.6a5.1 5.1 0 019.3 5.7c-2 4.6-9.3 9.2-9.3 9.2z" />
+                  </svg>
+                  {takip ? "Favorilerimde ✓" : "Talebi Favorilerime Ekle"}
+                </button>
+              </>
             )}
 
-            <Button
-              variant="lime"
-              size="lg"
-              className="mt-5 w-full"
-              onClick={() => setModal(true)}
-            >
-              Sunum Yap
-            </Button>
-            <Button
-              variant="secondary"
-              size="lg"
-              className="mt-2.5 w-full"
-              onClick={() => setTakip((v) => !v)}
-            >
-              {takip ? "Takip ediliyor ✓" : "Talebi Takip Et"}
-            </Button>
-
-            <div className="mt-4 flex items-start gap-2.5 rounded-2xl bg-accent-soft/50 p-3.5">
+            <div className="mt-4 flex items-start gap-3 rounded-2xl bg-accent-soft/50 p-4">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -422,18 +466,28 @@ export function IlanDetay({
                 strokeWidth="1.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="mt-px h-[18px] w-[18px] flex-none text-accent-ink"
+                className="mt-0.5 h-[24px] w-[24px] flex-none text-accent-ink"
                 aria-hidden
               >
                 <path d="M12 3l7 3v5c0 4.4-3 8-7 9-4-1-7-4.6-7-9V6z" />
                 <path d="M9 12l2 2 4-4" />
               </svg>
-              <p className="text-[11.5px] font-medium leading-snug text-ink-700">
-                <b>BulBana güvencesi.</b>{" "}
-                Ödemen, sen ürünü teslim alıp onaylayana kadar BulBana&apos;da
-                tutulur — sorun çıkarsa iade edilir. Ödeme ve iletişimi platform
-                içinde sürdür.
-              </p>
+              <div className="flex flex-col gap-2.5 text-[13.5px] font-semibold leading-relaxed text-ink-900">
+                <p className="text-[15px] font-extrabold leading-snug text-ink-900">
+                  Kazancınız Güvence Altında
+                </p>
+                <p>
+                  Kazancınız, alıcı ürünü teslim alıp onaylayana kadar güvenli
+                  ödeme sisteminde korunur. Olası bir anlaşmazlık durumunda,
+                  alıcıya ücret iadesi yalnızca ürünün size eksiksiz şekilde geri
+                  gönderilmesinin ardından gerçekleştirilir.
+                </p>
+                <p>
+                  Alıcı ürünü onaylamadığı hâlde iade sürecini tamamlamazsa ücret
+                  iadesi yapılmaz. Böylece hem kazancınız hem de ürününüz güvence
+                  altında tutulur.
+                </p>
+              </div>
             </div>
 
             <div className="mt-3 flex items-center justify-center gap-3 text-[12px] font-semibold text-ink-400">
@@ -477,8 +531,6 @@ export function IlanDetay({
           </div>
         </section>
       )}
-
-      <SunumModal open={modal} onClose={() => setModal(false)} />
 
       {/* Görsel inceleme (lightbox) */}
       {lightbox && varMi && (

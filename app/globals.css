@@ -23,11 +23,14 @@
   --color-primary-soft: #f3e8ff;
   --color-primary-soft-hover: #e9d5ff;
 
-  /* Accent (lime) */
+  /* Accent (lime) — sitedeki tek yeşil: #bef264.
+     Dolgu/zemin rolleri (accent, accent-hover, accent-soft) birebir aynı tondur;
+     hover geri bildirimi renk değiştirerek değil, brightness ile verilir.
+     accent-ink yalnızca bu yeşil üzerindeki/yanındaki yazı için koyu türevdir. */
   --color-accent: #bef264;
-  --color-accent-hover: #a3e635;
-  --color-accent-soft: #ecfccb;
-  --color-accent-ink: #4d7c0f;
+  --color-accent-hover: #bef264;
+  --color-accent-soft: #bef264;
+  --color-accent-ink: #3f6212;
 
   /* Dark surfaces */
   --color-footer: #1f1235;
@@ -41,7 +44,8 @@
   --color-danger: #b4443e;
   --color-danger-soft: #fbeae9;
   --color-danger-line: #eed4d2;
-  --color-star: #c99a2e;
+  /* Yıldız — turuncuya kaçmayan, canlı sarı. */
+  --color-star: #f5c518;
 
   /* Radii */
   --radius-card: 16px;
@@ -109,6 +113,33 @@
     outline-offset: 2px;
   }
 
+  /* Seçilebilir/tıklanabilir her şeyde el imleci — tek tek `cursor-pointer`
+     yazmayı beklemeden. Utility katmanı gerektiğinde bunu ezebilir. */
+  a[href],
+  button,
+  select,
+  summary,
+  label[for],
+  [role="tab"],
+  [role="button"],
+  [role="option"],
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="range"],
+  input[type="color"],
+  input[type="file"],
+  input[type="submit"],
+  input[type="reset"] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled,
+  input:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -133,3 +164,5 @@
   }
 }
 
+
+/* yıldız tonu güncellendi */

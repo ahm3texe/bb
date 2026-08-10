@@ -7,9 +7,17 @@ import type { Talep } from "@/lib/data";
 import { fiyatText, talepGorselleri } from "@/lib/data";
 import { Chip } from "@/components/ui/Chip";
 
-export function TalepCard({ talep }: { talep: Talep }) {
+export function TalepCard({
+  talep,
+  favoride = false,
+}: {
+  talep: Talep;
+  /** Favori listesinden gelen kartlarda kalp dolu başlar. */
+  favoride?: boolean;
+}) {
   const gorseller = talepGorselleri(talep.id);
   const [idx, setIdx] = useState(0);
+  const [favori, setFavori] = useState(favoride);
   const cokluGorsel = gorseller.length > 1;
 
   // Kart bir <Link>; okların ilana gitmesini engelle, sadece görsel değiştir.
@@ -22,7 +30,12 @@ export function TalepCard({ talep }: { talep: Talep }) {
   return (
     <Link
       href={`/ilan/${talep.id}`}
-      className="group block overflow-hidden rounded-card border border-border bg-card transition-colors hover:border-primary"
+      className={`group block overflow-hidden rounded-card border transition-colors hover:border-primary ${
+        // Üst sıra: etiket yok — kart hafif yeşil zeminle standart ilanlardan ayrışır.
+        talep.pazarlik
+          ? "border-accent bg-accent/15"
+          : "border-border bg-card"
+      }`}
     >
       <div
         className={`relative flex aspect-[3/4] items-center justify-center overflow-hidden ${
@@ -40,6 +53,45 @@ export function TalepCard({ talep }: { talep: Talep }) {
         ) : (
           <span className="font-mono text-[10px] text-[#968cac]">
             referans görsel
+          </span>
+        )}
+
+        {/* Sol üst: favori kalbi */}
+        <div className="absolute left-2.5 top-2.5 z-20 flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setFavori((v) => !v);
+            }}
+            aria-pressed={favori}
+            aria-label={favori ? "Favorilerden çıkar" : "Favorilere ekle"}
+            title={favori ? "Favorilerden çıkar" : "Favorilere ekle"}
+            className="group/fav flex h-7 w-7 items-center justify-center rounded-full bg-card/85 shadow-sm backdrop-blur transition-colors hover:bg-card"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`h-[15px] w-[15px] transition-colors ${
+                favori
+                  ? "fill-[#e11d48] text-[#e11d48]"
+                  : "fill-none text-ink-700 group-hover/fav:fill-[#e11d48] group-hover/fav:text-[#e11d48]"
+              }`}
+              aria-hidden
+            >
+              <path d="M12 20.5s-7.3-4.6-9.3-9.2A5.1 5.1 0 0112 5.6a5.1 5.1 0 019.3 5.7c-2 4.6-9.3 9.2-9.3 9.2z" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Sağ üst: doğrulanmış rozeti */}
+        {talep.dogrulanmis && (
+          <span className="absolute right-2.5 top-2.5 z-20 rounded-md bg-primary px-2 py-[5px] text-[10.5px] font-extrabold text-white shadow-sm">
+            ✓ Doğrulanmış
           </span>
         )}
 
@@ -92,11 +144,19 @@ export function TalepCard({ talep }: { talep: Talep }) {
           {talep.aciklama}
         </div>
         {/* Renkli sinyal etiketleri — kart gövdesinde (aşağıda) */}
-        {(talep.acil || talep.dogrulanmis || talep.pazarlik) && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {talep.acil && <Chip variant="acil">! Acil</Chip>}
-            {talep.dogrulanmis && <Chip variant="violet">✓ Doğrulanmış</Chip>}
-            {talep.pazarlik && <Chip variant="pazarlik">Pazarlığa açık</Chip>}
+        {/* Üst sıra bir sıralama önceliğidir — kartta etiket olarak gösterilmez. */}
+        {(talep.acil || talep.muadilKabul) && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {talep.acil && (
+              <Chip variant="acil" className="px-3 py-[7px] text-[12.5px]">
+                ! Acil
+              </Chip>
+            )}
+            {talep.muadilKabul && (
+              <Chip variant="violet" className="px-3 py-[7px] text-[12.5px]">
+                Muadil kabul
+              </Chip>
+            )}
           </div>
         )}
       </div>

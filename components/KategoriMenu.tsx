@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { kategoriler } from "@/lib/data";
+import { kategoriIkonlar } from "@/components/KategoriIkon";
 
 /**
  * Header kategori mega-menüsü. Hem üstüne gelince (fare) hem tıklayınca/klavyeyle
@@ -63,7 +64,9 @@ export function KategoriMenu() {
         <div className="absolute left-0 top-full z-50 pt-3" role="menu">
           <div className="w-[500px] rounded-2xl border border-border bg-card p-3 shadow-[var(--shadow-pop)]">
             <div className="grid grid-cols-2 gap-1">
-              {kategoriler.map((k) => (
+              {kategoriler.map((k) => {
+                const Ikon = kategoriIkonlar[k.ad];
+                return (
                 <Link
                   key={k.ad}
                   href={`/kesfet?kategori=${encodeURIComponent(k.ad)}`}
@@ -72,7 +75,7 @@ export function KategoriMenu() {
                   className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-page"
                 >
                   <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-primary-soft text-[14px] font-extrabold text-primary-hover">
-                    {k.harf}
+                    {Ikon ? <Ikon className="h-[18px] w-[18px]" /> : k.harf}
                   </span>
                   <span className="min-w-0">
                     <span className="block text-[13px] font-bold text-ink-900">
@@ -83,7 +86,8 @@ export function KategoriMenu() {
                     </span>
                   </span>
                 </Link>
-              ))}
+                );
+              })}
             </div>
             <Link
               href="/kesfet"

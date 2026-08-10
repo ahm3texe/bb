@@ -61,8 +61,14 @@ export default function DestekPage() {
   const [ekler, setEkler] = useState(0);
   const [gitti, setGitti] = useState(false);
 
+  // Sayfadaki bütün alanlar zorunlu — hiçbiri boş bırakılamaz.
   const acikOk = aciklama.trim().length >= 20;
-  const canSend = konu !== "" && baslik.trim().length >= 5 && acikOk;
+  const canSend =
+    konu !== "" &&
+    refNo.trim().length > 0 &&
+    baslik.trim().length >= 5 &&
+    acikOk &&
+    ekler > 0;
 
   function gonder() {
     if (canSend) setGitti(true);
@@ -76,7 +82,7 @@ export default function DestekPage() {
           Yardım Merkezi
         </Link>
         <span className="mx-1.5">›</span>
-        <span className="font-semibold text-ink-900">Destek Talebi</span>
+        <span className="font-semibold text-ink-900">Destek Kaydı</span>
       </div>
 
       <div className="grid items-start gap-7 md:grid-cols-[minmax(0,1fr)_384px]">
@@ -85,7 +91,7 @@ export default function DestekPage() {
           {!gitti ? (
             <section className="rounded-panel border border-border bg-card p-[22px]">
               <h1 className="text-[22px] font-extrabold leading-tight text-ink-900">
-                Destek talebi oluştur
+                Destek Kaydı Oluştur
               </h1>
               <p className="mb-[18px] mt-1 text-[13px] font-medium leading-relaxed text-ink-400">
                 Hafta içi 09.00–18.00 arasında ortalama 2 saat içinde
@@ -121,10 +127,8 @@ export default function DestekPage() {
               <div className="mb-4 grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-[13px] font-bold text-ink-900">
-                    İlgili sipariş / ilan no{" "}
-                    <span className="font-medium text-ink-300">
-                      (isteğe bağlı)
-                    </span>
+                    İlgili sipariş / talep no{" "}
+                    <span className="text-danger">*</span>
                   </label>
                   <input
                     value={refNo}
@@ -181,10 +185,8 @@ export default function DestekPage() {
 
               {/* Ekler */}
               <label className="mb-2 mt-4 block text-[13px] font-bold text-ink-900">
-                Ekler{" "}
-                <span className="font-medium text-ink-300">
-                  (isteğe bağlı, en çok 3)
-                </span>
+                Ekler <span className="text-danger">*</span>{" "}
+                <span className="font-medium text-ink-300">(en çok 3)</span>
               </label>
               <div className="grid grid-cols-6 gap-2">
                 {Array.from({ length: 3 }, (_, i) => {
@@ -203,7 +205,7 @@ export default function DestekPage() {
                         filled
                           ? {
                               background:
-                                "repeating-linear-gradient(45deg, #e4f4c8 0px, #e4f4c8 8px, #d6ecaf 8px, #d6ecaf 16px)",
+                                "repeating-linear-gradient(45deg, #bef264 0px, #bef264 8px, rgb(190 242 100 / 0.55) 8px, rgb(190 242 100 / 0.55) 16px)",
                             }
                           : undefined
                       }
@@ -229,7 +231,8 @@ export default function DestekPage() {
                   Talebi Gönder
                 </button>
                 <span className="text-[11.5px] font-medium leading-relaxed text-ink-300">
-                  Kategori + başlık (en az 5) + açıklama (en az 20) zorunlu.
+                  Tüm alanlar zorunlu: kategori, sipariş/talep no, başlık (en az
+                  5), açıklama (en az 20) ve en az 1 ek.
                 </span>
               </div>
             </section>
@@ -312,7 +315,7 @@ export default function DestekPage() {
                 href="/nasil-calisir#komisyon"
                 className="text-[13px] font-semibold leading-snug"
               >
-                %7 komisyon nasıl işler?
+                %4 komisyon nasıl işler?
               </Link>
               <Link
                 href="/itiraz"

@@ -53,7 +53,7 @@ const veri: Bildirim[] = [
     text: "Commodore 64 — kargoya vermen için son 2 gün",
     sub: "3 gün kuralı hatırlatması",
     zaman: "3 saat önce",
-    href: "/siparislerim",
+    href: "/siparis",
     yeni: true,
   },
   {

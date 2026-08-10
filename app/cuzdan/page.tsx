@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { CuzdanClient } from "@/components/CuzdanClient";
 
 export const metadata: Metadata = {
-  title: "Kazançlarım",
+  title: "Mali Tablom",
   description:
-    "Satış kazançların, aktarılabilir bakiyen ve IBAN aktarımların — komisyon ve işlem geçmişiyle birlikte.",
+    "Tamamlanan alım ve satışlarının tek tabloda dökümü — toplam harcaman, net kazancın ve net durumun.",
 };
 
 export default function CuzdanPage() {

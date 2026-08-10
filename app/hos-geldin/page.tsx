@@ -549,14 +549,14 @@ export default function HosGeldinPage() {
                   {rol === "satici" ? (
                     <Link
                       href="/kesfet"
-                      className="rounded-control bg-accent px-[22px] py-[15px] text-[14px] font-extrabold text-ink-900 hover:bg-accent-hover"
+                      className="rounded-control bg-accent px-[22px] py-[15px] text-[14px] font-extrabold text-ink-900 hover:brightness-95"
                     >
                       Taleplere Sunum Gönder
                     </Link>
                   ) : (
                     <Link
                       href="/ilan-ac"
-                      className="rounded-control bg-accent px-[22px] py-[15px] text-[14px] font-extrabold text-ink-900 hover:bg-accent-hover"
+                      className="rounded-control bg-accent px-[22px] py-[15px] text-[14px] font-extrabold text-ink-900 hover:brightness-95"
                     >
                       İlk İlanını Aç
                     </Link>

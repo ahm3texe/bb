@@ -1,3 +1,5 @@
+import type { AliciMetrik } from "./alici-kalitesi";
+
 // ── BulBana seed data (ported from the .dc.html design prototype) ──────
 // In production these become API/DB reads; here they are typed fixtures.
 
@@ -22,6 +24,7 @@ export type Talep = {
   yil?: string;
   renk?: string;
   defoKabul?: boolean; // true → defolu olabilir, false → defosuz olmalı
+  muadilKabul?: boolean; // true → muadil/eşdeğer ürün de kabul ediliyor
 };
 
 export type Kategori = {
@@ -32,6 +35,29 @@ export type Kategori = {
 
 export function fiyatText(n: number): string {
   return n.toLocaleString("tr-TR") + " TL";
+}
+
+/** Önizlemede oturum sahibine ait sayılan talep — kendi ilanına sunum yapılamaz. */
+export const KENDI_TALEP_ID = "dawn-fm-imzali-cd";
+
+/**
+ * Satıcı olarak sunum gönderdiğim talepler (Profil > Sunumlarım).
+ * Bu ilanlarda tekrar "Sunum Yap" çıkmaz; gönderilmiş sunum bilgisi gösterilir.
+ */
+export const SUNUM_YAPTIGIM_TALEPLER = [
+  "commodore-64-kutulu",
+  "sega-dreamcast-tam-set",
+  "nokia-3310-kutulu",
+  "daft-punk-discovery-plak",
+] as const;
+
+/** İlanın açılış tarihi (gün/ay/yıl) — `eklendi` (kaç gün önce) alanından türetilir. */
+export function ilanTarihi(eklendi: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - eklendi);
+  const gun = String(d.getDate()).padStart(2, "0");
+  const ay = String(d.getMonth() + 1).padStart(2, "0");
+  return `${gun}/${ay}/${d.getFullYear()}`;
 }
 
 // Talep id'sinden sabit (deterministik) referans numarası — TEK KAYNAK.
@@ -49,7 +75,7 @@ export const kategoriler: Kategori[] = [
   { ad: "Elektronik", harf: "E", sayi: 3 },
   { ad: "Koleksiyon", harf: "K", sayi: 2 },
   { ad: "Oyun & Konsol", harf: "O", sayi: 1 },
-  { ad: "Moda & Aksesuar", harf: "M", sayi: 0 },
+  { ad: "Giyim & Aksesuar", harf: "G", sayi: 0 },
   { ad: "Saat", harf: "S", sayi: 2 },
   { ad: "Kitap & Dergi", harf: "K", sayi: 1 },
   { ad: "Ev & Yaşam", harf: "E", sayi: 0 },
@@ -92,6 +118,7 @@ export const talepler: Talep[] = [
     durum: "Fark etmez",
     eklendi: 5,
     dogrulanmis: true,
+    muadilKabul: true,
   },
   {
     id: "nokia-3310-kutulu",
@@ -112,6 +139,7 @@ export const talepler: Talep[] = [
     eklendi: 9,
     acil: true,
     pazarlik: true,
+    muadilKabul: true,
   },
   {
     id: "sega-dreamcast-tam-set",
@@ -312,10 +340,82 @@ export function talepGorselleri(id: string): string[] {
   return Array.from({ length: n }, (_, i) => `/talepler/${id}-${i + 1}.jpg`);
 }
 
+/**
+ * Bir kategoride geçen markalar — muadil sunumda satıcının seçebileceği liste.
+ * Seed veriden türetilir; alfabetik ve tekrarsızdır.
+ */
+export function kategoriMarkalari(kategori: string): string[] {
+  const markalar = talepler
+    .filter((t) => t.kategori === kategori)
+    .map((t) => t.marka);
+  return [...new Set(markalar)].sort((a, b) => a.localeCompare(b, "tr"));
+}
+
 // Category counts derived from the seed (keeps the filter panel honest).
 export function kategoriSayilari(): Record<string, number> {
   return talepler.reduce<Record<string, number>>((acc, t) => {
     acc[t.kategori] = (acc[t.kategori] ?? 0) + 1;
     return acc;
   }, {});
+}
+
+/** "4500" → "4.500" — fiyat alanlarında yazarken binlik ayracı gösterir. */
+export function binlikAyir(rakamlar: string): string {
+  const temiz = rakamlar.replace(/\D/g, "");
+  return temiz ? Number(temiz).toLocaleString("tr-TR") : "";
+}
+
+/**
+ * Kullanıcıların alıcı tarafındaki davranış metrikleri — profil sayfasındaki
+ * "Alıcı Kalitesi" kartını besler. Üretimde sipariş/değerlendirme
+ * tablolarından toplanır; burada seed fixture.
+ */
+export const aliciMetrikleri: Record<string, AliciMetrik> = {
+  plakdukkani34: {
+    puanOrtalamasi: 4.9,
+    degerlendirmeSayisi: 41,
+    olumluYorum: 39,
+    olumsuzYorum: 1,
+    tamamlananAlim: 37,
+    iptalEdilenAlim: 1,
+    sunumYanitOrani: 0.96,
+    kimlikDogrulandi: true,
+  },
+  "emre.k": {
+    puanOrtalamasi: 4.4,
+    degerlendirmeSayisi: 12,
+    olumluYorum: 10,
+    olumsuzYorum: 2,
+    tamamlananAlim: 9,
+    iptalEdilenAlim: 1,
+    sunumYanitOrani: 0.72,
+    kimlikDogrulandi: true,
+  },
+  "retro.adana": {
+    puanOrtalamasi: 3.4,
+    degerlendirmeSayisi: 8,
+    olumluYorum: 3,
+    olumsuzYorum: 4,
+    tamamlananAlim: 5,
+    iptalEdilenAlim: 3,
+    sunumYanitOrani: 0.38,
+    kimlikDogrulandi: false,
+  },
+};
+
+/** Metriği olmayan kullanıcı için sıfır geçmişli (yeni alıcı) taban. */
+export const yeniAliciMetrik: AliciMetrik = {
+  puanOrtalamasi: 0,
+  degerlendirmeSayisi: 0,
+  olumluYorum: 0,
+  olumsuzYorum: 0,
+  tamamlananAlim: 0,
+  iptalEdilenAlim: 0,
+  sunumYanitOrani: 0,
+  kimlikDogrulandi: false,
+};
+
+/** Kullanıcı adından alıcı metriği — kayıt yoksa "yeni alıcı" döner. */
+export function getAliciMetrik(kullanici: string): AliciMetrik {
+  return aliciMetrikleri[kullanici] ?? yeniAliciMetrik;
 }

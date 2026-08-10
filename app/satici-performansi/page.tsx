@@ -63,7 +63,7 @@ export default function SaticiPerformansiPage() {
             Son 90 gün · emre.k
           </div>
         </div>
-        <span className="rounded-full bg-ink-900 px-3 py-2 text-[11.5px] font-bold text-accent">
+        <span className="rounded-full bg-accent px-3 py-2 text-[11.5px] font-bold text-accent-ink">
           Güvenilir Satıcı
         </span>
       </div>
@@ -107,7 +107,7 @@ export default function SaticiPerformansiPage() {
               <Link
                 href="/cuzdan"
                 className="mt-[7px] inline-block text-[11px] font-bold text-primary hover:text-primary-hover"
-              >Kazançlarım ›
+              >Mali Tablom ›
               </Link>
             </div>
           </div>
@@ -227,7 +227,7 @@ export default function SaticiPerformansiPage() {
               <span className="text-sm font-extrabold text-ink-900">
                 Satıcı Seviyesi
               </span>
-              <span className="rounded-full bg-ink-900 px-[9px] py-1.5 text-[10.5px] font-bold text-accent">
+              <span className="rounded-full bg-accent px-[9px] py-1.5 text-[10.5px] font-bold text-accent-ink">
                 Güvenilir Satıcı
               </span>
             </div>
@@ -276,7 +276,7 @@ export default function SaticiPerformansiPage() {
             </div>
             <Link
               href="/talep-alarmlari"
-              className="mt-3.5 block rounded-[10px] bg-accent py-3 text-center text-[12.5px] font-bold text-ink-900 hover:bg-accent-hover"
+              className="mt-3.5 block rounded-[10px] bg-accent py-3 text-center text-[12.5px] font-bold text-ink-900 hover:brightness-95"
             >
               🔔 Talep Alarmı Kur
             </Link>
@@ -304,7 +304,7 @@ export default function SaticiPerformansiPage() {
                 href="/cuzdan"
                 className="text-[12.5px] font-semibold text-primary hover:text-primary-hover"
               >
-                Kazançlarım &amp; çekim ›
+                Mali Tablom &amp; çekim ›
               </Link>
             </div>
           </div>

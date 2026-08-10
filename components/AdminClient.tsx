@@ -103,7 +103,7 @@ const sonIslemler: {
   {
     saat: "13:41",
     metin:
-      "Kargo teslim onayı — Polaroid 600, 2.046 TL satıcıya aktarıldı (2.200 TL satış, komisyon 154 TL)",
+      "Kargo teslim onayı — Polaroid 600, 2.112 TL satıcıya aktarıldı (2.200 TL satış, komisyon 88 TL)",
     etiket: "Aktarım",
     variant: "violet",
   },
@@ -252,7 +252,7 @@ export function AdminClient() {
               </div>
               <div className="rounded-[14px] border border-border bg-card p-4">
                 <div className="text-[26px] font-extrabold leading-none text-primary-hover">
-                  41.300 TL
+                  23.600 TL
                 </div>
                 <div className="mt-1.5 text-xs font-semibold leading-tight text-ink-400">
                   Bugünkü komisyon geliri

@@ -47,6 +47,7 @@ export function SiparisClient() {
   const [adres, setAdres] = useState<"kayitli" | "yeni">("kayitli");
   const [yeniAdres, setYeniAdres] = useState("");
   const [yildiz, setYildiz] = useState(0);
+  const [hoverYildiz, setHoverYildiz] = useState(0);
   const [yorum, setYorum] = useState("");
 
   const cur = idxMap[adim];
@@ -393,7 +394,7 @@ export function SiparisClient() {
                 Ürün elinde — kontrol et ve onayla
               </h2>
               <p className="mb-4 text-[12.5px] font-medium leading-relaxed text-ink-400">
-                Onayladığında 4.185 TL (komisyon düşülmüş tutar) satıcıya
+                Onayladığında 4.320 TL (komisyon düşülmüş tutar) satıcıya
                 aktarılır. Onaylamadan önce şunları kontrol et:
               </p>
               <div className="mb-[18px] flex flex-col gap-2">
@@ -442,7 +443,7 @@ export function SiparisClient() {
           {adim === "puan" && (
             <section className="rounded-[18px] border border-border bg-card p-[22px]">
               <div className="rounded-control bg-primary-soft px-3.5 py-3 text-[13px] font-bold leading-snug text-primary-hover">
-                Onayladın ✓ — 4.185 TL satıcıya aktarıldı (%7 komisyon düşüldü).
+                Onayladın ✓ — 4.320 TL satıcıya aktarıldı (%4 komisyon düşüldü).
               </div>
               <h2 className="mb-1 mt-5 text-[17px] font-extrabold text-ink-900">
                 Satıcıyı değerlendir
@@ -451,17 +452,24 @@ export function SiparisClient() {
                 Değerlendirmen plakdukkani34&apos;ün profilinde görünür ve satıcı
                 puanını etkiler.
               </p>
-              <div className="mb-3.5 flex items-center gap-1.5">
+              {/* Üzerine gelinen yıldıza kadar olan tüm yıldızlar sarı yanar. */}
+              <div
+                className="mb-3.5 flex items-center gap-1.5"
+                onMouseLeave={() => setHoverYildiz(0)}
+              >
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
                     key={n}
                     type="button"
                     onClick={() => setYildiz(n)}
+                    onMouseEnter={() => setHoverYildiz(n)}
+                    onFocus={() => setHoverYildiz(n)}
+                    onBlur={() => setHoverYildiz(0)}
                     aria-label={`${n} yıldız`}
-                    className={`cursor-pointer bg-transparent p-0.5 text-[30px] leading-none ${
-                      yildiz >= n
+                    className={`cursor-pointer bg-transparent p-0.5 text-[30px] leading-none transition-colors ${
+                      (hoverYildiz || yildiz) >= n
                         ? "text-star"
-                        : "text-border-input hover:text-star"
+                        : "text-border-input"
                     }`}
                   >
                     ★
@@ -570,7 +578,7 @@ export function SiparisClient() {
               </div>
             </div>
             <p className="mt-3 text-[11px] font-medium leading-relaxed text-ink-300">
-              Satıcıya aktarılacak: 4.185 TL — %7 BulBana komisyonu (315 TL)
+              Satıcıya aktarılacak: 4.320 TL — %4 BulBana komisyonu (180 TL)
               satış bedelinden düşülür. Alıcı olarak ek ücret ödemezsin.
             </p>
           </div>

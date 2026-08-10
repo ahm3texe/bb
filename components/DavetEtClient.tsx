@@ -16,7 +16,7 @@ type Davet = {
 const DAVET_LINK = "bulbana.com/davet/emre-k-7D4F";
 
 const rozet: Record<Durum, { ad: string; cls: string }> = {
-  kazanildi: { ad: "Kazanıldı ✓", cls: "bg-[#f7fceb] text-accent-ink" },
+  kazanildi: { ad: "Kazanıldı ✓", cls: "bg-accent text-accent-ink" },
   bekliyor: { ad: "İlk işlem bekleniyor", cls: "bg-[#efebf5] text-ink-500" },
   davet: { ad: "Davet edildi", cls: "bg-primary-soft text-primary-hover" },
 };
@@ -38,7 +38,7 @@ const adimlar = [
     n: "3",
     numBg: "bg-accent text-ink-900",
     baslik: "İkiniz de kazanın",
-    metin: "İkinize de bir sonraki satışta geçerli %5 komisyon hakkı tanımlanır.",
+    metin: "İkinize de bir sonraki satışta geçerli %2 komisyon hakkı tanımlanır.",
   },
 ];
 
@@ -104,8 +104,8 @@ export function DavetEtClient() {
           </h1>
           <p className="mt-3 text-pretty text-sm font-medium leading-[1.65] text-[#cfc5e8]">
             Davet ettiğin kişi ilk işlemini tamamladığında, ikiniz de bir sonraki
-            satışınızda %7 yerine{" "}
-            <strong className="text-white">%5 komisyon</strong> ödersiniz. BulBana
+            satışınızda %4 yerine{" "}
+            <strong className="text-white">%2 komisyon</strong> ödersiniz. BulBana
             ağı büyüdükçe aradığını bulma şansın artar — kazan-kazan.
           </p>
         </div>
@@ -119,7 +119,7 @@ export function DavetEtClient() {
           {kopyalandi ? (
             <button
               type="button"
-              className="cursor-default rounded-[13px] bg-[#f7fceb] px-6 py-4 text-sm font-extrabold text-accent-ink"
+              className="cursor-default rounded-[13px] bg-accent px-6 py-4 text-sm font-extrabold text-accent-ink"
             >
               Kopyalandı ✓
             </button>
@@ -127,7 +127,7 @@ export function DavetEtClient() {
             <button
               type="button"
               onClick={kopyala}
-              className="cursor-pointer rounded-[13px] bg-accent px-6 py-4 text-sm font-extrabold text-ink-900 transition-colors hover:bg-[#d3f98a]"
+              className="cursor-pointer rounded-[13px] bg-accent px-6 py-4 text-sm font-extrabold text-ink-900 transition-colors hover:brightness-95"
             >
               Linki Kopyala
             </button>
@@ -244,7 +244,7 @@ export function DavetEtClient() {
                 <span className="font-bold text-ink-900">2 kişi</span>
               </div>
               <div className="flex justify-between border-t border-hairline pt-2 text-[12.5px] font-medium">
-                <span className="font-bold text-ink-900">%5 komisyon hakkı</span>
+                <span className="font-bold text-ink-900">%2 komisyon hakkı</span>
                 <span className="font-extrabold text-accent-ink">2 adet</span>
               </div>
             </div>
@@ -254,13 +254,13 @@ export function DavetEtClient() {
             </p>
           </div>
 
-          <div className="rounded-card border border-[#e4f2c4] bg-[#f7fceb] p-[18px]">
+          <div className="rounded-card border border-accent bg-accent p-[18px]">
             <div className="text-[13.5px] font-extrabold text-accent-ink">
               Örnek kazanç
             </div>
             <p className="mt-2 text-xs font-medium leading-[1.6] text-ink-700">
-              4.500 TL&apos;lik bir satışta komisyon normalde 315 TL. İndirim
-              hakkınla <strong className="text-accent-ink">225 TL</strong>&apos;ye
+              4.500 TL&apos;lik bir satışta komisyon normalde 180 TL. İndirim
+              hakkınla <strong className="text-accent-ink">90 TL</strong>&apos;ye
               düşer — 90 TL cebinde kalır.
             </p>
           </div>
