@@ -15,45 +15,7 @@ type Alarm = {
   kanal: string;
 };
 
-const ilkAlarmlar: Alarm[] = [
-  {
-    id: 1,
-    ad: "Müzik & Plak — imzalı",
-    kriterler: ["Müzik & Plak", '"imzalı"', "2.000 TL üzeri", "Tüm Türkiye"],
-    aktif: true,
-    eslesme: 4,
-    son: {
-      baslik: 'İmzalı The Weeknd "Dawn FM" CD arıyorum',
-      fiyat: "4.500 TL",
-      zaman: "2 gün önce",
-      href: "/ilan/dawn-fm-imzali-cd",
-    },
-    kanal: "Uygulama + E-posta",
-  },
-  {
-    id: 2,
-    ad: "Retro Elektronik",
-    kriterler: ["Elektronik", '"kutulu"', "Ankara"],
-    aktif: true,
-    eslesme: 2,
-    son: {
-      baslik: "Nokia 3310 arıyorum — kutulu, çalışır",
-      fiyat: "1.500 TL",
-      zaman: "5 gün önce",
-      href: "/ilan/nokia-3310-kutulu",
-    },
-    kanal: "Uygulama",
-  },
-  {
-    id: 3,
-    ad: "Plak — ilk baskı",
-    kriterler: ["Müzik & Plak", '"ilk baskı"', "3.000 TL üzeri"],
-    aktif: false,
-    eslesme: 0,
-    son: null,
-    kanal: "E-posta",
-  },
-];
+const ilkAlarmlar: Alarm[] = [];
 
 // Alarm filtresi — İlan Aç formundaki detaylarla aynı seçenekler.
 const durumSecenekleri = ["Kutusu açılmamış", "Az kullanılmış", "Kullanılmış"];
@@ -64,11 +26,133 @@ const defoSecenekleri = [
 ] as const;
 type DefoSecim = (typeof defoSecenekleri)[number]["v"];
 
+/**
+ * Kategori seçim kutusu — tıklanınca kategorileri listeleyen, hepsi birden
+ * işaretlenebilen çoklu seçim menüsü. Escape ve dışarı tıklamada kapanır.
+ */
+function KategoriSecici({
+  secili,
+  onDegis,
+}: {
+  secili: string[];
+  onDegis: (yeni: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    function onClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClick);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onClick);
+    };
+  }, [open]);
+
+  const hepsi = secili.length === kategoriler.length;
+  const ozet = hepsi
+    ? `Tüm kategoriler (${kategoriler.length})`
+    : secili.length === 0
+      ? "Kategori seç"
+      : secili.length === 1
+        ? secili[0]
+        : `${secili[0]} +${secili.length - 1}`;
+
+  function toggle(ad: string) {
+    onDegis(
+      secili.includes(ad) ? secili.filter((x) => x !== ad) : [...secili, ad],
+    );
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex w-full box-border items-center justify-between gap-2 rounded-[11px] border-[1.5px] px-[13px] py-3 text-left text-[14px] font-medium outline-none ${
+          open ? "border-accent-ink" : "border-border-input"
+        } ${secili.length ? "text-ink-900" : "text-ink-300"}`}
+      >
+        <span className="truncate">{ozet}</span>
+        <span
+          className={`flex-none text-[10px] text-ink-400 transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+          aria-hidden
+        >
+          ▾
+        </span>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 overflow-hidden rounded-card border border-border bg-card shadow-pop">
+          <div className="flex items-center justify-between gap-2 border-b border-hairline px-3 py-2.5">
+            <label className="flex cursor-pointer items-center gap-2.5 text-[13px] font-bold text-ink-900">
+              <input
+                type="checkbox"
+                checked={hepsi}
+                ref={(el) => {
+                  if (el) el.indeterminate = secili.length > 0 && !hepsi;
+                }}
+                onChange={() =>
+                  onDegis(hepsi ? [] : kategoriler.map((k) => k.ad))
+                }
+                className="h-4 w-4 flex-none cursor-pointer accent-[#7c3aed]"
+              />
+              Tümünü seç
+            </label>
+            <span className="text-[12px] font-semibold text-ink-400">
+              {secili.length}/{kategoriler.length}
+            </span>
+          </div>
+
+          <div className="max-h-[248px] overflow-y-auto py-1">
+            {kategoriler.map((k) => {
+              const aktif = secili.includes(k.ad);
+              const Ikon = kategoriIkonlar[k.ad];
+              return (
+                <label
+                  key={k.ad}
+                  className={`flex cursor-pointer items-center gap-2.5 px-3 py-[9px] text-[13.5px] hover:bg-subtle ${
+                    aktif
+                      ? "font-bold text-ink-900"
+                      : "font-semibold text-ink-700"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={aktif}
+                    onChange={() => toggle(k.ad)}
+                    className="h-4 w-4 flex-none cursor-pointer accent-[#7c3aed]"
+                  />
+                  {Ikon && (
+                    <Ikon className="h-[17px] w-[17px] flex-none text-ink-500" />
+                  )}
+                  {k.ad}
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TalepAlarmlariClient() {
   const [alarmlar, setAlarmlar] = useState<Alarm[]>(ilkAlarmlar);
 
-  // Form — kategori TEK seçilir; ürün durumu çoklu seçilebilir.
-  const [seciliKat, setSeciliKat] = useState<string | null>(null);
+  // Form — kategori çoklu seçilir; ürün durumu da çoklu seçilebilir.
+  const [seciliKatlar, setSeciliKatlar] = useState<string[]>([]);
   const [kelime, setKelime] = useState("");
   const [marka, setMarka] = useState("");
   const [model, setModel] = useState("");
@@ -88,7 +172,7 @@ export function TalepAlarmlariClient() {
   const [kanalMail, setKanalMail] = useState(false);
   const [kaydedildi, setKaydedildi] = useState(false);
 
-  const nextId = useRef(4);
+  const nextId = useRef(1);
   const toastT = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => () => {
@@ -100,11 +184,8 @@ export function TalepAlarmlariClient() {
     (t, a) => t + (a.aktif ? a.eslesme : 0),
     0,
   );
-  const kaydetOk = seciliKat !== null && (kanalApp || kanalMail);
+  const kaydetOk = seciliKatlar.length > 0 && (kanalApp || kanalMail);
 
-  function katSec(ad: string) {
-    setSeciliKat((prev) => (prev === ad ? null : ad));
-  }
   function durumToggle(d: string) {
     setDurumlar((prev) =>
       prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d],
@@ -123,7 +204,9 @@ export function TalepAlarmlariClient() {
   function kaydet() {
     if (!kaydetOk) return;
     const kriterler: string[] = [];
-    kriterler.push(seciliKat!);
+    const tumKategoriler = seciliKatlar.length === kategoriler.length;
+    if (tumKategoriler) kriterler.push("Tüm kategoriler");
+    else kriterler.push(...seciliKatlar);
     if (marka.trim()) kriterler.push(marka.trim());
     if (model.trim()) kriterler.push(model.trim());
     if (renk.trim()) kriterler.push(renk.trim());
@@ -148,7 +231,11 @@ export function TalepAlarmlariClient() {
         .filter(Boolean)
         .join(" + ") || "Uygulama";
 
-    const ana = seciliKat!;
+    const ana = tumKategoriler
+      ? "Tüm kategoriler"
+      : seciliKatlar.length === 1
+        ? seciliKatlar[0]
+        : `${seciliKatlar[0]} +${seciliKatlar.length - 1}`;
     const etiket = marka.trim() || kelime.trim();
 
     const yeni: Alarm = {
@@ -164,7 +251,7 @@ export function TalepAlarmlariClient() {
     setAlarmlar((prev) => [yeni, ...prev]);
 
     // Sıfırla
-    setSeciliKat(null);
+    setSeciliKatlar([]);
     setKelime("");
     setMarka("");
     setModel("");
@@ -355,29 +442,22 @@ export function TalepAlarmlariClient() {
               Yeni Alarm Oluştur
             </div>
 
-            {/* Kategori — tek seçim */}
+            {/* Kategori — çoklu seçim kutusu */}
             <div className="mt-4 mb-2 flex items-baseline justify-between gap-2">
-              <label className="text-[13.5px] font-bold text-ink-900">Kategori</label>
+              <label className="text-[13.5px] font-bold text-ink-900">
+                Kategori
+              </label>
+              {seciliKatlar.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSeciliKatlar([])}
+                  className="text-[12.5px] font-semibold text-ink-400 hover:text-primary"
+                >
+                  Seçimi temizle
+                </button>
+              )}
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {kategoriler.map((k) => {
-                const aktif = seciliKat === k.ad;
-                const Ikon = kategoriIkonlar[k.ad];
-                return (
-                  <button
-                    key={k.ad}
-                    type="button"
-                    aria-pressed={aktif}
-                    onClick={() => katSec(k.ad)}
-                    className={aktif ? chipActive : chipPassive}
-                  >
-                    {Ikon && <Ikon className="h-[17px] w-[17px] flex-none" />}
-                    {k.ad}
-                    {aktif ? " ✓" : ""}
-                  </button>
-                );
-              })}
-            </div>
+            <KategoriSecici secili={seciliKatlar} onDegis={setSeciliKatlar} />
 
             {/* Marka / Model */}
             <div className="mt-3.5 grid grid-cols-2 gap-2">
@@ -473,7 +553,7 @@ export function TalepAlarmlariClient() {
                 }}
                 className={hepsiDurum ? chipActive : chipPassive}
               >
-                Hepsi{hepsiDurum ? " ✓" : ""}
+                Hepsi
               </button>
               {durumSecenekleri.map((d) => {
                 const aktif = durumlar.includes(d);
@@ -487,7 +567,6 @@ export function TalepAlarmlariClient() {
                     className={`${aktif ? chipActive : chipPassive} disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-border-input disabled:hover:text-ink-500`}
                   >
                     {d}
-                    {aktif ? " ✓" : ""}
                   </button>
                 );
               })}

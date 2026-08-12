@@ -24,10 +24,13 @@ export function MobileMenu() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  // Rota değişince kapat.
-  useEffect(() => {
+  // Rota değişince kapat. Effect yerine render sırasında düzeltme —
+  // React'in "türetilmiş state" kalıbı, ekstra render turu doğurmaz.
+  const [oncekiYol, setOncekiYol] = useState(pathname);
+  if (oncekiYol !== pathname) {
+    setOncekiYol(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
   useEffect(() => {
     if (!open) return;

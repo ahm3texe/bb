@@ -5,7 +5,7 @@ import { NasilSSS } from "./NasilSSS";
 export const metadata: Metadata = {
   title: "Nasıl Çalışır?",
   description:
-    "BulBana ters pazardır: ilanı alıcı açar, fiyatı alıcı belirler, satıcı talebe gelir. Alıcı ve satıcı akışı, %4 komisyon modeli ve güvence kuralları.",
+    "Bulbana ters pazardır: ilanı alıcı açar, fiyatı alıcı belirler, satıcı talebe gelir. Alıcı ve satıcı akışı, %4 komisyon modeli ve güvence kuralları.",
 };
 
 const aliciAdimlar = [
@@ -67,7 +67,7 @@ const guvenceler = [
     isaret: "✓",
     baslik: "Ödeme güvende",
     metin:
-      "Ödeme, alıcı ürünü onaylayana kadar BulBana'da tutulur; iki taraf da korunur.",
+      "Ödeme, alıcı ürünü onaylayana kadar Bulbana'da tutulur; iki taraf da korunur.",
   },
   {
     isaret: "3",
@@ -173,7 +173,7 @@ export default function NasilCalisirPage() {
             Basit komisyon modeli
           </h2>
           <p className="mt-1.5 text-[14px] font-medium leading-relaxed text-ink-700">
-            Üyelik, ilan, sunum, teklif ve pazarlık ücretsizdir. BulBana yalnızca{" "}
+            Üyelik, ilan, sunum, teklif ve pazarlık ücretsizdir. Bulbana yalnızca{" "}
             <strong className="text-ink-900">
               gerçekleşen satıştan %4 komisyon
             </strong>{" "}
@@ -205,7 +205,7 @@ export default function NasilCalisirPage() {
               <span className="font-bold text-ink-900">4.500 TL</span>
             </div>
             <div className="flex justify-between text-[14px] font-medium">
-              <span className="text-ink-500">BulBana komisyonu (%4)</span>
+              <span className="text-ink-500">Bulbana komisyonu (%4)</span>
               <span className="font-bold text-danger">− 180 TL</span>
             </div>
             <div className="mt-1 flex items-center justify-between rounded-[14px] border-[1.5px] border-accent bg-card px-3.5 py-2.5 text-[14.5px] font-medium">

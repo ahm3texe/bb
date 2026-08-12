@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ── BulBana design tokens (from the design handoff) ──────────────────
+/* ── Bulbana design tokens (from the design handoff) ──────────────────
    Reverse-marketplace: violet primary, lime accent, purple-tinted neutrals.
    Light theme only — the source design has no dark variant. */
 @theme {
@@ -13,9 +13,11 @@
   /* Ink (purple-tinted neutrals) */
   --color-ink-900: #2e1a47;
   --color-ink-700: #4b4263;
-  --color-ink-500: #6a6280;
-  --color-ink-400: #8b84a3;
-  --color-ink-300: #a6a0b8;
+  --color-ink-500: #615a77;
+  /* ink-400 ve ink-300 ikincil metin renkleridir; beyaz kart üzerinde
+     WCAG AA küçük metin eşiğini (4.5:1) geçecek kadar koyu tutulur. */
+  --color-ink-400: #6e6786;
+  --color-ink-300: #787193;
 
   /* Primary (violet) */
   --color-primary: #7c3aed;
@@ -24,13 +26,16 @@
   --color-primary-soft-hover: #e9d5ff;
 
   /* Accent (lime) — sitedeki tek yeşil: #bef264.
+     Sitedeki TEK yeşil budur; koyu/zeytin yeşili kullanılmaz.
      Dolgu/zemin rolleri (accent, accent-hover, accent-soft) birebir aynı tondur;
      hover geri bildirimi renk değiştirerek değil, brightness ile verilir.
-     accent-ink yalnızca bu yeşil üzerindeki/yanındaki yazı için koyu türevdir. */
+     accent-ink ise lime üzerine yazılan metnin rengidir — okunurluk için
+     patlıcan moru; beyaz zeminde lime metin okunmadığı için o yerlerde de
+     bu ton kullanılır. */
   --color-accent: #bef264;
   --color-accent-hover: #bef264;
   --color-accent-soft: #bef264;
-  --color-accent-ink: #3f6212;
+  --color-accent-ink: #1f1235;
 
   /* Dark surfaces */
   --color-footer: #1f1235;
@@ -44,8 +49,11 @@
   --color-danger: #b4443e;
   --color-danger-soft: #fbeae9;
   --color-danger-line: #eed4d2;
-  /* Yıldız — turuncuya kaçmayan, canlı sarı. */
+  /* Yıldız — turuncuya kaçmayan, canlı sarı. Yalnızca ikon dolgusu için;
+     beyaz üzerinde metin olarak okunmaz. */
   --color-star: #f5c518;
+  /* Puan yazısı (ör. "★ 4,9") bu koyu amberle yazılır — AA eşiğini geçer. */
+  --color-star-ink: #8a6b00;
 
   /* Radii */
   --radius-card: 16px;

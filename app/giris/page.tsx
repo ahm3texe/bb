@@ -326,7 +326,7 @@ export default function GirisPage() {
           <div className="mt-4 border-t border-hairline pt-4 text-center text-[13px] font-medium text-ink-500">
             {sekme === "giris" ? (
               <>
-                BulBana&apos;da yeni misin?{" "}
+                Bulbana&apos;da yeni misin?{" "}
                 <button
                   type="button"
                   onClick={() => gecis("kayit")}
@@ -360,7 +360,7 @@ export default function GirisPage() {
           {done === "giris" ? (
             <>
               <h1 className="mt-[18px] text-[21px] font-extrabold leading-tight text-ink-900">
-                Tekrar hoş geldin, Emre!
+                Tekrar hoş geldin, Melih!
               </h1>
               <p className="mt-2 text-[13.5px] font-medium leading-[1.55] text-ink-500">
                 2 talebinde yeni sunum, 1 sohbette yanıt bekleyen teklif var.
@@ -386,7 +386,7 @@ export default function GirisPage() {
                 Hesabın hazır!
               </h1>
               <p className="mt-2 text-[13.5px] font-medium leading-[1.55] text-ink-500">
-                Birkaç soruyla BulBana&apos;yı sana göre kuralım — 1 dakika
+                Birkaç soruyla Bulbana&apos;yı sana göre kuralım — 1 dakika
                 sürer.
               </p>
               <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
@@ -410,7 +410,7 @@ export default function GirisPage() {
 
       {/* Alt bilgi */}
       <div className="mb-4 mt-auto flex items-center gap-4 pt-5 text-[11.5px] font-medium text-ink-400">
-        <span>© 2026 BulBana</span>
+        <span>© 2026 Bulbana</span>
         <span className="h-1 w-1 rounded-full bg-ink-300/50" />
         <Link href="/" className="text-ink-400 hover:text-ink-900">
           Ana sayfa

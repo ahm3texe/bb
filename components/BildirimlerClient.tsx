@@ -3,132 +3,12 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
-type Tip = "sunum" | "teklif" | "kargo" | "sistem";
-type Grup = "Bugün" | "Dün" | "Daha önce";
+import { bildirimlerimFor } from "@/lib/bildirimler";
+import type { Bildirim, BildirimTip, BildirimGrup } from "@/lib/bildirimler";
+import { useAktifKullanici } from "@/lib/aktif-kullanici";
 
-type Bildirim = {
-  id: number;
-  grup: Grup;
-  tip: Tip;
-  harf: string;
-  avatar: string; // tailwind bg + text classes for the round icon
-  text: string;
-  sub: string;
-  zaman: string;
-  href: string;
-  yeni: boolean;
-};
-
-const veri: Bildirim[] = [
-  {
-    id: 1,
-    grup: "Bugün",
-    tip: "sunum",
-    harf: "S",
-    avatar: "bg-primary-soft text-primary-hover",
-    text: 'Dawn FM talebine 2 yeni sunum geldi',
-    sub: 'İmzalı The Weeknd "Dawn FM" CD',
-    zaman: "12 dk önce",
-    href: "/ilan/dawn-fm-imzali-cd",
-    yeni: true,
-  },
-  {
-    id: 2,
-    grup: "Bugün",
-    tip: "teklif",
-    harf: "T",
-    avatar: "bg-accent-soft text-accent-ink",
-    text: "aysenur.a sunumundan teklif istedi — fiyatını ver",
-    sub: "Nokia 3310 — kutulu",
-    zaman: "1 saat önce",
-    href: "/mesajlar",
-    yeni: true,
-  },
-  {
-    id: 3,
-    grup: "Bugün",
-    tip: "kargo",
-    harf: "K",
-    avatar: "bg-ink-900 text-accent",
-    text: "Commodore 64 — kargoya vermen için son 2 gün",
-    sub: "3 gün kuralı hatırlatması",
-    zaman: "3 saat önce",
-    href: "/siparis",
-    yeni: true,
-  },
-  {
-    id: 4,
-    grup: "Dün",
-    tip: "kargo",
-    harf: "O",
-    avatar: "bg-primary-soft text-primary-hover",
-    text: "Sipariş #BB-78412 — kargo transfer merkezinde",
-    sub: "Aras Kargo · TR728439104",
-    zaman: "Dün 11:20",
-    href: "/siparis",
-    yeni: true,
-  },
-  {
-    id: 5,
-    grup: "Dün",
-    tip: "teklif",
-    harf: "T",
-    avatar: "bg-accent-soft text-accent-ink",
-    text: "plakdukkani34 ile 4.500 TL üzerinde anlaşıldı",
-    sub: "Ödeme adımına geçildi",
-    zaman: "Dün 10:40",
-    href: "/siparis",
-    yeni: false,
-  },
-  {
-    id: 6,
-    grup: "Dün",
-    tip: "sistem",
-    harf: "B",
-    avatar: "bg-[#efebf5] text-ink-500",
-    text: "Kraftwerk plak talebinin süresi 15 gün sonra doluyor",
-    sub: "Dilediğinde uzatabilirsin",
-    zaman: "Dün 09:05",
-    href: "/ilan-yonetimi",
-    yeni: false,
-  },
-  {
-    id: 7,
-    grup: "Daha önce",
-    tip: "sunum",
-    harf: "S",
-    avatar: "bg-primary-soft text-primary-hover",
-    text: "koleksiyoner.mert sunumunu güncelledi",
-    sub: "Yeni fotoğraf eklendi",
-    zaman: "Salı",
-    href: "/sunum-detay",
-    yeni: false,
-  },
-  {
-    id: 8,
-    grup: "Daha önce",
-    tip: "kargo",
-    harf: "O",
-    avatar: "bg-primary-soft text-primary-hover",
-    text: "Polaroid 600 — ödeme satıcıya aktarıldı",
-    sub: "İşlem tamamlandı, değerlendirmen yayında",
-    zaman: "Salı",
-    href: "/siparis",
-    yeni: false,
-  },
-  {
-    id: 9,
-    grup: "Daha önce",
-    tip: "sistem",
-    harf: "B",
-    avatar: "bg-[#efebf5] text-ink-500",
-    text: "Kimlik doğrulaman onaylandı",
-    sub: "Profilinde rozet olarak görünüyor",
-    zaman: "Geçen hafta",
-    href: "/profil",
-    yeni: false,
-  },
-];
+type Tip = BildirimTip;
+type Grup = BildirimGrup;
 
 const tipler: { id: "tumu" | Tip; ad: string }[] = [
   { id: "tumu", ad: "Tümü" },
@@ -144,7 +24,14 @@ export function BildirimlerClient() {
   const [filtre, setFiltre] = useState<"tumu" | Tip>("tumu");
   const [okunanlar, setOkunanlar] = useState<number[]>([]);
 
-  const yeniIds = useMemo(() => veri.filter((b) => b.yeni).map((b) => b.id), []);
+  // Bildirimler aktif hesaba aittir; hesap değişince liste de değişir.
+  const aktif = useAktifKullanici();
+  const veri: Bildirim[] = bildirimlerimFor(aktif.kullanici);
+
+  const yeniIds = useMemo(
+    () => veri.filter((b) => b.yeni).map((b) => b.id),
+    [veri],
+  );
   const okunmamisSayi = yeniIds.filter((id) => !okunanlar.includes(id)).length;
 
   const filtreli = veri.filter((b) => filtre === "tumu" || b.tip === filtre);

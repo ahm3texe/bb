@@ -249,7 +249,7 @@ export function SunumGaleri({
         {Array.from({ length: Math.max(0, fotolar - 1) }).map((_, i) => (
           <div
             key={i}
-            className="ref-image flex aspect-[3/4] w-[52px] flex-none items-center justify-center rounded-lg font-mono text-[9.5px] text-[#968cac]"
+            className="ref-image flex aspect-[3/4] w-[52px] flex-none items-center justify-center rounded-lg font-mono text-[9.5px] text-ink-400"
           >
             foto {i + 2}
           </div>
@@ -260,7 +260,7 @@ export function SunumGaleri({
           </div>
         )}
       </div>
-      <div className="ref-image flex aspect-[3/4] min-w-0 flex-1 items-center justify-center self-start rounded-xl font-mono text-[11px] text-[#968cac]">
+      <div className="ref-image flex aspect-[3/4] min-w-0 flex-1 items-center justify-center self-start rounded-xl font-mono text-[11px] text-ink-400">
         foto 1
       </div>
     </div>

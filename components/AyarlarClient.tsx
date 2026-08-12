@@ -734,7 +734,7 @@ function KartFormu({
           className={inputSm}
         />
         <p className="mt-1.5 text-[11.5px] font-medium leading-[1.5] text-ink-300">
-          BulBana bu numaraya ödeme onayı için SMS şifresi gönderir.
+          Bulbana bu numaraya ödeme onayı için SMS şifresi gönderir.
         </p>
       </div>
 
@@ -889,10 +889,10 @@ export function AyarlarClient() {
     {
       id: 1,
       ad: "Ev",
-      il: "İstanbul",
-      ilce: "Kadıköy",
-      mahalle: "Caferağa Mahallesi",
-      cadde: "Moda Caddesi",
+      il: "Bursa",
+      ilce: "Nilüfer",
+      mahalle: "Görükle Mahallesi",
+      cadde: "Üniversite Caddesi",
       tarif: "No: 18, Daire 4",
       varsayilan: true,
     },
@@ -959,7 +959,7 @@ export function AyarlarClient() {
       marka: "VISA",
       son4: "4821",
       skt: "12/2027",
-      isim: "Emre Kaya",
+      isim: "Melih Kurt",
       varsayilan: true,
     },
   ]);
@@ -1309,7 +1309,7 @@ export function AyarlarClient() {
               )}
               <p className="mt-3 text-[11.5px] font-medium leading-[1.5] text-ink-300">
                 Kart bilgilerin 256-bit şifreyle ödeme kuruluşunda saklanır;
-                BulBana sistemlerinde tutulmaz. Satış gelirlerin, alıcı onayı
+                Bulbana sistemlerinde tutulmaz. Satış gelirlerin, alıcı onayı
                 sonrası kayıtlı IBAN&apos;ına aktarılır.
               </p>
             </section>

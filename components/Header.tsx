@@ -4,6 +4,7 @@ import { HeaderSearch } from "@/components/HeaderSearch";
 import { NotificationBell } from "@/components/NotificationBell";
 import { KategoriMenu } from "@/components/KategoriMenu";
 import { MobileMenu } from "@/components/MobileMenu";
+import { HesapMenu } from "@/components/HesapMenu";
 import { ButtonLink } from "@/components/ui/Button";
 
 // İkincil (kurumsal) linkler — nav'ın sağında.
@@ -62,13 +63,7 @@ export function Header() {
               3
             </span>
           </Link>
-          <Link
-            href="/profil"
-            aria-label="Profilim"
-            className="hidden h-[42px] w-[42px] items-center justify-center rounded-full bg-primary-soft text-[13.5px] font-bold text-primary md:flex"
-          >
-            EK
-          </Link>
+          <HesapMenu />
           <div className="hidden md:block">
             <ButtonLink href="/ilan-ac" variant="primary" size="lg">
               + Aradığını İlan Et

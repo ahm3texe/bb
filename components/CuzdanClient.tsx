@@ -6,13 +6,14 @@ import { HesapNav } from "@/components/HesapNav";
 import { HesapKart } from "@/components/HesapKart";
 import { fiyatText } from "@/lib/data";
 import {
-  alimlarim,
+  alimlar,
   bakiyedekiTutar,
   maliHareketler,
   satisOzeti,
-  satislarim,
+  satislar,
   toplamHarcama,
-} from "@/lib/islemlerim";
+} from "@/lib/islemler";
+import { useAktifKullanici } from "@/lib/aktif-kullanici";
 
 /** İşaretli tutar: gelir "+", gider "−" önekiyle gösterilir. */
 function isaretliTutar(n: number): string {
@@ -22,13 +23,16 @@ function isaretliTutar(n: number): string {
 export function CuzdanClient() {
   const [aktarimTalebi, setAktarimTalebi] = useState(false);
 
-  const harcama = toplamHarcama();
-  const urunToplam = alimlarim.reduce((t, a) => t + a.tutar, 0);
-  const kargoToplam = alimlarim.reduce((t, a) => t + a.kargo, 0);
-  const { brut, komisyon, net } = satisOzeti();
-  const bakiye = bakiyedekiTutar();
+  const aktif = useAktifKullanici();
+  const alimListesi = alimlar(aktif.kullanici);
+  const satisListesi = satislar(aktif.kullanici);
+  const harcama = toplamHarcama(aktif.kullanici);
+  const urunToplam = alimListesi.reduce((t, i) => t + i.fiyat, 0);
+  const kargoToplam = alimListesi.reduce((t, i) => t + i.kargo, 0);
+  const { brut, komisyon, net } = satisOzeti(aktif.kullanici);
+  const bakiye = bakiyedekiTutar(aktif.kullanici);
   const netDurum = net - harcama;
-  const hareketler = maliHareketler();
+  const hareketler = maliHareketler(aktif.kullanici);
 
   // Mali özet tablosu — her satır tek bir kalem, sonuç satırları vurgulu.
   const ozetSatirlari: {
@@ -39,12 +43,12 @@ export function CuzdanClient() {
   }[] = [
     {
       ad: "Satış geliri (brüt)",
-      aciklama: `${satislarim.length} tamamlanan satış`,
+      aciklama: `${satisListesi.length} tamamlanan satış`,
       tutar: brut,
       tip: "gelir",
     },
     {
-      ad: "BulBana komisyonu",
+      ad: "Bulbana komisyonu",
       aciklama: "Satış bedelinin %4'ü",
       tutar: -komisyon,
       tip: "gider",
@@ -57,7 +61,7 @@ export function CuzdanClient() {
     },
     {
       ad: "Ürün alımları",
-      aciklama: `${alimlarim.length} tamamlanan alım`,
+      aciklama: `${alimListesi.length} tamamlanan alım`,
       tutar: -urunToplam,
       tip: "gider",
     },
@@ -93,33 +97,33 @@ export function CuzdanClient() {
 
           {/* ── Üç rakam: harcama, kazanç, net ── */}
           <div className="grid gap-3.5 md:grid-cols-3">
-            <div className="rounded-card border border-border bg-card p-5">
-              <div className="text-[11px] font-bold uppercase tracking-[1.2px] text-ink-400">
+            <div className="rounded-card bg-ink-900 p-5">
+              <div className="text-[11px] font-bold uppercase tracking-[1.2px] text-accent">
                 Toplam harcama
               </div>
-              <div className="mt-2.5 text-[30px] font-extrabold leading-none text-ink-900">
+              <div className="mt-2.5 text-[30px] font-extrabold leading-none text-accent">
                 {fiyatText(harcama)}
               </div>
               <Link
                 href="/aldiklarim"
-                className="mt-3 inline-block text-[11.5px] font-bold text-primary hover:text-primary-hover"
+                className="mt-3 inline-block text-[11.5px] font-bold text-[#b6a9d4] hover:text-white"
               >
-                Aldıklarım ({alimlarim.length}) ›
+                Aldıklarım ({alimListesi.length}) ›
               </Link>
             </div>
 
-            <div className="rounded-card border border-border bg-card p-5">
-              <div className="text-[11px] font-bold uppercase tracking-[1.2px] text-ink-400">
+            <div className="rounded-card bg-ink-900 p-5">
+              <div className="text-[11px] font-bold uppercase tracking-[1.2px] text-accent">
                 Net kazanç
               </div>
-              <div className="mt-2.5 text-[30px] font-extrabold leading-none text-accent-ink">
+              <div className="mt-2.5 text-[30px] font-extrabold leading-none text-accent">
                 {fiyatText(net)}
               </div>
               <Link
                 href="/sattiklarim"
-                className="mt-3 inline-block text-[11.5px] font-bold text-primary hover:text-primary-hover"
+                className="mt-3 inline-block text-[11.5px] font-bold text-[#b6a9d4] hover:text-white"
               >
-                Sattıklarım ({satislarim.length}) ›
+                Sattıklarım ({satisListesi.length}) ›
               </Link>
             </div>
 
@@ -226,8 +230,8 @@ export function CuzdanClient() {
               </div>
               {hareketler.map((h) => (
                 <Link
-                  key={h.id}
-                  href={`/islem/${h.id}`}
+                  key={h.slug}
+                  href={`/islem/${h.slug}`}
                   className="flex items-center gap-3 border-t border-hairline px-[18px] py-3.5 text-[12.5px] font-medium transition-colors hover:bg-subtle"
                 >
                   <span className="flex-[0.8] text-ink-500">{h.tarih}</span>
@@ -247,7 +251,7 @@ export function CuzdanClient() {
                       </span>
                     </span>
                     <span className="mt-[3px] block text-[11px] text-ink-300">
-                      {h.baslik} · {h.kisi}
+                      {h.urun} · {h.kisi}
                     </span>
                   </span>
                   <span className="flex-[0.8] text-right text-[11.5px] text-ink-400">

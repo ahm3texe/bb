@@ -7,7 +7,8 @@ import { fiyatText, getTalep } from "@/lib/data";
 import { Chip } from "@/components/ui/Chip";
 import { eslesmeOzeti, kunyeSatirlari } from "@/components/SunumOnizleme";
 import type { GelenSunum } from "@/lib/gelen-sunumlar";
-import { GELEN_TALEP_ID, gelenSunumlar } from "@/lib/gelen-sunumlar";
+import { gelenSunumlar } from "@/lib/gelen-sunumlar";
+import { oturumAnaTalepId } from "@/lib/oturum";
 
 const gridCols = "grid grid-cols-[190px_1fr_1fr_1fr]";
 
@@ -62,7 +63,9 @@ export function SunumKarsilastirmaClient() {
   // Karşılaştırma tek talep içinde yapılır: ilk seçilen sunum talebi belirler,
   // sonraki pencerelerde yalnızca aynı ilana gelen sunumlar listelenir.
   const aktifTalepId = doluOlanlar[0]?.talepId ?? null;
-  const talep = getTalep(aktifTalepId ?? GELEN_TALEP_ID);
+  // Hiç sunum seçilmemişse oturum sahibinin kendi talebi bağlam olur.
+  const capaTalepId = aktifTalepId ?? oturumAnaTalepId();
+  const talep = capaTalepId ? getTalep(capaTalepId) : undefined;
   const secilebilir = aktifTalepId
     ? gelenSunumlar.filter((s) => s.talepId === aktifTalepId)
     : gelenSunumlar;
@@ -158,11 +161,16 @@ export function SunumKarsilastirmaClient() {
                     <span className="min-w-0 flex-1">
                       <span className="block text-[16px] font-bold text-ink-900">
                         {s.satici}{" "}
-                        <span className="font-bold text-star">★ {s.puan}</span>
+                        <span className="font-bold text-star-ink">★ {s.puan}</span>
                       </span>
                       <span className="mt-0.5 block truncate text-[14px] font-medium text-ink-500">
                         {s.baslik}
                       </span>
+                      {s.muadil && (
+                        <span className="mt-1 inline-flex items-center rounded-full bg-star px-2 py-1 text-[10px] font-bold leading-none text-ink-900">
+                          MUADİL ÜRÜN
+                        </span>
+                      )}
                       {!aktifTalepId && (
                         <span className="mt-0.5 block truncate text-[13px] font-semibold text-primary">
                           {getTalep(s.talepId)?.baslik}
@@ -191,7 +199,7 @@ export function SunumKarsilastirmaClient() {
         className="flex flex-wrap items-center gap-1.5 py-1.5 text-[14px] font-medium text-ink-400"
       >
         <Link
-          href={`/ilan/${aktifTalepId ?? GELEN_TALEP_ID}`}
+          href={capaTalepId ? `/ilan/${capaTalepId}` : "/kesfet"}
           className="text-ink-400 hover:text-primary"
         >
           {aktifTalepId ? (talep?.baslik ?? "İlanım") : "İlanlarım"}
@@ -205,7 +213,7 @@ export function SunumKarsilastirmaClient() {
           Sunum Karşılaştırma
         </h1>
         <Link
-          href={`/ilan/${aktifTalepId ?? GELEN_TALEP_ID}`}
+          href={capaTalepId ? `/ilan/${capaTalepId}` : "/kesfet"}
           className="text-[15px] font-semibold"
         >
           ‹ İlana dön
@@ -246,13 +254,13 @@ export function SunumKarsilastirmaClient() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <Link
-                          href="/satici-profili"
+                          href={`/profil/${s.satici}`}
                           className="block text-[16px] font-bold text-ink-900 hover:text-primary"
                         >
                           {s.satici}
                         </Link>
                         <div className="mt-[3px] text-[13.5px] font-medium text-ink-400">
-                          <span className="font-bold text-star">★ {s.puan}</span>{" "}
+                          <span className="font-bold text-star-ink">★ {s.puan}</span>{" "}
                           · {s.saticiTipi}
                         </div>
                       </div>
@@ -441,7 +449,7 @@ export function SunumKarsilastirmaClient() {
       </div>
 
       <p className="mt-3.5 px-0.5 text-[13.5px] font-medium leading-relaxed text-ink-400">
-        Satış, yanıt ve kargo metrikleri satıcının BulBana geçmişinden gelir.
+        Satış, yanıt ve kargo metrikleri satıcının Bulbana geçmişinden gelir.
         Sohbete geçmek ücretsizdir; fiyat pazarlığı sohbette yapılır.
       </p>
     </main>

@@ -20,13 +20,13 @@ export type HesapProfil = {
 };
 
 export const HESAP_PROFIL_VARSAYILAN: HesapProfil = {
-  ad: "Emre",
-  soyad: "Kaya",
-  kullanici: "emre.k",
-  email: "emre.k@eposta.com",
+  ad: "Melih",
+  soyad: "Kurt",
+  kullanici: "melih.k",
+  email: "melih.k@eposta.com",
   dogumTarihi: "1994-06-12",
   telefon: "+90 5•• ••• 42 18",
-  bio: "Koleksiyoncuyum; plak, CD ve retro elektronik ararım. Sunumları aynı gün incelerim, anlaştığımda ödemeyi bekletmem.",
+  bio: "Konsol ve plak topluyorum. Aradığımı bulunca hızlı hareket ederim.",
 };
 
 const ANAHTAR = "bb:hesap-profil";

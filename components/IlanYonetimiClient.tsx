@@ -6,13 +6,9 @@ import Image from "next/image";
 import { Chip } from "@/components/ui/Chip";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { getTalep, talepNo, talepGorselleri, fiyatText } from "@/lib/data";
+import { oturumAnaTalepId } from "@/lib/oturum";
 
 type Durum = "yayinda" | "durakladi" | "kaldirildi";
-
-// Bu yönetim ekranı Dawn FM talebine ait — veriyi tek kaynaktan al.
-const TALEP_ID = "dawn-fm-imzali-cd";
-const talep = getTalep(TALEP_ID)!;
-const talepGorsel = talepGorselleri(TALEP_ID)[0];
 
 const gunler = [
   { gun: "29 Haz", say: 26, h: 26 },
@@ -50,6 +46,12 @@ const uzatBtn =
   "flex-1 cursor-pointer rounded-control bg-primary-soft px-3 py-3 text-[12.5px] font-bold text-primary-hover hover:bg-primary-soft-hover";
 
 export function IlanYonetimiClient() {
+  // Yönetilen ilan oturum sahibinin kendi talebidir; modül seviyesinde değil
+  // render sırasında çözülür, böylece veri sonradan (API'den) gelebilir.
+  const talepId = oturumAnaTalepId();
+  const talep = talepId ? getTalep(talepId) : undefined;
+  const talepGorsel = talepId ? talepGorselleri(talepId)[0] : undefined;
+
   const [kalanGun, setKalanGun] = useState(21);
   const [uzatildi, setUzatildi] = useState(false);
   const [durum, setDurum] = useState<Durum>("yayinda");
@@ -78,6 +80,33 @@ export function IlanYonetimiClient() {
     durumVariant = "danger";
   }
 
+  if (!talep) {
+    return (
+      <main className="mx-auto max-w-[640px] px-6 pb-20 pt-16">
+        <div className="rounded-panel border border-border bg-card p-9 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-2xl text-primary-hover">
+            ⌕
+          </div>
+          <h1 className="mt-5 text-[22px] font-extrabold text-ink-900">
+            Yönetilecek bir ilanın yok
+          </h1>
+          <p className="mx-auto mt-2.5 max-w-md text-sm font-medium leading-relaxed text-ink-500">
+            Talep açtığında görüntülenme, takip ve sunum istatistiklerini bu
+            sayfadan izleyebilirsin.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2.5">
+            <ButtonLink href="/ilan-ac" variant="primary" size="lg">
+              Aradığını İlan Et
+            </ButtonLink>
+            <ButtonLink href="/kesfet" variant="secondary" size="lg">
+              Talepleri Keşfet
+            </ButtonLink>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-[1180px] px-6 pb-16 pt-[18px]">
       {/* Breadcrumb */}
@@ -102,7 +131,7 @@ export function IlanYonetimiClient() {
             İlan Yönetimi
           </h1>
           <div className="mt-1.5 text-[13px] font-medium text-ink-400">
-            {talep.baslik} · İlan No: {talepNo(TALEP_ID)}
+            {talep.baslik} · İlan No: {talepNo(talepId!)}
           </div>
         </div>
         <Chip variant={durumVariant} className="text-[11.5px]">
@@ -175,7 +204,7 @@ export function IlanYonetimiClient() {
               <strong className="text-accent-ink">
                 10 Temmuz&apos;daki sıçrama
               </strong>
-              , ilanın &quot;Müzik &amp; Plak&quot; kategorisinde öne çıkmasıyla
+              , ilanın &quot;{talep.kategori}&quot; kategorisinde öne çıkmasıyla
               geldi. Çubukların üzerine gelerek gün detayını görebilirsin.
             </p>
           </section>
@@ -242,7 +271,7 @@ export function IlanYonetimiClient() {
               </div>
             </div>
             <ButtonLink
-              href="/ilan/dawn-fm-imzali-cd"
+              href={`/ilan/${talepId}`}
               variant="secondary"
               className="mt-3.5 w-full"
             >
@@ -304,7 +333,7 @@ export function IlanYonetimiClient() {
               Eylemler
             </div>
             <ButtonLink
-              href={`/ilan-ac?duzenle=${TALEP_ID}`}
+              href={`/ilan-ac?duzenle=${talepId}`}
               variant="primary"
               className="w-full"
             >

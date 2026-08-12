@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Site Haritası",
   description:
-    "BulBana'nın tüm ekranları, kullanıcı yolculuğu sırasına göre gruplanmış tıklanabilir bir hub.",
+    "Bulbana'nın tüm ekranları, kullanıcı yolculuğu sırasına göre gruplanmış tıklanabilir bir hub.",
 };
 
 type Kart = { href: string; ad: string; aciklama: string; ok?: boolean };
@@ -57,7 +57,7 @@ const gruplar: Grup[] = [
         ok: true,
       },
       {
-        href: "/ilan/dawn-fm-imzali-cd",
+        href: "/kesfet",
         ad: "İlan Sayfası",
         aciklama: "Çift görünüm: satıcı + ilan sahibi, sunum modali",
         ok: true,
@@ -122,7 +122,7 @@ const gruplar: Grup[] = [
         aciklama: "Sunum→satış hunisi, kazanç grafiği, seviye",
       },
       {
-        href: "/satici-profili",
+        href: "/profil/plakdukkani34",
         ad: "Satıcı Profili (herkese açık)",
         aciklama: "Puan dağılımı, değerlendirmeler, açık talepler",
       },
@@ -152,11 +152,6 @@ const gruplar: Grup[] = [
         href: "/ayarlar",
         ad: "Ayarlar",
         aciklama: "Hesap, adresler, kartlar, bildirim tercihleri",
-      },
-      {
-        href: "/kimlik-dogrulama",
-        ad: "Kimlik Doğrulama (KYC)",
-        aciklama: "Belge + selfie ile doğrulama rozeti",
       },
       {
         href: "/davet-et",

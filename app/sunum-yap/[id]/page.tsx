@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getTalep, talepler, KENDI_TALEP_ID } from "@/lib/data";
+import { talepGetir } from "@/lib/veri";
 import { SunumYapClient } from "@/components/SunumYapClient";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
-  const talep = getTalep(id);
+  const talep = await talepGetir(id);
   if (!talep) return { title: "Talep bulunamadı" };
   return {
     title: `Sunum yap · ${talep.baslik}`,
@@ -15,15 +15,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
-export function generateStaticParams() {
-  return talepler
-    .filter((t) => t.id !== KENDI_TALEP_ID)
-    .map((t) => ({ id: t.id }));
-}
+// Talepler sürekli değiştiği için build anında sabitlenmez; istek anında
+// sunucuda render edilir.
 
 export default async function SunumYapPage({ params }: Params) {
   const { id } = await params;
-  const talep = getTalep(id);
+  const talep = await talepGetir(id);
   if (!talep) notFound();
 
   return <SunumYapClient talep={talep} />;

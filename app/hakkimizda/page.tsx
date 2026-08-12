@@ -4,7 +4,7 @@ import { ButtonLink } from "@/components/ui/Button";
 export const metadata: Metadata = {
   title: "Hakkımızda",
   description:
-    "BulBana ticaretin yönünü tersine çeviren bir pazar yeridir: ilanı alıcı açar, fiyatı alıcı belirler; satıcılar ürünleriyle talebe gelir.",
+    "Bulbana ticaretin yönünü tersine çeviren bir pazar yeridir: ilanı alıcı açar, fiyatı alıcı belirler; satıcılar ürünleriyle talebe gelir.",
 };
 
 const ilkeler = [

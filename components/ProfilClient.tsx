@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { getTalep, fiyatText } from "@/lib/data";
+import { getTalep, fiyatText, talepler } from "@/lib/data";
 import type { Talep } from "@/lib/data";
 import { TalepCard } from "@/components/TalepCard";
-import { Chip } from "@/components/ui/Chip";
 import { ButtonLink } from "@/components/ui/Button";
 import { HesapNav } from "@/components/HesapNav";
+import { useAktifKullanici } from "@/lib/aktif-kullanici";
+import { oturumAnaTalepId, oturumSahibiMi } from "@/lib/oturum";
 import { HesapKart } from "@/components/HesapKart";
 import { eslesmeOzeti, kunyeSatirlari } from "@/components/SunumOnizleme";
-import { GELEN_TALEP_ID, gelenSunumlar } from "@/lib/gelen-sunumlar";
+import { gelenSunumlar } from "@/lib/gelen-sunumlar";
 import { sunumlarim } from "@/lib/sunumlarim";
 
 type Tab = "talepler" | "gelen" | "sunumlar" | "takip" | "yorumlar";
@@ -18,48 +19,13 @@ type Tab = "talepler" | "gelen" | "sunumlar" | "takip" | "yorumlar";
 const pill =
   "inline-flex flex-none items-center rounded-full px-[11px] py-[7px] text-[11.5px] font-bold leading-none";
 
-// Kendi açık taleplerim (3) ve takip ettiklerim (3) — seed'ten seçili.
-const taleplerimIds = [
-  "dawn-fm-imzali-cd",
-  "kraftwerk-man-machine-plak",
-  "tutunamayanlar-ilk-baski",
-];
+// Takip ettiklerim — seed'ten seçili.
 const takipIds = [
   "daft-punk-discovery-plak",
   "nokia-3310-kutulu",
   "polaroid-600-film",
 ];
 
-
-const yorumlar = [
-  {
-    ad: "analogmarket",
-    harf: "AM",
-    rol: "Satıcıdan",
-    rolVariant: "violet" as const,
-    urun: "Polaroid 600 talebi",
-    tarih: "Haziran 2026",
-    text: "Hızlı karar verdi, ödeme anında onaylandı. Kargo adresi ve iletişim netti — harika bir alıcı.",
-  },
-  {
-    ad: "retrodukkan",
-    harf: "RD",
-    rol: "Satıcıdan",
-    rolVariant: "violet" as const,
-    urun: "Sega Dreamcast talebi",
-    tarih: "Mayıs 2026",
-    text: "İletişimi çok net, pazarlık centilmence geçti. Teslimat onayını hiç geciktirmedi.",
-  },
-  {
-    ad: "cdkolik",
-    harf: "CK",
-    rol: "Alıcıdan",
-    rolVariant: "lime" as const,
-    urun: 'Radiohead "OK Computer" CD satışı',
-    tarih: "Nisan 2026",
-    text: "Ürün anlatıldığı gibi geldi, paketleme çok özenliydi. Güvenilir satıcı, teşekkürler.",
-  },
-];
 
 
 
@@ -115,14 +81,15 @@ function TabIcon({ tip }: { tip: Tab }) {
 // Rol rengi: alıcı=mor, satıcı=yeşil, favoriler=kırmızı (kalp), nötr (yorumlar).
 type TabRenk = "mor" | "yesil" | "kirmizi" | "notr";
 const tabs: { value: Tab; label: string; renk: TabRenk }[] = [
-  { value: "talepler", label: "Taleplerim (3)", renk: "mor" },
+  // Taleplerim sayısı aktif hesaba göre değiştiği için render sırasında yazılır.
+  { value: "talepler", label: "Taleplerim", renk: "mor" },
   {
     value: "gelen",
-    label: `Gelen Sunumlar (${gelenSunumlar.length})`,
+    label: "Gelen Sunumlar",
     renk: "mor",
   },
-  { value: "sunumlar", label: "Sunumlarım (4)", renk: "yesil" },
-  { value: "takip", label: "Favorilerim (3)", renk: "kirmizi" },
+  { value: "sunumlar", label: "Sunumlarım", renk: "yesil" },
+  { value: "takip", label: "Favorilerim", renk: "kirmizi" },
   // Değerlendirmeler sekmesi yok; kimlik kartındaki "15 değerlendirme"
   // bağlantısı (?tab=yorumlar) bu panele götürür.
 ];
@@ -162,13 +129,21 @@ export function ProfilClient({ baslangicTab }: { baslangicTab?: string }) {
       : "talepler",
   );
 
-  const gelenTalep = getTalep(GELEN_TALEP_ID);
-  const taleplerim = taleplerimIds
-    .map((id) => getTalep(id))
-    .filter((t): t is Talep => Boolean(t));
-  const takipEttiklerim = takipIds
-    .map((id) => getTalep(id))
-    .filter((t): t is Talep => Boolean(t));
+  const anaTalepId = oturumAnaTalepId();
+  const gelenTalep = anaTalepId ? getTalep(anaTalepId) : undefined;
+  // Aktif hesabın açık talepleri — hesap değişince liste de değişir.
+  const aktif = useAktifKullanici();
+  const kendiHesabim = oturumSahibiMi(aktif.kullanici);
+  const taleplerim = talepler.filter((t) => t.sahibi === aktif.kullanici);
+  // Gelen sunumlar yalnızca aktif hesabın kendi taleplerine gelenlerdir.
+  const kendiTalepIdleri = new Set(taleplerim.map((t) => t.id));
+  const gelenler = gelenSunumlar.filter((s) => kendiTalepIdleri.has(s.talepId));
+  // Gönderilmiş sunumlar ve favoriler yalnızca varsayılan hesap için tutuluyor.
+  const sunumlarimListesi = kendiHesabim ? sunumlarim : [];
+  const yorumlarim = aktif.yorumlar;
+  const takipEttiklerim = kendiHesabim
+    ? takipIds.map((id) => getTalep(id)).filter((t): t is Talep => Boolean(t))
+    : [];
 
   return (
     <main className="mx-auto max-w-[1180px] px-6 pb-16 pt-6">
@@ -222,7 +197,15 @@ export function ProfilClient({ baslangicTab }: { baslangicTab?: string }) {
               }`}
             >
               <TabIcon tip={t.value} />
-              {t.label}
+              {t.value === "talepler"
+                ? `Taleplerim (${taleplerim.length})`
+                : t.value === "gelen"
+                  ? `Gelen Sunumlar (${gelenler.length})`
+                  : t.value === "sunumlar"
+                    ? `Sunumlarım (${sunumlarimListesi.length})`
+                    : t.value === "takip"
+                      ? `Favorilerim (${takipEttiklerim.length})`
+                      : t.label}
             </button>
           );
         })}
@@ -264,7 +247,7 @@ export function ProfilClient({ baslangicTab }: { baslangicTab?: string }) {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {gelenSunumlar.map((s) => {
+            {gelenler.map((s) => {
               const satirlar = kunyeSatirlari(s, gelenTalep);
               const { uyan, toplam, farkli } = eslesmeOzeti(satirlar, gelenTalep);
               return (
@@ -286,7 +269,7 @@ export function ProfilClient({ baslangicTab }: { baslangicTab?: string }) {
                     >
                       {uyan}/{toplam} uyuyor
                     </span>
-                    <span className="font-mono text-[10.5px] text-[#968cac]">
+                    <span className="font-mono text-[10.5px] text-ink-400">
                       sunum görseli
                     </span>
                   </div>
@@ -296,7 +279,7 @@ export function ProfilClient({ baslangicTab }: { baslangicTab?: string }) {
                     </div>
                     <div className="mt-1 text-[13px] font-semibold text-ink-900">
                       {s.satici}{" "}
-                      <span className="font-bold text-star">★ {s.puan}</span>
+                      <span className="font-bold text-star-ink">★ {s.puan}</span>
                     </div>
                     {/* Sabit yükseklikler: "Sunumu incele" her kartta aynı hizada. */}
                     <p className="mt-1.5 line-clamp-2 h-[38px] text-[13.5px] font-medium leading-snug text-ink-700">
@@ -326,13 +309,13 @@ export function ProfilClient({ baslangicTab }: { baslangicTab?: string }) {
         <section className="mt-3">
           {/* Kart ölçüsü Taleplerim sekmesiyle birebir aynı. */}
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            {sunumlarim.map((s) => (
+            {sunumlarimListesi.map((s) => (
               <article
                 key={s.id}
                 className="relative flex flex-col overflow-hidden rounded-card border border-border bg-card transition-colors hover:border-primary"
               >
                 <div className="ref-image relative flex aspect-[3/4] items-center justify-center">
-                  <span className="font-mono text-[10px] text-[#968cac]">
+                  <span className="font-mono text-[10px] text-ink-400">
                     sunum görseli
                   </span>
                   <span className={`absolute left-2.5 top-2.5 ${pill} ${s.stCls}`}>
@@ -401,13 +384,18 @@ export function ProfilClient({ baslangicTab }: { baslangicTab?: string }) {
       {tab === "yorumlar" && (
         <section className="mt-3">
           <div className="mb-3.5 flex items-center gap-2 text-[13px] font-semibold text-ink-500">
-            <span className="text-[15px] font-extrabold text-star">★ 4,9</span>
-            <span>· 15 değerlendirme — alım ve satış işlemlerinden</span>
+            <span className="text-[15px] font-extrabold text-star-ink">
+              ★ {aktif.puan.toLocaleString("tr-TR", { minimumFractionDigits: 1 })}
+            </span>
+            <span>
+              · {aktif.degerlendirme} değerlendirme — alım ve satış
+              işlemlerinden
+            </span>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            {yorumlar.map((y) => (
+            {yorumlarim.map((y) => (
               <article
-                key={y.ad}
+                key={`${y.yazan}-${y.urun}`}
                 className="rounded-card border border-border bg-card px-[18px] py-4"
               >
                 <div className="flex items-center gap-2.5">
@@ -416,17 +404,20 @@ export function ProfilClient({ baslangicTab }: { baslangicTab?: string }) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[13.5px] font-bold text-ink-900">
-                        {y.ad}
-                      </span>
-                      <Chip variant={y.rolVariant}>{y.rol}</Chip>
+                      <Link
+                        href={`/profil/${y.yazan}`}
+                        className="text-[13.5px] font-bold text-ink-900 hover:text-primary"
+                      >
+                        {y.yazan}
+                      </Link>
                     </div>
                     <div className="mt-[3px] text-[11.5px] font-medium text-ink-400">
                       {y.urun} · {y.tarih}
                     </div>
                   </div>
-                  <span className="flex-none text-[13px] font-bold text-star">
-                    ★★★★★
+                  <span className="flex-none text-[13px] font-bold text-star-ink">
+                    {"★".repeat(y.puan)}
+                    {"☆".repeat(5 - y.puan)}
                   </span>
                 </div>
                 <p className="mt-3 text-[13.5px] font-medium leading-relaxed text-ink-700">

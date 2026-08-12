@@ -14,8 +14,8 @@ const figtree = Figtree({
 
 export const metadata: Metadata = {
   title: {
-    default: "BulBana — Sen iste, satıcı bulsun",
-    template: "%s · BulBana",
+    default: "Bulbana — Sen iste, satıcı bulsun",
+    template: "%s · Bulbana",
   },
   description:
     "Ters pazar: ilanı alıcı açar, fiyatı alıcı belirler; satıcılar ürünleriyle talebe gelir.",

@@ -290,15 +290,15 @@ export function ItirazClient() {
               İlgili sipariş
             </div>
             <div className="flex items-center gap-3">
-              <div className="ref-image flex h-12 w-12 flex-none items-center justify-center rounded-[10px] font-mono text-[8px] text-[#968cac]">
+              <div className="ref-image flex h-12 w-12 flex-none items-center justify-center rounded-[10px] font-mono text-[8px] text-ink-400">
                 görsel
               </div>
               <div>
                 <div className="text-[13px] font-bold leading-snug text-ink-900">
-                  İmzalı The Weeknd &quot;Dawn FM&quot; CD
+                  Kraftwerk &quot;The Man-Machine&quot; plak
                 </div>
                 <div className="mt-[3px] text-[11.5px] font-medium text-ink-400">
-                  4.500 TL · plakdukkani34
+                  3.200 TL · plakdukkani34
                 </div>
               </div>
             </div>
@@ -314,7 +314,7 @@ export function ItirazClient() {
             <div className="mt-3 flex flex-col gap-2.5">
               {[
                 "Nedenini seç, kanıtla gönder",
-                "BulBana 48 saat içinde inceler",
+                "Bulbana 48 saat içinde inceler",
                 "Karar: iade ya da satıcıya aktarım",
               ].map((t, i) => (
                 <div key={i} className="flex items-center gap-2.5">

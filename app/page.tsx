@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { talepler, kategoriler, kategoriSayilari } from "@/lib/data";
+import {
+  sonTaleplerGetir,
+  kategorilerGetir,
+  kategoriSayilariGetir,
+} from "@/lib/veri";
 import { TalepCard } from "@/components/TalepCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { kategoriIkonlar } from "@/components/KategoriIkon";
@@ -21,14 +25,17 @@ const nasilAdimlar = [
     n: "3",
     baslik: "Anlaş, güvenle al",
     metin:
-      "Beğendiğinden teklif iste, sohbette pazarlık et; ödeme alıcı onayına kadar BulBana güvencesinde.",
+      "Beğendiğinden teklif iste, sohbette pazarlık et; ödeme alıcı onayına kadar Bulbana güvencesinde.",
   },
 ];
 
-export default function AnaSayfa() {
+export default async function AnaSayfa() {
   // "Yeni açılan talepler" — gerçekten en yeniler (eklendi'ye göre).
-  const guncel = [...talepler].sort((a, b) => a.eklendi - b.eklendi).slice(0, 10);
-  const katSayi = kategoriSayilari();
+  const [guncel, kategoriler, katSayi] = await Promise.all([
+    sonTaleplerGetir(10),
+    kategorilerGetir(),
+    kategoriSayilariGetir(),
+  ]);
 
   return (
     <main>
@@ -41,7 +48,11 @@ export default function AnaSayfa() {
             </span>
             <h1 className="mt-[18px] text-balance text-[46px] font-extrabold leading-[1.12] tracking-[-1.5px] text-ink-900">
               Bulamadığın <span className="text-primary">ürünü ilan et</span>,{" "}
-              <span className="text-accent">satıcılar sana gelsin.</span>
+              {/* Lime beyaz üzerinde okunmaz; vurgu rengi zemine alınır,
+                  yazı koyu kalır — hem okunur hem marka rengi korunur. */}
+              <span className="rounded-lg bg-accent px-2 text-ink-900 decoration-clone box-decoration-clone">
+                satıcılar sana gelsin.
+              </span>
             </h1>
             <p className="mt-[18px] max-w-[480px] text-pretty text-base font-medium leading-relaxed text-ink-500">
               Türkiye&apos;nin ters pazar platformu: Talebi alıcı oluşturur,
@@ -114,11 +125,28 @@ export default function AnaSayfa() {
             Tümünü gör ›
           </Link>
         </div>
-        <div className="mt-[18px] grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-          {guncel.map((t) => (
-            <TalepCard key={t.id} talep={t} />
-          ))}
-        </div>
+        {guncel.length > 0 ? (
+          <div className="mt-[18px] grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+            {guncel.map((t) => (
+              <TalepCard key={t.id} talep={t} />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-[18px] rounded-panel border border-border bg-card px-6 py-12 text-center">
+            <div className="text-[15px] font-bold text-ink-900">
+              Henüz açılmış talep yok
+            </div>
+            <p className="mx-auto mt-2 max-w-[420px] text-[13px] font-medium leading-relaxed text-ink-500">
+              İlk talebi sen aç — elinde uygun ürünü olan satıcılar sunumlarıyla
+              sana gelsin.
+            </p>
+            <div className="mt-5 flex justify-center">
+              <ButtonLink href="/ilan-ac" variant="primary">
+                Aradığını İlan Et
+              </ButtonLink>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* ── Nasıl çalışır ── */}

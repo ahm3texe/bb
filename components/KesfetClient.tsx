@@ -39,7 +39,6 @@ export function KesfetClient({
   const [maxF, setMaxF] = useState("");
   const [durumlar, setDurumlar] = useState<string[]>([]);
   const [sadeceAcil, setSadeceAcil] = useState(false);
-  const [sadeceDogrulanmis, setSadeceDogrulanmis] = useState(false);
   const [sort, setSort] = useState<Sort>("yeni");
   const [visible, setVisible] = useState(PAGE);
 
@@ -65,7 +64,6 @@ export function KesfetClient({
       if (maxN != null && t.fiyatNum > maxN) return false;
       if (durumlar.length && !durumlar.includes(t.durum)) return false;
       if (sadeceAcil && !t.acil) return false;
-      if (sadeceDogrulanmis && !t.dogrulanmis) return false;
       return true;
     });
 
@@ -84,7 +82,7 @@ export function KesfetClient({
       }
     });
     return sorted;
-  }, [q, kats, il, minF, maxF, durumlar, sadeceAcil, sadeceDogrulanmis, sort]);
+  }, [q, kats, il, minF, maxF, durumlar, sadeceAcil, sort]);
 
   const goster = sonuclar.slice(0, visible);
   const dahaVar = visible < sonuclar.length;
@@ -110,7 +108,6 @@ export function KesfetClient({
     setMaxF("");
     setDurumlar([]);
     setSadeceAcil(false);
-    setSadeceDogrulanmis(false);
     setVisible(PAGE);
   }
 
@@ -121,8 +118,7 @@ export function KesfetClient({
     !!minF ||
     !!maxF ||
     durumlar.length > 0 ||
-    sadeceAcil ||
-    sadeceDogrulanmis;
+    sadeceAcil;
 
   const inputCls =
     "w-full min-w-0 box-border rounded-control border-[1.5px] border-border-input px-2.5 py-2 text-[13px] font-semibold text-ink-900 outline-none focus:border-primary";
@@ -178,21 +174,6 @@ export function KesfetClient({
                 }`}
               >
                 ! Acil
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSadeceDogrulanmis((v) => !v);
-                  setVisible(PAGE);
-                }}
-                aria-pressed={sadeceDogrulanmis}
-                className={`cursor-pointer rounded-full border-[1.5px] px-3 py-[7px] text-[13px] font-bold transition-colors ${
-                  sadeceDogrulanmis
-                    ? "border-primary bg-primary-soft text-primary-hover"
-                    : "border-border-input bg-card text-ink-500 hover:border-primary hover:text-primary"
-                }`}
-              >
-                ✓ Doğrulanmış
               </button>
             </div>
           </div>

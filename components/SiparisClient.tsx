@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useAktifKullanici } from "@/lib/aktif-kullanici";
+import { oturumKullaniciAdi } from "@/lib/oturum";
+
+// Bu önizleme siparişinin satıcı tarafı. Gerçek siparişler geldiğinde bu
+// bileşen `siparisId` propu alıp tarafları veriden okuyacak; alıcı zaten
+// oturumdan türüyor.
+const SIPARIS_SATICI = "plakdukkani34";
 
 type Adim = "odeme" | "kargo" | "onay" | "puan" | "tamam";
 
@@ -39,6 +46,17 @@ function durumRozet(adim: Adim) {
 }
 
 export function SiparisClient() {
+  // Sipariş ekranı role göre konuşur: alıcı onaylar, satıcı kargoya verir.
+  const aktif = useAktifKullanici();
+  // Alıcı = oturum sahibi. Eskiden kullanıcı adı koda gömülüydü.
+  const siparisAlici = oturumKullaniciAdi();
+  const rol =
+    aktif.kullanici === siparisAlici
+      ? "alici"
+      : aktif.kullanici === SIPARIS_SATICI
+        ? "satici"
+        : "izleyici";
+  const karsiTaraf = rol === "satici" ? siparisAlici : SIPARIS_SATICI;
   const [adim, setAdim] = useState<Adim>("odeme");
   const [kartAd, setKartAd] = useState("");
   const [kartNo, setKartNo] = useState("");
@@ -65,6 +83,16 @@ export function SiparisClient() {
 
   return (
     <main className="mx-auto max-w-[1180px] px-6 pb-16 pt-6">
+      {/* Hesap bu siparişin tarafı değilse durum açıkça söylenir. */}
+      {rol === "izleyici" && (
+        <p className="mb-3 rounded-card border border-border bg-subtle px-4 py-3 text-[12.5px] font-medium leading-normal text-ink-500">
+          Bu sipariş <b className="text-ink-900">{siparisAlici}</b> ile{" "}
+          <b className="text-ink-900">{SIPARIS_SATICI}</b> arasında.{" "}
+          <b className="text-ink-900">{aktif.kullanici}</b> hesabı taraf
+          olmadığı için ekran yalnızca önizleme amaçlı gösteriliyor.
+        </p>
+      )}
+
       {/* Breadcrumb */}
       <nav
         aria-label="Sayfa yolu"
@@ -133,7 +161,7 @@ export function SiparisClient() {
                   ✓
                 </span>
                 <span className="text-[13px] font-bold leading-snug text-primary-hover">
-                  Teklif kabul edildi — 4.500 TL üzerinde anlaşıldı.
+                  Teklif kabul edildi — 4.250 TL üzerinde anlaşıldı.
                 </span>
                 <Link href="/mesajlar" className="ml-auto text-[12px] font-semibold">
                   Sohbete dön ›
@@ -145,7 +173,7 @@ export function SiparisClient() {
               </h2>
               <p className="mb-[18px] text-[12.5px] font-medium leading-relaxed text-ink-400">
                 Ödemen satıcıya hemen geçmez — ürünü teslim alıp onaylayana kadar
-                BulBana güvencesinde tutulur.
+                Bulbana güvencesinde tutulur.
               </p>
 
               <div className="mb-3.5">
@@ -236,7 +264,7 @@ export function SiparisClient() {
                       : "border-border-input bg-card font-semibold text-ink-500 hover:border-primary hover:text-primary"
                   }`}
                 >
-                  Ev — Kadıköy, İstanbul{adres === "kayitli" ? " ✓" : ""}
+                  Ev — Nilüfer, Bursa{adres === "kayitli" ? " ✓" : ""}
                 </button>
                 <button
                   type="button"
@@ -271,10 +299,10 @@ export function SiparisClient() {
                       : "cursor-not-allowed bg-page text-ink-300"
                   }`}
                 >
-                  4.500 TL — Öde ve Güvenceye Al
+                  4.250 TL — Öde ve Güvenceye Al
                 </button>
                 <span className="min-w-[180px] flex-1 text-[11.5px] font-medium leading-relaxed text-ink-300">
-                  256-bit şifreli ödeme · kart bilgilerin BulBana&apos;da
+                  256-bit şifreli ödeme · kart bilgilerin Bulbana&apos;da
                   saklanmaz. (Önizleme — temsili kart bilgisi girebilirsin.)
                 </span>
               </div>
@@ -292,7 +320,7 @@ export function SiparisClient() {
                 Kargo yolda
               </h2>
               <p className="mb-4 text-[12.5px] font-medium leading-relaxed text-ink-400">
-                plakdukkani34 ürünü 3 gün kuralı içinde kargoya verdi.
+                {SIPARIS_SATICI} ürünü 3 gün kuralı içinde kargoya verdi.
               </p>
 
               <div className="mb-[18px] flex flex-wrap items-center gap-2.5 rounded-control bg-page px-3.5 py-3">
@@ -313,7 +341,7 @@ export function SiparisClient() {
                   {
                     durum: "done" as const,
                     baslik: "Kargoya verildi",
-                    alt: "Dün, 16:40 · Kadıköy şubesi",
+                    alt: "Dün, 16:40 · Nilüfer şubesi",
                   },
                   {
                     durum: "active" as const,
@@ -432,7 +460,7 @@ export function SiparisClient() {
                 </Link>
               </div>
               <p className="mt-3.5 text-[11.5px] font-medium leading-relaxed text-ink-300">
-                İtiraz başlatırsan ödeme aktarılmaz; BulBana destek ekibi
+                İtiraz başlatırsan ödeme aktarılmaz; Bulbana destek ekibi
                 incelemeye alır. Teslimden itibaren 3 gün içinde onay ya da itiraz
                 gerekir.
               </p>
@@ -446,10 +474,10 @@ export function SiparisClient() {
                 Onayladın ✓ — 4.320 TL satıcıya aktarıldı (%4 komisyon düşüldü).
               </div>
               <h2 className="mb-1 mt-5 text-[17px] font-extrabold text-ink-900">
-                Satıcıyı değerlendir
+                {rol === "satici" ? "Alıcıyı" : "Satıcıyı"} değerlendir
               </h2>
               <p className="mb-3.5 text-[12.5px] font-medium leading-relaxed text-ink-400">
-                Değerlendirmen plakdukkani34&apos;ün profilinde görünür ve satıcı
+                Değerlendirmen {karsiTaraf} profilinde görünür ve karşı taraf
                 puanını etkiler.
               </p>
               {/* Üzerine gelinen yıldıza kadar olan tüm yıldızlar sarı yanar. */}
@@ -468,7 +496,7 @@ export function SiparisClient() {
                     aria-label={`${n} yıldız`}
                     className={`cursor-pointer bg-transparent p-0.5 text-[30px] leading-none transition-colors ${
                       (hoverYildiz || yildiz) >= n
-                        ? "text-star"
+                        ? "text-star-ink"
                         : "text-border-input"
                     }`}
                   >
@@ -516,8 +544,8 @@ export function SiparisClient() {
                 İşlem tamamlandı!
               </h2>
               <p className="mt-2 text-[13.5px] font-medium leading-relaxed text-ink-500">
-                İmzalı Dawn FM koleksiyonunda, ödeme satıcıda, değerlendirmen
-                yayında. BulBana&apos;yı kullandığın için teşekkürler.
+                Dreamcast seti koleksiyonunda, ödeme satıcıda, değerlendirmen
+                yayında. Bulbana&apos;yı kullandığın için teşekkürler.
               </p>
               <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
                 <Link
@@ -544,25 +572,26 @@ export function SiparisClient() {
               Sipariş Özeti
             </div>
             <div className="flex items-center gap-3 border-b border-hairline pb-3.5">
-              <div className="ref-image flex h-[54px] w-[54px] flex-none items-center justify-center rounded-[10px] font-mono text-[8px] text-[#968cac]">
+              <div className="ref-image flex h-[54px] w-[54px] flex-none items-center justify-center rounded-[10px] font-mono text-[8px] text-ink-400">
                 görsel
               </div>
               <div>
                 <Link
-                  href="/ilan/dawn-fm-imzali-cd"
+                  href="/ilan/sega-dreamcast-tam-set"
                   className="text-[13px] font-bold leading-snug text-ink-900"
                 >
-                  İmzalı The Weeknd &quot;Dawn FM&quot; CD
+                  Dreamcast tam set (2 kol)
                 </Link>
                 <div className="mt-[3px] text-[11.5px] font-medium text-ink-400">
-                  Satıcı: plakdukkani34 <span className="text-star">★ 4.8</span>
+                  {rol === "satici" ? "Alıcı" : "Satıcı"}: {karsiTaraf}{" "}
+                  <span className="text-star-ink">★ 4.8</span>
                 </div>
               </div>
             </div>
             <div className="mt-3.5 flex flex-col gap-2">
               <div className="flex justify-between text-[12.5px] font-medium">
                 <span className="text-ink-400">Anlaşılan fiyat</span>
-                <span className="font-bold text-ink-900">4.500 TL</span>
+                <span className="font-bold text-ink-900">4.250 TL</span>
               </div>
               <div className="flex justify-between text-[12.5px] font-medium">
                 <span className="text-ink-400">Kargo</span>
@@ -573,12 +602,12 @@ export function SiparisClient() {
               <div className="flex justify-between border-t border-hairline pt-2 text-[12.5px] font-medium">
                 <span className="font-bold text-ink-900">Ödenecek toplam</span>
                 <span className="text-[15px] font-extrabold text-ink-900">
-                  4.500 TL
+                  4.250 TL
                 </span>
               </div>
             </div>
             <p className="mt-3 text-[11px] font-medium leading-relaxed text-ink-300">
-              Satıcıya aktarılacak: 4.320 TL — %4 BulBana komisyonu (180 TL)
+              Satıcıya aktarılacak: 4.320 TL — %4 Bulbana komisyonu (180 TL)
               satış bedelinden düşülür. Alıcı olarak ek ücret ödemezsin.
             </p>
           </div>
@@ -589,7 +618,7 @@ export function SiparisClient() {
                 ✓
               </div>
               <div className="text-[13.5px] font-extrabold">
-                BulBana Güvencesi
+                Bulbana Güvencesi
               </div>
             </div>
             <p className="mt-2.5 text-[11.5px] font-medium leading-relaxed text-[#cfc5e8]">
@@ -605,7 +634,7 @@ export function SiparisClient() {
             <p className="mt-2 text-[12px] font-medium leading-relaxed text-ink-500">
               Sorun mu var?{" "}
               <Link href="/mesajlar" className="font-bold">
-                Satıcıyla konuş
+                {rol === "satici" ? "Alıcıyla" : "Satıcıyla"} konuş
               </Link>{" "}
               ya da{" "}
               <Link href="/yardim" className="font-bold">

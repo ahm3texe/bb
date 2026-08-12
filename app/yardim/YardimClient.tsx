@@ -117,7 +117,7 @@ const makaleler: Makale[] = [
     baslik: "Ödemem satıcıya ne zaman aktarılır?",
     kategori: "Ödeme",
     cevap:
-      "Ödeme, alıcı teslimatı onaylayana kadar BulBana güvencesinde bekletilir; erken serbest bırakılmaz. Alıcı onay verdiği anda anlaşılan tutardan %4 komisyon düşülür ve kalan tutar satıcı cüzdanına aktarılır.",
+      "Ödeme, alıcı teslimatı onaylayana kadar Bulbana güvencesinde bekletilir; erken serbest bırakılmaz. Alıcı onay verdiği anda anlaşılan tutardan %4 komisyon düşülür ve kalan tutar satıcı cüzdanına aktarılır.",
   },
   {
     baslik: "Ürün anlatıldığı gibi çıkmazsa ne yapmalıyım?",
@@ -145,12 +145,6 @@ const makaleler: Makale[] = [
     baslik: "Pazarlıkta ek ücret öder miyim?",
     kategori: "Teklif",
     href: "/nasil-calisir",
-  },
-  {
-    baslik: "Hesabımı nasıl doğrularım?",
-    kategori: "Hesap",
-    cevap:
-      "Kimlik Doğrulama sayfasından kimliğinin ön ve arka yüzü ile bir selfie yüklemen yeterli. Belgeler SSL ile şifrelenir, ekip ortalama 24 saat içinde inceler ve onaylandığında profiline “✓ Kimlik doğrulandı” rozeti eklenir.",
   },
 ];
 
@@ -258,7 +252,7 @@ export function YardimClient() {
             <KategoriAccordion
               renk="mor"
               soru="Ödemem ne zaman aktarılır?"
-              cevap="Ödeme, alıcı ürünü teslim alıp onaylayana kadar BulBana güvencesinde tutulur. Alıcı teslimatı onayladığı anda anlaşılan tutardan %4 komisyon düşülür ve kalan tutar satıcı cüzdanına aktarılır."
+              cevap="Ödeme, alıcı ürünü teslim alıp onaylayana kadar Bulbana güvencesinde tutulur. Alıcı teslimatı onayladığı anda anlaşılan tutardan %4 komisyon düşülür ve kalan tutar satıcı cüzdanına aktarılır."
             />
             <Link
               href="/itiraz"

@@ -50,7 +50,7 @@ const bildirimler = [
 const TOPLAM = 5;
 
 const adimTanim = [
-  { n: 1, ad: "Rol seçimi", desc: "BulBana'yı nasıl kullanacaksın?" },
+  { n: 1, ad: "Rol seçimi", desc: "Bulbana'yı nasıl kullanacaksın?" },
   { n: 2, ad: "İlgi alanları", desc: "Hangi kategoriler ilgini çeker?" },
   { n: 3, ad: "Bütçe aralığı", desc: "Genelde ne kadarlık alışveriş?" },
   { n: 4, ad: "Konum", desc: "Ağırlıklı olarak nerelisin?" },
@@ -102,7 +102,7 @@ export default function HosGeldinPage() {
   // Adım başlığı için üst etiket
   const ustEtiket =
     adim === 1
-      ? "Hoş geldin, emre.k"
+      ? "Hoş geldin, melih.k"
       : adim === TOPLAM
         ? "Son adım"
         : "Seni tanıyalım";
@@ -188,7 +188,7 @@ export default function HosGeldinPage() {
           </ol>
         </div>
 
-        <div className="text-[12px] font-medium text-[#8b7bb0]">© 2026 BulBana</div>
+        <div className="text-[12px] font-medium text-[#8b7bb0]">© 2026 Bulbana</div>
       </aside>
 
       {/* ── Sağ: adım içeriği ── */}
@@ -222,7 +222,7 @@ export default function HosGeldinPage() {
             {adim === 1 && (
               <div>
                 <h1 className="mt-2.5 text-[25px] font-extrabold leading-tight tracking-[-0.5px] text-ink-900">
-                  BulBana&apos;yı nasıl kullanmak istersin?
+                  Bulbana&apos;yı nasıl kullanmak istersin?
                 </h1>
                 <p className="mb-6 mt-2 text-[13.5px] font-medium leading-relaxed text-ink-400">
                   Hesabın her ikisini de yapabilir — bu seçim yalnızca sana
@@ -533,7 +533,7 @@ export default function HosGeldinPage() {
                   ✓
                 </div>
                 <h1 className="mt-4 text-[26px] font-extrabold leading-tight tracking-[-0.5px] text-ink-900">
-                  Hazırsın, emre.k!
+                  Hazırsın, melih.k!
                 </h1>
                 <p className="mx-auto mt-2.5 max-w-[460px] text-[13.5px] font-medium leading-relaxed text-ink-500">
                   {ozet}
@@ -563,11 +563,8 @@ export default function HosGeldinPage() {
                   )}
                 </div>
                 <p className="mt-5 text-[11.5px] font-medium leading-relaxed text-ink-400">
-                  İpucu: Güven rozetin için{" "}
-                  <Link href="/kimlik-dogrulama" className="font-bold text-primary">
-                    kimliğini doğrula
-                  </Link>{" "}
-                  — sunumların daha çok kabul görür.
+                  İpucu: Profilini doldur ve ilk sunumunu gönder — geçmişi
+                  olan hesapların sunumları daha çok kabul görür.
                 </p>
               </div>
             )}

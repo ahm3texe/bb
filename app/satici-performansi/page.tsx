@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SaticiPerformansiBaslik } from "@/components/SaticiPerformansiBaslik";
 import Link from "next/link";
 import { fiyatText } from "@/lib/data";
 
@@ -54,19 +55,7 @@ export default function SaticiPerformansiPage() {
         <span className="font-semibold text-ink-900">Satıcı Performansım</span>
       </nav>
 
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-[28px] font-extrabold tracking-[-0.7px] text-ink-900">
-            Satıcı Performansım
-          </h1>
-          <div className="mt-[5px] text-[13px] font-medium text-ink-400">
-            Son 90 gün · emre.k
-          </div>
-        </div>
-        <span className="rounded-full bg-accent px-3 py-2 text-[11.5px] font-bold text-accent-ink">
-          Güvenilir Satıcı
-        </span>
-      </div>
+      <SaticiPerformansiBaslik />
 
       <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_384px]">
         {/* ── SOL ── */}

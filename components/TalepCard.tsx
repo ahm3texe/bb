@@ -51,7 +51,7 @@ export function TalepCard({
             className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
           />
         ) : (
-          <span className="font-mono text-[10px] text-[#968cac]">
+          <span className="font-mono text-[10px] text-ink-400">
             referans görsel
           </span>
         )}
@@ -87,13 +87,6 @@ export function TalepCard({
             </svg>
           </button>
         </div>
-
-        {/* Sağ üst: doğrulanmış rozeti */}
-        {talep.dogrulanmis && (
-          <span className="absolute right-2.5 top-2.5 z-20 rounded-md bg-primary px-2 py-[5px] text-[10.5px] font-extrabold text-white shadow-sm">
-            ✓ Doğrulanmış
-          </span>
-        )}
 
         {/* Görsel önizleme — sağa/sola geçiş */}
         {cokluGorsel && (

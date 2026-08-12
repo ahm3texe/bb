@@ -2,23 +2,24 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fiyatText } from "@/lib/data";
-import { getIslem, islemDetaylari } from "@/lib/islemlerim";
+import { getIslemSlug, islemSluglari, komisyon } from "@/lib/islemler";
+import { getKullanici } from "@/lib/kullanicilar";
 
 type Params = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
-  const islem = getIslem(slug);
-  if (!islem) return { title: "İşlem bulunamadı" };
+  const kayit = getIslemSlug(slug);
+  if (!kayit) return { title: "İşlem bulunamadı" };
   return {
-    title: `${islem.ilanBaslik} · ${islem.tur === "alim" ? "Alım" : "Satış"}`,
+    title: `${kayit.islem.ilanBaslik} · ${kayit.tur === "alim" ? "Alım" : "Satış"}`,
     description:
       "Tamamlanan işlemin dökümü: açılan talep, kabul edilen sunum ve ödeme özeti yan yana.",
   };
 }
 
 export function generateStaticParams() {
-  return islemDetaylari().map((i) => ({ slug: i.slug }));
+  return islemSluglari().map((slug) => ({ slug }));
 }
 
 /** Panellerdeki tek satırlık alan gösterimi. */
@@ -37,12 +38,29 @@ function Satir({ ad, deger }: { ad: string; deger: string }) {
 
 export default async function IslemPage({ params }: Params) {
   const { slug } = await params;
-  const islem = getIslem(slug);
-  if (!islem) notFound();
+  const kayit = getIslemSlug(slug);
+  if (!kayit) notFound();
 
-  const { talep, sunum, karsiTaraf } = islem;
-  const alim = islem.tur === "alim";
-  // Sunum fiyatı ile ilan bütçesi arasındaki fark — şeffaflığın özü.
+  const { islem, tur } = kayit;
+  const { talep, sunum } = islem;
+  const alim = tur === "alim";
+  // Karşı taraf bakış açısına göre değişir: alımda satıcı, satışta alıcı.
+  const karsiTaraf = getKullanici(alim ? islem.satici : islem.alici);
+  if (!karsiTaraf) notFound();
+  const kesinti = komisyon(islem);
+  const netTutar = alim ? -(islem.fiyat + islem.kargo) : islem.fiyat - kesinti;
+  const odeme = alim
+    ? [
+        { ad: "Ürün bedeli", tutar: islem.fiyat },
+        { ad: "Kargo", tutar: islem.kargo },
+        { ad: "Ödediğin toplam", tutar: islem.fiyat + islem.kargo, vurgu: true },
+      ]
+    : [
+        { ad: "Alıcının ödediği", tutar: islem.fiyat },
+        { ad: "Bulbana komisyonu (%4)", tutar: -kesinti },
+        { ad: "Hesabına geçen", tutar: islem.fiyat - kesinti, vurgu: true },
+      ];
+  // Sunum fiyatı ile talep fiyatı arasındaki fark — şeffaflığın özü.
   const fark = talep.fiyat - sunum.fiyat;
   const geriDonus = alim ? "/aldiklarim" : "/sattiklarim";
 
@@ -88,7 +106,7 @@ export default async function IslemPage({ params }: Params) {
             }`}
           >
             {alim ? "−" : "+"}
-            {fiyatText(Math.abs(islem.netTutar))}
+            {fiyatText(Math.abs(netTutar))}
           </div>
         </div>
       </div>
@@ -103,7 +121,7 @@ export default async function IslemPage({ params }: Params) {
                 Talep
               </span>
               <span className="text-[11.5px] font-medium text-ink-300">
-                {alim ? "Senin ilanın" : `${karsiTaraf.kullanici} açtı`}
+                {alim ? "Senin ilanın" : `${islem.alici} açtı`}
               </span>
             </div>
             <h2 className="mt-3 line-clamp-2 min-h-[40px] text-[15px] font-extrabold leading-snug text-ink-900">
@@ -145,7 +163,7 @@ export default async function IslemPage({ params }: Params) {
                 Kabul edilen sunum
               </span>
               <span className="text-[11.5px] font-medium text-ink-300">
-                {alim ? `${karsiTaraf.kullanici} sundu` : "Senin sunumun"}
+                {alim ? `${islem.satici} sundu` : "Senin sunumun"}
               </span>
             </div>
             <h2 className="mt-3 line-clamp-2 min-h-[40px] text-[15px] font-extrabold leading-snug text-ink-900">
@@ -207,7 +225,7 @@ export default async function IslemPage({ params }: Params) {
             <div className="bg-subtle px-[18px] py-3 text-[11px] font-bold uppercase tracking-[1px] text-ink-400">
               Ödeme dökümü
             </div>
-            {islem.odeme.map((o) => (
+            {odeme.map((o) => (
               <div
                 key={o.ad}
                 className={`flex items-center justify-between gap-3 border-t border-hairline px-[18px] py-3 ${
@@ -241,7 +259,7 @@ export default async function IslemPage({ params }: Params) {
         {/* ── Sağ sütun: karşı taraf ── */}
         <aside className="rounded-panel border border-border bg-card p-5 lg:sticky lg:top-[150px]">
           <div className="text-[11px] font-bold uppercase tracking-[1.2px] text-ink-400">
-            {islem.karsiRol}
+            {alim ? "Satıcı" : "Alıcı"}
           </div>
           <div className="mt-3 flex items-center gap-3">
             <div
@@ -257,8 +275,8 @@ export default async function IslemPage({ params }: Params) {
               <div className="text-[15px] font-extrabold leading-tight text-ink-900">
                 {karsiTaraf.kullanici}
               </div>
-              <div className="mt-[3px] text-[12px] font-bold text-star">
-                ★ {karsiTaraf.puan}
+              <div className="mt-[3px] text-[12px] font-bold text-star-ink">
+                ★ {karsiTaraf.puan.toLocaleString("tr-TR", { minimumFractionDigits: 1 })}
                 <span className="ml-1 font-medium text-ink-400">
                   · {karsiTaraf.degerlendirme} değerlendirme
                 </span>
@@ -266,14 +284,16 @@ export default async function IslemPage({ params }: Params) {
             </div>
           </div>
 
-          <span className="mt-3 inline-block rounded-full bg-page px-2.5 py-1.5 text-[10.5px] font-bold text-ink-500">
-            {karsiTaraf.rozet}
-          </span>
+          {karsiTaraf.rozet && (
+            <span className="mt-3 inline-block rounded-full bg-page px-2.5 py-1.5 text-[10.5px] font-bold text-ink-500">
+              {karsiTaraf.rozet}
+            </span>
+          )}
 
           <div className="mt-3">
             <Satir
-              ad="Tamamlanan işlem"
-              deger={`${karsiTaraf.islem.toLocaleString("tr-TR")}`}
+              ad="Tamamlanan satış"
+              deger={karsiTaraf.tamamlananSatis.toLocaleString("tr-TR")}
             />
             <Satir ad="Konum" deger={karsiTaraf.konum} />
             <Satir ad="Üyelik" deger={`${karsiTaraf.uyelik}'ten beri`} />
@@ -281,7 +301,7 @@ export default async function IslemPage({ params }: Params) {
 
           <div className="mt-4 flex flex-col gap-2">
             <Link
-              href="/satici-profili"
+              href={`/profil/${karsiTaraf.kullanici}`}
               className="rounded-[12px] bg-primary px-[18px] py-3 text-center text-[13px] font-bold text-white hover:bg-primary-hover"
             >
               Profili Gör
