@@ -191,7 +191,6 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
   const [durum, setDurum] = useState("");
   // Alıcı defosuz istiyorsa bile satıcı dürüst yanıt verir; uyuşmazlık uyarıyla gösterilir.
   const [defoVar, setDefoVar] = useState<null | boolean>(null);
-  const [defoNot, setDefoNot] = useState("");
   const [muadil, setMuadil] = useState<null | boolean>(null);
 
   const markaListesi = useMemo(
@@ -294,7 +293,6 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
     renk,
     durum,
     defoVar,
-    defoNot,
     kutu,
     fatura,
     aksesuar,
@@ -815,21 +813,18 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
                   </button>
                 ))}
               </div>
+              {/* Defo tarifi ayrı bir alanda değil; satıcı defoyu açıklamada
+                  ya da sohbette anlatır — akış tek yerde toplanır. */}
               {defoVar === true && (
-                <div className="mt-3">
-                  <input
-                    value={defoNot}
-                    onChange={(e) => setDefoNot(e.target.value.slice(0, 120))}
-                    placeholder="Defoyu tarif et — örn. kapak köşesinde ezik"
-                    className={inputCls}
-                  />
-                  {!talep.defoKabul && (
-                    <p className="mt-2 text-[12.5px] font-semibold text-danger">
-                      Alıcı defosuz ürün istiyor. Yine de sunabilirsin, ancak
-                      defoyu açıkça yazmalısın.
-                    </p>
-                  )}
-                </div>
+                <p
+                  className={`mt-3 text-[12.5px] font-semibold leading-normal ${
+                    talep.defoKabul ? "text-ink-500" : "text-danger"
+                  }`}
+                >
+                  {talep.defoKabul
+                    ? "Defoyu aşağıdaki açıklama alanında ya da sohbette ayrıntılı anlat."
+                    : "Alıcı defosuz ürün istiyor. Yine de sunabilirsin; defoyu aşağıdaki açıklama alanında ya da sohbette açıkça belirt."}
+                </p>
               )}
             </div>
 
@@ -873,11 +868,11 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
                 <input
                   id="s-fiyat"
                   inputMode="numeric"
-                  value={fiyat}
+                  value={binlikAyir(fiyat)}
                   onChange={(e) =>
                     setFiyat(e.target.value.replace(/[^0-9]/g, "").slice(0, 8))
                   }
-                  placeholder={String(talep.fiyatNum)}
+                  placeholder={binlikAyir(String(talep.fiyatNum))}
                   className={inputCls}
                 />
                 {fiyatNum > 0 && (
@@ -1038,6 +1033,12 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
             <div className="mt-4 text-[22px] font-extrabold leading-snug text-ink-900">
               {baslik.trim() || "Sunum başlığı"}
             </div>
+            {/* Alıcı bunu sunum kartında da görecek — önizlemede de dursun. */}
+            {muadil === true && (
+              <span className="mt-2 inline-flex items-center rounded-full bg-star px-2.5 py-1.5 text-[11px] font-bold leading-none text-ink-900">
+                MUADİL ÜRÜN
+              </span>
+            )}
 
             {/* Galeri + künye — alıcının göreceği düzenin önizlemesi */}
             <div className="mt-3 flex flex-col items-start gap-4 lg:flex-row">

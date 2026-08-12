@@ -1,5 +1,5 @@
 // ── Alıcı Kalitesi ────────────────────────────────────────────────────
-// BulBana ters pazar yerinde satıcı, bir talebe sunum yapmadan önce
+// Bulbana ters pazar yerinde satıcı, bir talebe sunum yapmadan önce
 // "bu alıcı süreci sonuna götürür mü?" sorusuna cevap arar. Bu modül
 // alıcının geçmiş davranış sinyallerini tek bir 0-100 puana ve
 // Yüksek / Orta / Düşük seviyesine indirger.
@@ -25,8 +25,6 @@ export type AliciMetrik = {
   iptalEdilenAlim: number;
   /** Aldığı sunumlardan yanıtladığı (kabul/ret/pazarlık) oran — 0-1. */
   sunumYanitOrani: number;
-  /** Kimlik doğrulaması tamamlanmış mı. */
-  kimlikDogrulandi: boolean;
 };
 
 export type KaliteSinyal = {
@@ -63,12 +61,11 @@ export type AliciKalite = {
 
 // Sinyal ağırlıkları — toplamı 100.
 const AGIRLIK = {
-  puan: 35,
-  yorumTonu: 20,
-  tamamlanan: 15,
-  iptal: 15,
+  puan: 37,
+  yorumTonu: 21,
+  tamamlanan: 16,
+  iptal: 16,
   yanit: 10,
-  kimlik: 5,
 } as const;
 
 /** Yüksek/Orta eşiği ve Orta/Düşük eşiği. */
@@ -183,13 +180,6 @@ export function aliciKalitesi(m: AliciMetrik): AliciKalite {
       deger: yuzde(yanitOran),
       puan: yanitOran * AGIRLIK.yanit,
       agirlik: AGIRLIK.yanit,
-      guclu: false,
-    },
-    {
-      ad: "Kimlik doğrulama",
-      deger: m.kimlikDogrulandi ? "Doğrulandı" : "Doğrulanmadı",
-      puan: m.kimlikDogrulandi ? AGIRLIK.kimlik : 0,
-      agirlik: AGIRLIK.kimlik,
       guclu: false,
     },
   ].map((s) => ({ ...s, guclu: s.puan >= s.agirlik * 0.7 }));

@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Güvenli Alışveriş Rehberi",
   description:
-    "BulBana Güvencesi ödemeni korur; bu rehber güvenceyi tamamlayan alışkanlıkları, alıcı-satıcı ipuçlarını ve kırmızı bayrakları anlatır.",
+    "Bulbana Güvencesi ödemeni korur; bu rehber güvenceyi tamamlayan alışkanlıkları, alıcı-satıcı ipuçlarını ve kırmızı bayrakları anlatır.",
 };
 
 const aliciIpuclari = [
@@ -70,7 +70,7 @@ export default function GuvenliAlisverisPage() {
         Güvenli Alışveriş Rehberi
       </h1>
       <p className="mb-6 mt-2.5 text-pretty text-sm font-medium leading-[1.6] text-ink-500">
-        BulBana Güvencesi ödemeni korur — bu rehber ise güvenceyi tamamlayan
+        Bulbana Güvencesi ödemeni korur — bu rehber ise güvenceyi tamamlayan
         alışkanlıkları anlatır. Beş dakikada oku, her işlemde uygula.
       </p>
 
@@ -85,9 +85,9 @@ export default function GuvenliAlisverisPage() {
           </h2>
         </div>
         <p className="mt-3 text-pretty text-[13px] font-medium leading-[1.65] text-[#cfc5e8]">
-          IBAN&apos;a havale, kapıda ödeme, &quot;kaparo&quot; — hiçbiri BulBana
+          IBAN&apos;a havale, kapıda ödeme, &quot;kaparo&quot; — hiçbiri Bulbana
           Güvencesi kapsamında değildir. Ödeme yalnızca sipariş ekranından
-          yapılır; sen ürünü onaylayana kadar paran BulBana güvencesinde beklemede
+          yapılır; sen ürünü onaylayana kadar paran Bulbana güvencesinde beklemede
           tutulur. Platform dışı ödeme isteyen herkesi, konuşma ne kadar ikna
           edici olursa olsun,{" "}
           <strong className="text-accent">bildir ve işlemi durdur</strong>.

@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Talep } from "@/lib/data";
 import {
-  KENDI_TALEP_ID,
   SUNUM_YAPTIGIM_TALEPLER,
   fiyatText,
   ilanTarihi,
@@ -15,6 +14,9 @@ import {
 import { Chip } from "@/components/ui/Chip";
 import { ButtonLink } from "@/components/ui/Button";
 import { TalepCard } from "@/components/TalepCard";
+import { getKullanici } from "@/lib/kullanicilar";
+import { oturumSahibiMi } from "@/lib/oturum";
+import { useAktifKullanici } from "@/lib/aktif-kullanici";
 
 // İlan Aç formundaki alanların birebir yansıması — alıcının aradığı ürünün
 // tarifi. Değeri olmayan satırlar gizlenir.
@@ -85,11 +87,16 @@ export function IlanDetay({
   talep: Talep;
   benzer: Talep[];
 }) {
-  const kendiIlanim = talep.id === KENDI_TALEP_ID;
-  // Bu talebe zaten sunum gönderdiysem yeniden sunum yapamam.
-  const sunumGonderdim = (SUNUM_YAPTIGIM_TALEPLER as readonly string[]).includes(
-    talep.id,
-  );
+  // Sahiplik aktif hesaba göre belirlenir — hesap değişince ilan da el değiştirir.
+  const aktif = useAktifKullanici();
+  const kendiIlanim = talep.sahibi === aktif.kullanici;
+  // Talep sahibinin profil kaydı — kart bilgileri buradan gelir.
+  const sahip = getKullanici(talep.sahibi);
+  // Gönderilmiş sunum kaydı yalnızca varsayılan hesap için tutuluyor;
+  // başka bir hesaba geçildiğinde "sunum yaptım" durumu geçerli değildir.
+  const sunumGonderdim =
+    oturumSahibiMi(aktif.kullanici) &&
+    (SUNUM_YAPTIGIM_TALEPLER as readonly string[]).includes(talep.id);
   const [aktifFoto, setAktifFoto] = useState(0);
   const [takip, setTakip] = useState(false);
   const [kopyalandi, setKopyalandi] = useState(false);
@@ -151,6 +158,8 @@ export function IlanDetay({
         </span>
       </div>
 
+      <h1 className="sr-only">{talep.baslik}</h1>
+
       <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_384px]">
         {/* ── Sol sütun ── */}
         <div className="flex flex-col gap-4">
@@ -207,7 +216,7 @@ export function IlanDetay({
                       priority
                     />
                   ) : (
-                    <span className="font-mono text-[11px] text-[#968cac]">
+                    <span className="font-mono text-[11px] text-ink-400">
                       referans görsel {aktifFoto + 1}
                     </span>
                   )}
@@ -283,7 +292,7 @@ export function IlanDetay({
               </p>
               <p>
                 Ürünü {talep.ilce}, {talep.il} adresime kargoyla göndermeni
-                bekliyorum; ödeme, sen ürünü teslim edene kadar BulBana
+                bekliyorum; ödeme, sen ürünü teslim edene kadar Bulbana
                 güvencesinde tutulur.
               </p>
             </div>
@@ -304,32 +313,13 @@ export function IlanDetay({
           <div className="rounded-[24px] border border-primary/25 bg-gradient-to-b from-primary-soft/40 to-card p-6 shadow-[var(--shadow-pop)]">
             {/* Talep sahibi — tıklayınca profiline gider */}
             <Link
-              href="/satici-profili"
+              href={`/profil/${talep.sahibi}`}
               className="group flex items-center gap-3.5 rounded-[14px] outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              aria-label="Talep sahibi Elif Doğan'ın profiline git"
+              aria-label={`Talep sahibi ${talep.sahibi} profiline git`}
             >
               <div className="relative flex-none">
                 <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-[18px] font-extrabold text-primary">
-                  ED
-                </span>
-                {/* doğrulanmış rozeti */}
-                <span
-                  className="absolute -bottom-1 -right-1 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-primary text-white ring-[3px] ring-card"
-                  title="Kimliği doğrulandı"
-                  aria-label="Kimliği doğrulandı"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-3 w-3"
-                    aria-hidden
-                  >
-                    <path d="M5 12.5l4 4 10-10" />
-                  </svg>
+                  {sahip?.harf ?? "??"}
                 </span>
               </div>
               <div className="min-w-0 flex-1">
@@ -338,41 +328,29 @@ export function IlanDetay({
                 </p>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
                   <h3 className="text-[19px] font-extrabold leading-tight text-ink-900 group-hover:text-primary">
-                    Elif Doğan
+                    {talep.sahibi}
                   </h3>
-                  <span className="flex items-center gap-1.5">
-                    <Yildizlar puan={4.9} />
-                    <span className="text-[14px] font-extrabold leading-none text-ink-900">
-                      4,9
+                  {sahip && (
+                    <span className="flex items-center gap-1.5">
+                      <Yildizlar puan={sahip.puan} />
+                      <span className="text-[14px] font-extrabold leading-none text-ink-900">
+                        {sahip.puan.toLocaleString("tr-TR", {
+                          minimumFractionDigits: 1,
+                        })}
+                      </span>
                     </span>
-                  </span>
+                  )}
                 </div>
                 <div className="mt-1 text-[13px] font-medium text-ink-400">
-                  12 talep tamamladı
+                  {sahip?.aliciMetrik.tamamlananAlim ?? 0} alım tamamladı
                 </div>
                 <div className="mt-0.5 text-[13px] font-medium text-ink-400">
-                  2024&apos;ten beri
+                  {sahip ? `${sahip.konum} · ${sahip.uyelik}'ten beri` : ""}
                 </div>
               </div>
             </Link>
             {/* Güven rozetleri */}
             <div className="mt-3.5 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5 text-[12px] font-bold text-accent-ink">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-[15px] w-[15px] flex-none"
-                  aria-hidden
-                >
-                  <path d="M12 3l7 3v5c0 4.4-3 8-7 9-4-1-7-4.6-7-9V6z" />
-                  <path d="M9 12l2 2 4-4" />
-                </svg>
-                Kimlik doğrulandı
-              </span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5 text-[12px] font-bold text-accent-ink">
                 <svg
                   viewBox="0 0 24 24"

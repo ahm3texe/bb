@@ -13,7 +13,7 @@ type Davet = {
   durum: Durum;
 };
 
-const DAVET_LINK = "bulbana.com/davet/emre-k-7D4F";
+const DAVET_LINK = "bulbana.com/davet/melih-k-7D4F";
 
 const rozet: Record<Durum, { ad: string; cls: string }> = {
   kazanildi: { ad: "Kazanıldı ✓", cls: "bg-accent text-accent-ink" },
@@ -105,7 +105,7 @@ export function DavetEtClient() {
           <p className="mt-3 text-pretty text-sm font-medium leading-[1.65] text-[#cfc5e8]">
             Davet ettiğin kişi ilk işlemini tamamladığında, ikiniz de bir sonraki
             satışınızda %4 yerine{" "}
-            <strong className="text-white">%2 komisyon</strong> ödersiniz. BulBana
+            <strong className="text-white">%2 komisyon</strong> ödersiniz. Bulbana
             ağı büyüdükçe aradığını bulma şansın artar — kazan-kazan.
           </p>
         </div>

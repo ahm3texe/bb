@@ -4,7 +4,7 @@ import { SozlesmelerDocs } from "@/components/SozlesmelerDocs";
 export const metadata: Metadata = {
   title: "Sözleşmeler ve Politikalar",
   description:
-    "BulBana Kullanıcı Sözleşmesi, KVKK Aydınlatma Metni ve Çerez Politikası — hak ve yükümlülüklerin özeti.",
+    "Bulbana Kullanıcı Sözleşmesi, KVKK Aydınlatma Metni ve Çerez Politikası — hak ve yükümlülüklerin özeti.",
 };
 
 export default function SozlesmelerPage() {

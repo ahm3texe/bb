@@ -8,7 +8,6 @@ const authRoutes = [
   "/giris",
   "/sifre-sifirlama",
   "/hos-geldin",
-  "/kimlik-dogrulama",
 ];
 
 // Kendi çatısı olan iç araçlar — site Header/Footer'ı olmadan, tam genişlik.

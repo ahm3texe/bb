@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ButtonLink } from "@/components/ui/Button";
-import { getTalep, KENDI_TALEP_ID, fiyatText } from "@/lib/data";
+import { getTalep, fiyatText } from "@/lib/data";
+import { oturumAnaTalepId } from "@/lib/oturum";
 import type { Sunum } from "@/components/SunumOnizleme";
 import {
   SunumKunye,
@@ -14,12 +15,12 @@ import {
 
 // Satıcının 6 adımda gönderdiği örnek sunum — alıcı tarafındaki varsayılan.
 const varsayilanSunum: Sunum = {
-  baslik: "Jelatininde Avrupa baskısı Dawn FM · imza kartlı",
-  fiyatNum: 4250,
-  urun: "The Weeknd Dawn FM",
+  baslik: "Metal Fusion takımı · 6 beyblade + 2 launcher",
+  fiyatNum: 1200,
+  urun: "Beyblade Metal Fusion serisi",
   muadil: false,
-  yil: "2022",
-  durum: "Kutusu açılmamış",
+  yil: "2000'ler",
+  durum: "Az kullanılmış",
   defoVar: false,
   kutu: true,
   fatura: false,
@@ -29,22 +30,22 @@ const varsayilanSunum: Sunum = {
   il: "İstanbul",
   ilce: "Beyoğlu",
   aciklama:
-    "Jelatininde Avrupa baskısı Dawn FM. İmza kartla birlikte, COA sertifikası mevcut — sertifika numarası videoda ve 4. fotoğrafta görünüyor. Sigarasız evde saklandı, aynı gün kargolarım.",
+    "Metal Fusion serisinden 6 beyblade, 2 launcher ve orijinal arena kutusu. Çiziksiz, parçalar eksiksiz — sayım videosu 5. karede görünüyor. Sigarasız evde saklandı, aynı gün kargolarım.",
   fotolar: 5,
   video: true,
 };
 
 const varsayilanFotoAdlari = [
-  "ön kapak",
-  "arka kapak",
-  "imza kartı",
-  "COA",
-  "disk",
+  "takım geneli",
+  "launcher'lar",
+  "arena kutusu",
+  "parça sayımı",
+  "alt yüzeyler",
 ];
 
 export function SunumDetayClient({
   sunum = varsayilanSunum,
-  talepId = KENDI_TALEP_ID,
+  talepId,
   satici = "plakdukkani34",
   saticiHarf = "PD",
   saticiPuan = "4.8",
@@ -72,7 +73,10 @@ export function SunumDetayClient({
   const [oynat, setOynat] = useState(false);
   const [raporlandi, setRaporlandi] = useState(false);
 
-  const talep = getTalep(talepId);
+  // Prop verilmezse oturum sahibinin kendi talebi bağlam olur; o da yoksa
+  // künye "talep bilgisi yok" durumuna düşer.
+  const cozulenTalepId = talepId ?? oturumAnaTalepId();
+  const talep = cozulenTalepId ? getTalep(cozulenTalepId) : undefined;
   const satirlar = kunyeSatirlari(sunum, talep);
   const { uyan, toplam, farkli } = eslesmeOzeti(satirlar, talep);
 
@@ -211,12 +215,19 @@ export function SunumDetayClient({
                 <h1 className="mt-1.5 text-[24px] font-extrabold leading-snug text-ink-900">
                   {sunum.baslik}
                 </h1>
+                {/* Muadil sunum, alıcının aradığı ürünün birebir aynısı
+                    değildir — başlığın hemen altında açıkça söylenir. */}
+                {sunum.muadil && (
+                  <span className="mt-2 inline-flex items-center rounded-full bg-star px-2.5 py-1.5 text-[11px] font-bold leading-none text-ink-900">
+                    MUADİL ÜRÜN
+                  </span>
+                )}
                 <div className="mt-1.5 text-[13.5px] font-medium text-ink-400">
                   {sahip ? (
                     <span className="font-semibold text-ink-900">Sen</span>
                   ) : (
                     <Link
-                      href="/satici-profili"
+                      href={`/profil/${satici}`}
                       className="font-semibold text-ink-900 hover:text-primary"
                     >
                       {satici}
@@ -251,7 +262,7 @@ export function SunumDetayClient({
                         setVideoAcik(false);
                       }}
                       aria-label={`${ad} fotoğrafı`}
-                      className={`ref-image flex aspect-[3/4] w-[52px] flex-none items-center justify-center rounded-lg border-2 font-mono text-[9.5px] text-[#968cac] transition-colors ${
+                      className={`ref-image flex aspect-[3/4] w-[52px] flex-none items-center justify-center rounded-lg border-2 font-mono text-[9.5px] text-ink-400 transition-colors ${
                         !videoAcik && aktifFoto === i + 1
                           ? "border-primary"
                           : "border-transparent hover:border-border-input"
@@ -301,7 +312,7 @@ export function SunumDetayClient({
                       <span className="pointer-events-none absolute left-3 top-3 rounded-lg bg-ink-900/[0.82] px-2.5 py-1.5 text-[11px] font-semibold text-white">
                         {aktifFoto + 1} / {sunum.fotolar}
                       </span>
-                      <span className="font-mono text-[11px] text-[#968cac]">
+                      <span className="font-mono text-[11px] text-ink-400">
                         {fotoAdlari[aktifFoto]}
                       </span>
                     </>
@@ -346,7 +357,7 @@ export function SunumDetayClient({
                       {talepSahibi}
                     </div>
                     <div className="mt-1 text-[13px] font-medium text-ink-400">
-                      <span className="font-bold text-star">
+                      <span className="font-bold text-star-ink">
                         ★ {talepSahibiPuan}
                       </span>{" "}
                       · 12 talep tamamladı
@@ -355,13 +366,13 @@ export function SunumDetayClient({
                 ) : (
                   <>
                     <Link
-                      href="/satici-profili"
+                      href={`/profil/${satici}`}
                       className="block text-[16px] font-bold leading-tight text-ink-900 hover:text-primary"
                     >
                       {satici}
                     </Link>
                     <div className="mt-1 text-[13px] font-medium text-ink-400">
-                      <span className="font-bold text-star">★ {saticiPuan}</span>{" "}
+                      <span className="font-bold text-star-ink">★ {saticiPuan}</span>{" "}
                       · 214 satış
                     </div>
                     <div className="mt-0.5 text-[13px] font-medium text-ink-400">
@@ -371,7 +382,7 @@ export function SunumDetayClient({
                 )}
               </div>
               <span className="rounded-full bg-primary-soft px-[9px] py-1.5 text-[11px] font-bold text-primary-hover">
-                {sahip ? "Kimlik doğrulandı" : "Hızlı kargo"}
+                Hızlı kargo
               </span>
             </div>
             <div className="mt-3.5 flex justify-between border-t border-hairline pt-3.5 text-[13.5px] font-medium">

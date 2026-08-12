@@ -41,7 +41,7 @@ const acikTaleplerim: AcikTalep[] = [
   {
     no: "#DT-5042",
     konu: "Hesap & Güvenlik",
-    baslik: "Kimlik doğrulama fotoğrafım reddedildi",
+    baslik: "Şifre değişiminde SMS kodu gelmedi",
     tarih: "2 Tem",
     durum: "Kapandı",
   },
@@ -142,7 +142,7 @@ export default function DestekPage() {
                     E-posta
                   </label>
                   <input
-                    value="emre.k@eposta.com"
+                    value="melih.k@eposta.com"
                     readOnly
                     className="w-full box-border rounded-control border-[1.5px] border-border bg-subtle px-3.5 py-3 text-[13.5px] font-semibold text-ink-400 outline-none"
                   />

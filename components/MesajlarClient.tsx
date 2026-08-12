@@ -3,10 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getTalep, talepNo, fiyatText } from "@/lib/data";
-import { gelenSunumlar } from "@/lib/gelen-sunumlar";
+import {
+  harfFor,
+  karsiTarafFor,
+  rolFor,
+  sohbetlerimFor,
+} from "@/lib/sohbetler";
+import type { Sohbet } from "@/lib/sohbetler";
+import { useAktifKullanici } from "@/lib/aktif-kullanici";
 import { ButtonLink } from "@/components/ui/Button";
-
-const SEED_TALEP = getTalep("dawn-fm-imzali-cd")!;
 
 type OfferSt = "superseded" | "accepted" | "rejected" | "pending";
 type By = "seller" | "buyer";
@@ -17,10 +22,6 @@ type Msg =
   | { k: "text"; by: By; text: string; time: string }
   | { k: "offer"; by: By; amount: string; note: string; st: OfferSt; time: string };
 
-const VIEWER: By = "buyer"; // emre.k gözünden
-
-const nameOf = (by: By) => (by === "seller" ? "plakdukkani34" : "emre.k");
-const avOf = (by: By) => (by === "seller" ? "PD" : "EK");
 const fmt = (n: number) => n.toLocaleString("tr-TR");
 const now = () =>
   new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
@@ -29,83 +30,58 @@ function seed(): Msg[] {
   return [
     {
       k: "sys",
-      text: `${nameOf("seller")} size bir sunum teklifi gönderdi.`,
+      text: "Satıcı size bir sunum teklifi gönderdi.",
       time: "Dün 14:02",
     },
     { k: "sunum", by: "seller", time: "Dün 14:02" },
     {
       k: "text",
       by: "seller",
-      text: "Merhaba! İlgin için teşekkürler. CD jelatininde, imza kartı COA sertifikalı. İstersen sertifikanın ek fotoğrafını da atarım.",
+      text: "Merhaba! İlgin için teşekkürler. Set eksiksiz, tüm parçalar ve talimat kitapçığı yerinde. İstersen açılmış kutunun ek fotoğrafını da atarım.",
       time: "Dün 14:05",
     },
     {
       k: "text",
       by: "buyer",
-      text: "Merhaba, sunum çok iyi görünüyor. Sertifikayı görmek isterim. Fiyat beklentin nedir?",
+      text: "Merhaba, sunum çok iyi görünüyor. Parça sayımını görmek isterim. Fiyat beklentin nedir?",
       time: "Dün 14:11",
     },
-    { k: "offer", by: "seller", amount: "4.800", note: "Teklif", st: "superseded", time: "Dün 14:16" },
+    { k: "offer", by: "seller", amount: "12.800", note: "Teklif", st: "superseded", time: "Dün 14:16" },
     {
       k: "text",
       by: "buyer",
-      text: "Bütçem ilanda yazdığı gibi 4.500. Hemen onaylarım, 4.300'e anlaşalım mı?",
+      text: "Bütçem ilanda yazdığı gibi 12.000. Hemen onaylarım, 11.500'e anlaşalım mı?",
       time: "Dün 14:20",
     },
-    { k: "offer", by: "buyer", amount: "4.300", note: "Karşı teklif", st: "superseded", time: "Dün 14:21" },
+    { k: "offer", by: "buyer", amount: "11.500", note: "Karşı teklif", st: "superseded", time: "Dün 14:21" },
     {
       k: "text",
       by: "seller",
-      text: "4.300 olmaz maalesef, sertifikalı imza bu. İlan fiyatın olan 4.500'e tamamım — kargo benden.",
+      text: "11.500 olmaz maalesef, set eksiksiz ve kitapçık da yerinde. İlan fiyatın olan 12.000'e tamamım — kargo benden.",
       time: "Dün 14:24",
     },
-    { k: "offer", by: "seller", amount: "4.500", note: "Güncel teklif", st: "pending", time: "Dün 14:25" },
+    { k: "offer", by: "seller", amount: "12.000", note: "Güncel teklif", st: "pending", time: "Dün 14:25" },
   ];
 }
 
-const polaroidBaslik =
-  getTalep("polaroid-600-film")?.baslik ?? "Polaroid 600 arıyorum";
-
-type Konusma = {
-  id: string;
-  ad: string;
-  harf: string;
-  ilan: string;
-  son?: string;
-  saat: string;
-};
-
-const sabitKonusmalar: Konusma[] = [
-  { id: "seed", ad: "plakdukkani34", harf: "PD", ilan: SEED_TALEP.baslik, saat: "14:25" },
-  { id: "muzikmarket", ad: "muzikmarket", harf: "MM", ilan: SEED_TALEP.baslik, son: "Teklif istendi — yanıt bekleniyor", saat: "Dün" },
-  { id: "mert", ad: "koleksiyoner.mert", harf: "KM", ilan: SEED_TALEP.baslik, son: "Yeni sunum gönderdi", saat: "Dün" },
-  { id: "analog", ad: "analogmarket", harf: "AM", ilan: polaroidBaslik, son: "Anlaşıldı ✓ — kargolandı", saat: "Salı" },
-];
-
-// Sunum gönderen her satıcının bir sohbeti var: karşılaştırma ekranındaki
-// "Sohbete Geç" doğrudan o satıcının konuşmasını açar.
-const konusmalar: Konusma[] = [
-  ...sabitKonusmalar,
-  ...gelenSunumlar
-    .filter((s) => !sabitKonusmalar.some((k) => k.ad === s.satici))
-    .map((s) => ({
-      id: s.id,
-      ad: s.satici,
-      harf: s.harf,
-      ilan: getTalep(s.talepId)?.baslik ?? SEED_TALEP.baslik,
-      son: "Sunum gönderdi",
-      saat: s.ne,
-    })),
-];
-
 /** ?satici=... ile gelen kullanıcıyı doğrudan o sohbete düşür. */
-function konusmaIdBul(satici?: string) {
-  if (!satici) return "seed";
-  return konusmalar.find((k) => k.ad === satici)?.id ?? "seed";
+function konusmaIdBul(liste: Sohbet[], kullanici: string, satici?: string) {
+  if (!liste.length) return "";
+  if (satici) {
+    const hedef = liste.find((k) => karsiTarafFor(k, kullanici) === satici);
+    if (hedef) return hedef.id;
+  }
+  return liste[0].id;
 }
 
 export function MesajlarClient({ satici }: { satici?: string }) {
-  const [activeId, setActiveId] = useState(() => konusmaIdBul(satici));
+  // Sohbetler aktif hesaba göre süzülür; kullanıcının rolü sohbete göre
+  // değişir — kendi talebinde alıcı, sunum yaptığı talepte satıcıdır.
+  const aktif = useAktifKullanici();
+  const konusmalar = sohbetlerimFor(aktif.kullanici);
+  const [activeId, setActiveId] = useState(() =>
+    konusmaIdBul(konusmalar, aktif.kullanici, satici),
+  );
   const [msgs, setMsgs] = useState<Msg[]>(() => seed());
   const [deal, setDeal] = useState<"negotiating" | "accepted">("negotiating");
   const [offerOpen, setOfferOpen] = useState(false);
@@ -113,7 +89,23 @@ export function MesajlarClient({ satici }: { satici?: string }) {
   const [msgText, setMsgText] = useState("");
 
   const threadRef = useRef<HTMLDivElement>(null);
-  const isSeed = activeId === "seed";
+  const aktifSohbet =
+    konusmalar.find((k) => k.id === activeId) ?? konusmalar[0];
+  const isSeed = Boolean(aktifSohbet?.acik);
+  // Sohbetin konusu olan talep; tamamlanmış işlemlerde ilan yayında değildir.
+  const sohbetTalep = aktifSohbet?.talepId
+    ? getTalep(aktifSohbet.talepId)
+    : undefined;
+  const VIEWER: By = aktifSohbet
+    ? rolFor(aktifSohbet, aktif.kullanici)
+    : "buyer";
+  const nameOf = (by: By) =>
+    !aktifSohbet
+      ? aktif.kullanici
+      : by === "seller"
+        ? aktifSohbet.satici
+        : aktifSohbet.alici;
+  const avOf = (by: By) => harfFor(nameOf(by));
 
   useEffect(() => {
     const el = threadRef.current;
@@ -191,7 +183,34 @@ export function MesajlarClient({ satici }: { satici?: string }) {
 
   const offerNum = parseInt(offerVal, 10);
 
-  const activeConv = konusmalar.find((c) => c.id === activeId)!;
+  if (!aktifSohbet) {
+    return (
+      <main className="mx-auto max-w-[640px] px-6 pb-20 pt-16">
+        <div className="rounded-panel border border-border bg-card p-9 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-2xl text-primary-hover">
+            ✉
+          </div>
+          <h1 className="mt-5 text-[22px] font-extrabold text-ink-900">
+            Henüz mesajın yok
+          </h1>
+          <p className="mx-auto mt-2.5 max-w-md text-sm font-medium leading-relaxed text-ink-500">
+            Bir talebe sunum gönderdiğinde ya da kendi talebine sunum
+            geldiğinde pazarlık burada başlar.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2.5">
+            <ButtonLink href="/kesfet" variant="primary" size="lg">
+              Talepleri Keşfet
+            </ButtonLink>
+            <ButtonLink href="/ilan-ac" variant="secondary" size="lg">
+              Aradığını İlan Et
+            </ButtonLink>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const activeConv = aktifSohbet;
 
   return (
     <main className="mx-auto max-w-[1180px] px-6 pb-16 pt-6">
@@ -199,43 +218,42 @@ export function MesajlarClient({ satici }: { satici?: string }) {
         {/* ── Sohbet listesi ── */}
         <aside className="overflow-hidden rounded-card border border-border bg-card lg:sticky lg:top-[120px]">
           <div className="flex items-baseline justify-between border-b border-hairline px-4 pb-3 pt-4">
-            <span className="text-base font-extrabold text-ink-900">Mesajlar</span>
+            <h1 className="text-base font-extrabold text-ink-900">Mesajlar</h1>
             <span className="rounded-full bg-accent px-2 py-[5px] text-[12px] font-bold text-ink-900">
               3 yeni
             </span>
           </div>
           {konusmalar.map((c) => {
-            const aktif = c.id === activeId;
-            const onizleme =
-              c.id === "seed"
-                ? deal === "accepted"
-                  ? "Anlaşıldı ✓ — 4.500 TL"
-                  : "Güncel teklif: 4.500 TL"
-                : c.son;
+            const secili = c.id === activeId;
+            const onizleme = c.acik
+              ? deal === "accepted"
+                ? "Anlaşıldı ✓ — 12.000 TL"
+                : "Güncel teklif: 12.000 TL"
+              : c.son;
             return (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => setActiveId(c.id)}
                 className={`flex w-full gap-2.5 border-l-[3px] px-3.5 py-3 text-left transition-colors ${
-                  aktif
+                  secili
                     ? "border-l-primary bg-primary-soft"
                     : "border-l-transparent hover:bg-subtle"
                 }`}
               >
                 <span
                   className={`flex h-[38px] w-[38px] flex-none items-center justify-center rounded-full text-[13px] font-bold ${
-                    aktif
+                    secili
                       ? "bg-ink-900 text-accent"
                       : "bg-primary-soft text-primary-hover"
                   }`}
                 >
-                  {c.harf}
+                  {harfFor(karsiTarafFor(c, aktif.kullanici))}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex justify-between gap-2">
                     <span className="truncate text-[14px] font-bold text-ink-900">
-                      {c.ad}
+                      {karsiTarafFor(c, aktif.kullanici)}
                     </span>
                     <span className="flex-none text-[11.5px] font-medium text-ink-400">
                       {c.saat}
@@ -243,7 +261,7 @@ export function MesajlarClient({ satici }: { satici?: string }) {
                   </span>
                   <span
                     className={`mt-[3px] block truncate text-[12px] font-semibold ${
-                      aktif ? "text-primary-hover" : "text-ink-400"
+                      secili ? "text-primary-hover" : "text-ink-400"
                     }`}
                   >
                     {c.ilan}
@@ -261,30 +279,44 @@ export function MesajlarClient({ satici }: { satici?: string }) {
         <section className="flex flex-col overflow-hidden rounded-card border border-border bg-card">
           {/* İlan bağlamı */}
           <div className="flex items-center gap-3 border-b border-hairline px-4 py-3">
-            <div className="ref-image flex h-11 w-11 flex-none items-center justify-center rounded-control font-mono text-[9px] text-[#968cac]">
+            <div className="ref-image flex h-11 w-11 flex-none items-center justify-center rounded-control font-mono text-[9px] text-ink-400">
               görsel
             </div>
             <div className="min-w-0 flex-1">
-              <Link
-                href="/ilan/dawn-fm-imzali-cd"
-                className="block truncate text-sm font-bold text-ink-900"
-              >
-                {activeConv.ilan}
-              </Link>
+              {sohbetTalep ? (
+                <Link
+                  href={`/ilan/${sohbetTalep.id}`}
+                  className="block truncate text-sm font-bold text-ink-900"
+                >
+                  {activeConv.ilan}
+                </Link>
+              ) : (
+                <div className="truncate text-sm font-bold text-ink-900">
+                  {activeConv.ilan}
+                </div>
+              )}
               <div className="mt-[3px] text-[12.5px] font-medium text-ink-400">
-                Alıcının fiyatı:{" "}
-                <span className="font-bold text-ink-900">
-                  {fiyatText(SEED_TALEP.fiyatNum)}
-                </span>{" "}
-                · İlan {talepNo(SEED_TALEP.id)}
+                {sohbetTalep ? (
+                  <>
+                    Alıcının fiyatı:{" "}
+                    <span className="font-bold text-ink-900">
+                      {fiyatText(sohbetTalep.fiyatNum)}
+                    </span>{" "}
+                    · İlan {talepNo(sohbetTalep.id)}
+                  </>
+                ) : (
+                  "Tamamlanmış işlem — ilan artık yayında değil"
+                )}
               </div>
             </div>
-            <Link
-              href="/ilan/dawn-fm-imzali-cd"
-              className="flex-none text-[13px] font-semibold"
-            >
-              İlanı Gör
-            </Link>
+            {sohbetTalep && (
+              <Link
+                href={`/ilan/${sohbetTalep.id}`}
+                className="flex-none text-[13px] font-semibold"
+              >
+                İlanı Gör
+              </Link>
+            )}
           </div>
 
           {isSeed ? (
@@ -316,7 +348,7 @@ export function MesajlarClient({ satici }: { satici?: string }) {
                             {["foto 1", "foto 2", "foto 3"].map((f) => (
                               <div
                                 key={f}
-                                className="ref-image flex aspect-[3/4] w-[46px] flex-none items-center justify-center rounded-lg font-mono text-[9px] text-[#968cac]"
+                                className="ref-image flex aspect-[3/4] w-[46px] flex-none items-center justify-center rounded-lg font-mono text-[9px] text-ink-400"
                               >
                                 {f}
                               </div>
@@ -569,18 +601,21 @@ export function MesajlarClient({ satici }: { satici?: string }) {
             /* Placeholder konuşma */
             <div className="flex h-[calc(100vh-330px)] min-h-[220px] flex-col items-center justify-center gap-3 bg-subtle px-8 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-xl font-bold text-primary-hover">
-                {activeConv.harf}
+                {harfFor(karsiTarafFor(activeConv, aktif.kullanici))}
               </div>
               <div className="text-base font-bold text-ink-900">
-                {activeConv.ad} ile sohbet
+                {karsiTarafFor(activeConv, aktif.kullanici)} ile sohbet
               </div>
               <p className="max-w-[320px] text-[14px] font-medium leading-relaxed text-ink-400">
-                Bu önizlemede yalnızca plakdukkani34 ile olan sohbetin tam geçmişi
-                yüklü. Bu konuşmayı açmak için seç.
+                Bu sohbet tamamlanmış bir işleme ait. Önizlemede yalnızca
+                pazarlığı süren sohbetin tam geçmişi yüklüdür.
               </p>
               <button
                 type="button"
-                onClick={() => setActiveId("seed")}
+                onClick={() => {
+                  const acikOlan = konusmalar.find((k) => k.acik);
+                  if (acikOlan) setActiveId(acikOlan.id);
+                }}
                 className="cursor-pointer rounded-control border-[1.5px] border-border-input bg-card px-4 py-2.5 text-[14px] font-bold text-ink-900 hover:border-primary hover:text-primary"
               >
                 Bu konuşmayı aç
@@ -604,7 +639,7 @@ export function MesajlarClient({ satici }: { satici?: string }) {
             <p className="mt-2 text-[13px] font-medium leading-relaxed text-white">
               Pazarlık, ödeme ve teslimat{" "}
               <strong className="font-extrabold text-accent">
-                yalnızca BulBana üzerinden
+                yalnızca Bulbana üzerinden
               </strong>{" "}
               yürütülmelidir. Karşı taraf seni IBAN&apos;a havale, kapıda nakit
               ya da başka bir uygulamaya geçmeye çağırıyorsa kabul etme.
@@ -613,7 +648,7 @@ export function MesajlarClient({ satici }: { satici?: string }) {
               Uygulama dışında yapılan ödemelerde güvenli ödeme, iade ve itiraz
               hakkın işlemez; doğabilecek dolandırıcılık ve kayıplardan{" "}
               <strong className="font-extrabold text-accent">
-                BulBana sorumlu değildir
+                Bulbana sorumlu değildir
               </strong>
               .
             </p>

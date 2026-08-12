@@ -89,9 +89,9 @@ export function Footer() {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-4 py-6 text-[12px] text-[#8b7bb0]">
-          <span>© 2026 BulBana Teknoloji A.Ş. — Tüm hakları saklıdır.</span>
+          <span>© 2026 Bulbana Teknoloji A.Ş. — Tüm hakları saklıdır.</span>
           <span className="text-[11.5px] font-semibold">
-            Ödemeler 256-bit SSL ile korunur · Alıcı onayına kadar BulBana
+            Ödemeler 256-bit SSL ile korunur · Alıcı onayına kadar Bulbana
             güvencesinde
           </span>
         </div>

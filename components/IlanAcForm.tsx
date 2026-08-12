@@ -48,8 +48,12 @@ export function IlanAcForm() {
   const [ilce, setIlce] = useState("");
   const ilceList = il ? ilceler(il) : [];
   const [mahalle, setMahalle] = useState("");
-  const [mahalleList, setMahalleList] = useState<string[]>([]);
-  const [mahalleYukleniyor, setMahalleYukleniyor] = useState(false);
+  // Mahalle listesi hangi il/ilçe için geldiğiyle birlikte saklanır; seçim
+  // değişince eski liste kendiliğinden düşer (effect içinde setState gerekmez).
+  const [mahalleVeri, setMahalleVeri] = useState<{
+    anahtar: string;
+    liste: string[];
+  } | null>(null);
   const [konumTarifi, setKonumTarifi] = useState("");
   const [fotolar, setFotolar] = useState(0);
   const sure = 30;
@@ -65,45 +69,54 @@ export function IlanAcForm() {
   useEffect(() => () => clearTimeout(toastRef.current), []);
 
   // İl + ilçe seçilince mahalleler sunucudan çekilir (veri seti istemciye gömülmez).
+  const mahalleAnahtar = il && ilce ? `${il}|${ilce}` : "";
   useEffect(() => {
-    if (!il || !ilce) {
-      setMahalleList([]);
-      setMahalleYukleniyor(false);
-      return;
-    }
+    if (!mahalleAnahtar) return;
+    const [aIl, aIlce] = mahalleAnahtar.split("|");
     const ac = new AbortController();
-    setMahalleYukleniyor(true);
     fetch(
-      `/api/mahalleler?il=${encodeURIComponent(il)}&ilce=${encodeURIComponent(ilce)}`,
+      `/api/mahalleler?il=${encodeURIComponent(aIl)}&ilce=${encodeURIComponent(aIlce)}`,
       { signal: ac.signal },
     )
       .then((r) => r.json())
-      .then((d: { mahalleler?: string[] }) => setMahalleList(d.mahalleler ?? []))
+      .then((d: { mahalleler?: string[] }) =>
+        setMahalleVeri({ anahtar: mahalleAnahtar, liste: d.mahalleler ?? [] }),
+      )
       .catch(() => {
-        if (!ac.signal.aborted) setMahalleList([]);
-      })
-      .finally(() => {
-        if (!ac.signal.aborted) setMahalleYukleniyor(false);
+        if (!ac.signal.aborted)
+          setMahalleVeri({ anahtar: mahalleAnahtar, liste: [] });
       });
     return () => ac.abort();
-  }, [il, ilce]);
+  }, [mahalleAnahtar]);
 
-  useEffect(() => {
-    if (!duzenleId) return;
+  const mahalleList =
+    mahalleVeri && mahalleVeri.anahtar === mahalleAnahtar
+      ? mahalleVeri.liste
+      : [];
+  const mahalleYukleniyor =
+    !!mahalleAnahtar && mahalleVeri?.anahtar !== mahalleAnahtar;
+
+  // Düzenleme modunda formu bir kez mevcut talebin değerleriyle doldur.
+  // Effect yerine render sırasında düzeltme kalıbı: hangi ilanın yüklendiği
+  // state'te tutulur, id değişince alanlar yeniden kurulur.
+  const [yuklenenIlan, setYuklenenIlan] = useState<string | null>(null);
+  if (duzenleId && duzenleId !== yuklenenIlan) {
     const t = getTalep(duzenleId);
-    if (!t) return;
-    setKategori(t.kategori);
-    setBaslik(t.baslik);
-    setMarka(t.marka);
-    setAciklama(t.aciklama);
-    setFiyat(String(t.fiyatNum));
-    setAcilSecim(!!t.acil);
-    setPazarlikSecim(!!t.pazarlik);
-    setDurum(durumList.includes(t.durum) ? t.durum : "Hepsi");
-    setIl(t.il);
-    setIlce(t.ilce);
-    setFotolar(1);
-  }, [duzenleId]);
+    setYuklenenIlan(duzenleId);
+    if (t) {
+      setKategori(t.kategori);
+      setBaslik(t.baslik);
+      setMarka(t.marka);
+      setAciklama(t.aciklama);
+      setFiyat(String(t.fiyatNum));
+      setAcilSecim(!!t.acil);
+      setPazarlikSecim(!!t.pazarlik);
+      setDurum(durumList.includes(t.durum) ? t.durum : "Hepsi");
+      setIl(t.il);
+      setIlce(t.ilce);
+      setFotolar(1);
+    }
+  }
 
   const baslikOk = baslik.trim().length >= 5;
   const aciklamaOk = aciklama.trim().length >= MIN_ACIKLAMA;

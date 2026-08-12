@@ -6,7 +6,7 @@ const sorular = [
   {
     soru: "Neden ilanı alıcı açıyor?",
     cevap:
-      "BulBana ters pazardır: bulunamayan, nadir ya da stoku bitmiş ürünlerde asıl kıt olan taleptir. Alıcı ne istediğini ve ödeyeceği fiyatı ilan eder; elinde o ürün olan satıcılar doğrudan gerçek bir müşteriyle karşılaşır.",
+      "Bulbana ters pazardır: bulunamayan, nadir ya da stoku bitmiş ürünlerde asıl kıt olan taleptir. Alıcı ne istediğini ve ödeyeceği fiyatı ilan eder; elinde o ürün olan satıcılar doğrudan gerçek bir müşteriyle karşılaşır.",
   },
   {
     soru: "Sunumumu kimler görebilir?",
@@ -16,12 +16,12 @@ const sorular = [
   {
     soru: "Pazarlık ya da revize teklif için ücret öder miyim?",
     cevap:
-      "Hayır. Sunum göndermek, teklif vermek, revize teklif ve pazarlık tamamen ücretsizdir. BulBana yalnızca satış gerçekleşirse, anlaşılan fiyat üzerinden %4 komisyon alır.",
+      "Hayır. Sunum göndermek, teklif vermek, revize teklif ve pazarlık tamamen ücretsizdir. Bulbana yalnızca satış gerçekleşirse, anlaşılan fiyat üzerinden %4 komisyon alır.",
   },
   {
     soru: "Ürün anlatıldığı gibi çıkmazsa ne olur?",
     cevap:
-      "Ödemen satıcıya geçmeden BulBana güvencesinde tutulduğu için itiraz başlatabilirsin. Destek ekibi sunum fotoğrafları ve sohbet kaydı üzerinden inceler; haklıysan ödemen iade edilir.",
+      "Ödemen satıcıya geçmeden Bulbana güvencesinde tutulduğu için itiraz başlatabilirsin. Destek ekibi sunum fotoğrafları ve sohbet kaydı üzerinden inceler; haklıysan ödemen iade edilir.",
   },
   {
     soru: "Komisyon kimden ve ne zaman alınır?",

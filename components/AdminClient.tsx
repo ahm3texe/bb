@@ -8,106 +8,38 @@ type Bolum = "genel" | "ilanlar" | "itirazlar" | "kullanicilar";
 type IlanDurum = "bekliyor" | "onaylandi" | "reddedildi";
 type ItirazDurum = "inceleniyor" | "iade" | "aktarildi";
 
-const ilanData = [
-  {
-    id: 1,
-    baslik: 'Kraftwerk "The Man-Machine" plak arıyorum',
-    kategori: "Müzik & Plak",
-    fiyat: "3.200 TL",
-    kullanici: "emre.k",
-  },
-  {
-    id: 2,
-    baslik: "Sony Walkman WM-EX194 arıyorum — çalışır",
-    kategori: "Elektronik",
-    fiyat: "1.800 TL",
-    kullanici: "emre.k",
-  },
-  {
-    id: 3,
-    baslik: "1970'ler Zippo çakmak arıyorum — koleksiyonluk",
-    kategori: "Koleksiyon",
-    fiyat: "2.400 TL",
-    kullanici: "burak.izmir",
-  },
-  {
-    id: 4,
-    baslik: "Game Boy Color arıyorum — atari moru, kutulu",
-    kategori: "Oyun & Konsol",
-    fiyat: "2.900 TL",
-    kullanici: "selin.gs",
-  },
-];
+const ilanData: {
+  id: number;
+  baslik: string;
+  kategori: string;
+  fiyat: string;
+  kullanici: string;
+}[] = [];
 
-const itirazData = [
-  {
-    id: 1,
-    no: "#IT-2094",
-    urun: 'İmzalı "Dawn FM" CD',
-    neden: "İmza / sertifika eksik",
-    taraflar: "emre.k → plakdukkani34",
-    tutar: "4.500 TL güvencede",
-  },
-  {
-    id: 2,
-    no: "#IT-2087",
-    urun: "Seiko 5 otomatik saat",
-    neden: "Ürün hasarlı geldi",
-    taraflar: "canan.a → saatdukkani",
-    tutar: "3.800 TL güvencede",
-  },
-  {
-    id: 3,
-    no: "#IT-2079",
-    urun: "Lego 10276 Colosseum",
-    neden: "Parça eksik iddiası",
-    taraflar: "murat.b → legomarket",
-    tutar: "12.000 TL",
-  },
-];
+
+const itirazData: {
+  id: number;
+  no: string;
+  urun: string;
+  neden: string;
+  taraflar: string;
+  tutar: string;
+}[] = [];
+
 
 const kullaniciData = [
-  { id: 1, ad: "plakdukkani34", islem: "214 satış · 2 alım", puan: "4.8" },
-  { id: 2, ad: "emre.k", islem: "12 alım · 28 satış", puan: "4.9" },
-  { id: 3, ad: "hizlisatici55", islem: "3 satış · 4 iptal", puan: "2.1" },
-  { id: 4, ad: "muzikmarket", islem: "1.204 satış", puan: "4.9" },
+  { id: 1, ad: "plakdukkani34", islem: "0 satış · 0 alım", puan: "—" },
+  { id: 2, ad: "melih.k", islem: "0 alım · 0 satış", puan: "—" },
 ];
+
 
 const sonIslemler: {
   saat: string;
   metin: string;
   etiket: string;
   variant: "violet" | "danger" | "good";
-}[] = [
-  {
-    saat: "14:32",
-    metin:
-      "Sipariş #BB-78412 — teklif kabul edildi, ödeme güvenceye alındı (4.500 TL)",
-    etiket: "Ödeme",
-    variant: "violet",
-  },
-  {
-    saat: "14:20",
-    metin:
-      'İtiraz #IT-2094 açıldı — "İmza / sertifika eksik" (emre.k → plakdukkani34)',
-    etiket: "İtiraz",
-    variant: "danger",
-  },
-  {
-    saat: "13:58",
-    metin:
-      'Yeni talep: "Kraftwerk The Man-Machine plak arıyorum" — 3.200 TL (onay kuyruğunda)',
-    etiket: "İlan",
-    variant: "good",
-  },
-  {
-    saat: "13:41",
-    metin:
-      "Kargo teslim onayı — Polaroid 600, 2.112 TL satıcıya aktarıldı (2.200 TL satış, komisyon 88 TL)",
-    etiket: "Aktarım",
-    variant: "violet",
-  },
-];
+}[] = [];
+
 
 const basliklar: Record<Bolum, string> = {
   genel: "Genel Bakış",
@@ -118,18 +50,9 @@ const basliklar: Record<Bolum, string> = {
 
 export function AdminClient() {
   const [bolum, setBolum] = useState<Bolum>("genel");
-  const [ilanSt, setIlanSt] = useState<Record<number, IlanDurum>>({
-    1: "bekliyor",
-    2: "bekliyor",
-    3: "bekliyor",
-    4: "bekliyor",
-  });
-  const [itirazSt, setItirazSt] = useState<Record<number, ItirazDurum>>({
-    1: "inceleniyor",
-    2: "inceleniyor",
-    3: "aktarildi",
-  });
-  const [askida, setAskida] = useState<Record<number, boolean>>({ 3: true });
+  const [ilanSt, setIlanSt] = useState<Record<number, IlanDurum>>({});
+  const [itirazSt, setItirazSt] = useState<Record<number, ItirazDurum>>({});
+  const [askida, setAskida] = useState<Record<number, boolean>>({});
 
   // Real counts — the "Onay bekleyen ilan" KPI and the sidebar "İlan Onayları"
   // badge read from THIS same value (no padding), so they always agree.
@@ -244,7 +167,7 @@ export function AdminClient() {
               </div>
               <div className="rounded-[14px] border border-border bg-card p-4">
                 <div className="text-[26px] font-extrabold leading-none text-ink-900">
-                  128
+                  0
                 </div>
                 <div className="mt-1.5 text-xs font-semibold leading-tight text-ink-400">
                   Bugün gerçekleşen satış
@@ -252,7 +175,7 @@ export function AdminClient() {
               </div>
               <div className="rounded-[14px] border border-border bg-card p-4">
                 <div className="text-[26px] font-extrabold leading-none text-primary-hover">
-                  23.600 TL
+                  0 TL
                 </div>
                 <div className="mt-1.5 text-xs font-semibold leading-tight text-ink-400">
                   Bugünkü komisyon geliri
@@ -422,7 +345,7 @@ export function AdminClient() {
                     {u.ad}
                   </span>
                   <span className="flex-1 text-ink-500">{u.islem}</span>
-                  <span className="flex-[0.8] font-bold text-star">
+                  <span className="flex-[0.8] font-bold text-star-ink">
                     ★ {u.puan}
                   </span>
                   <span className="flex flex-[0.9] justify-end">

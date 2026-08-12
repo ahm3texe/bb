@@ -9,7 +9,7 @@ type Dokuman = { ad: string; ozet: string; maddeler: Madde[] };
 const dokumanlar: Dokuman[] = [
   {
     ad: "Kullanıcı Sözleşmesi",
-    ozet: "BulBana'yı kullanırken alıcı ve satıcı olarak hak ve yükümlülüklerin.",
+    ozet: "Bulbana'yı kullanırken alıcı ve satıcı olarak hak ve yükümlülüklerin.",
     maddeler: [
       {
         baslik: "Tek hesap, iki rol",
@@ -24,12 +24,12 @@ const dokumanlar: Dokuman[] = [
       {
         baslik: "Komisyon",
         metin:
-          "Üyelik, ilan, sunum, teklif ve pazarlık ücretsizdir. BulBana yalnızca gerçekleşen satışta, anlaşılan bedelin %4'ünü satış bedelinden düşerek komisyon olarak alır.",
+          "Üyelik, ilan, sunum, teklif ve pazarlık ücretsizdir. Bulbana yalnızca gerçekleşen satışta, anlaşılan bedelin %4'ünü satış bedelinden düşerek komisyon olarak alır.",
       },
       {
         baslik: "Kargo yükümlülüğü",
         metin:
-          "Ödemenin BulBana güvencesine (escrow) alınmasından itibaren satıcı ürünü 3 gün içinde kargoya vermek ve takip numarasını sohbete işlemekle yükümlüdür. Süre aşımında işlem iptal edilir ve güvencedeki ödeme alıcıya iade edilir.",
+          "Ödemenin Bulbana güvencesine (escrow) alınmasından itibaren satıcı ürünü 3 gün içinde kargoya vermek ve takip numarasını sohbete işlemekle yükümlüdür. Süre aşımında işlem iptal edilir ve güvencedeki ödeme alıcıya iade edilir.",
       },
       {
         baslik: "Yasaklı ürünler ve yaptırım",
@@ -55,7 +55,7 @@ const dokumanlar: Dokuman[] = [
       {
         baslik: "Aktarım",
         metin:
-          "Veriler; ödeme kuruluşları, kargo firmaları ve yasal merciler dışında üçüncü taraflarla paylaşılmaz. Kart bilgileri BulBana sistemlerinde saklanmaz.",
+          "Veriler; ödeme kuruluşları, kargo firmaları ve yasal merciler dışında üçüncü taraflarla paylaşılmaz. Kart bilgileri Bulbana sistemlerinde saklanmaz.",
       },
       {
         baslik: "Saklama süresi",

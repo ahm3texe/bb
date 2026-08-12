@@ -3,44 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
-type Bildirim = {
-  harf: string;
-  renk: string; // tailwind bg + text classes for the avatar dot
-  text: string;
-  zaman: string;
-  href: string;
-};
-
-const bildirimler: Bildirim[] = [
-  {
-    harf: "S",
-    renk: "bg-primary-soft text-primary-hover",
-    text: 'Dawn FM talebine 2 yeni sunum geldi',
-    zaman: "12 dk önce",
-    href: "/ilan/dawn-fm-imzali-cd",
-  },
-  {
-    harf: "T",
-    renk: "bg-accent-soft text-accent-ink",
-    text: "aysenur.a sunumundan teklif istedi — fiyat ver",
-    zaman: "1 saat önce",
-    href: "/mesajlar",
-  },
-  {
-    harf: "K",
-    renk: "bg-ink-900 text-accent",
-    text: "Commodore 64 — kargo için son 2 gün",
-    zaman: "3 saat önce",
-    href: "/siparis",
-  },
-];
-
-// Okunmamış bildirim sayısı — /bildirimler'deki yeni:true sayısıyla aynı.
-const OKUNMAMIS = 4;
+import { bildirimlerimFor, okunmamisSayisi } from "@/lib/bildirimler";
+import { useAktifKullanici } from "@/lib/aktif-kullanici";
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  // Zil aktif hesabın bildirimlerini gösterir.
+  const aktif = useAktifKullanici();
+  const OKUNMAMIS = okunmamisSayisi(aktif.kullanici);
+  const bildirimler = bildirimlerimFor(aktif.kullanici).slice(0, 3);
 
   useEffect(() => {
     if (!open) return;
@@ -103,7 +76,7 @@ export function NotificationBell() {
               className="flex gap-2.5 border-b border-page px-4 py-3 hover:bg-subtle"
             >
               <span
-                className={`flex h-[30px] w-[30px] flex-none items-center justify-center rounded-full text-[11px] font-extrabold ${b.renk}`}
+                className={`flex h-[30px] w-[30px] flex-none items-center justify-center rounded-full text-[11px] font-extrabold ${b.avatar}`}
               >
                 {b.harf}
               </span>

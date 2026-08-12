@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getTalep, talepler } from "@/lib/data";
+import { talepGetir, taleplerGetir } from "@/lib/veri";
 import { IlanDetay } from "@/components/IlanDetay";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
-  const talep = getTalep(id);
+  const talep = await talepGetir(id);
   if (!talep) return { title: "Talep bulunamadı" };
   return {
     title: talep.baslik,
@@ -15,19 +15,20 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
-// Pre-render every seed talep at build time.
-export function generateStaticParams() {
-  return talepler.map((t) => ({ id: t.id }));
-}
+// NOT: Burada bilerek `generateStaticParams` yok. İlanlar sürekli açılıp
+// kapandığı için build anında sabitlemek yanlış olur — sayfa istek anında
+// sunucuda render edilir. Trafik arttığında `export const revalidate = 60`
+// ekleyerek ISR'ye geçilebilir.
 
 export default async function IlanPage({ params }: Params) {
   const { id } = await params;
-  const talep = getTalep(id);
+  const talep = await talepGetir(id);
   if (!talep) notFound();
 
+  const hepsi = await taleplerGetir();
   const benzer = [
-    ...talepler.filter((t) => t.id !== id && t.kategori === talep.kategori),
-    ...talepler.filter((t) => t.id !== id && t.kategori !== talep.kategori),
+    ...hepsi.filter((t) => t.id !== id && t.kategori === talep.kategori),
+    ...hepsi.filter((t) => t.id !== id && t.kategori !== talep.kategori),
   ].slice(0, 4);
 
   return <IlanDetay talep={talep} benzer={benzer} />;
