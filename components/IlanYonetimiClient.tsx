@@ -1,81 +1,158 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Chip } from "@/components/ui/Chip";
 import { Button, ButtonLink } from "@/components/ui/Button";
-import { getTalep, talepNo, talepGorselleri, fiyatText } from "@/lib/data";
+import { talepNo, talepGorselleri, fiyatText } from "@/lib/data";
+import type { Talep } from "@/lib/data";
+import { kalanGun, YAYIN_SURESI_GUN } from "@/lib/talep-durum";
 
-type Durum = "yayinda" | "durakladi" | "kaldirildi";
+// NOT: Bu ekran bir dönem tamamen kurguydu — "1.284 görüntülenme", 14 günlük
+// çubuk grafik, dönüşüm hunisi ve "kategorisinin 2,1 katı sunum aldı" cümlesi
+// sabit değerlerdi. Dahası, Duraklat / Kaldır düğmeleri yalnızca yerel state'i
+// değiştiriyordu: kullanıcı "Duraklatıldı" görüyor, sayfayı yenileyince ilan
+// yayında kalmaya devam ediyordu.
+//
+// Artık gösterilen her sayı gerçek kayıttan geliyor (bkz.
+// `talepIstatistikleri`) ve her düğme gerçek uca yazıyor. Görüntülenme
+// ölçülmediği için o kart ve ona dayanan grafik/huni kaldırıldı — ölçülmeyen
+// bir şeyi göstermenin doğru yolu yok.
 
-// Bu yönetim ekranı Dawn FM talebine ait — veriyi tek kaynaktan al.
-const TALEP_ID = "dawn-fm-imzali-cd";
-const talep = getTalep(TALEP_ID)!;
-const talepGorsel = talepGorselleri(TALEP_ID)[0];
+export type TalepIstatistik = {
+  sunum: number;
+  takip: number;
+  teklifli: number;
+  aktifSohbet: number;
+};
 
-const gunler = [
-  { gun: "29 Haz", say: 26, h: 26 },
-  { gun: "30 Haz", say: 31, h: 31 },
-  { gun: "1 Tem", say: 22, h: 22 },
-  { gun: "2 Tem", say: 40, h: 40 },
-  { gun: "3 Tem", say: 48, h: 48 },
-  { gun: "4 Tem", say: 36, h: 36 },
-  { gun: "5 Tem", say: 55, h: 55 },
-  { gun: "6 Tem", say: 61, h: 61 },
-  { gun: "7 Tem", say: 44, h: 44 },
-  { gun: "8 Tem", say: 70, h: 70 },
-  { gun: "9 Tem", say: 58, h: 58 },
-  { gun: "10 Tem", say: 86, h: 86 },
-  { gun: "11 Tem", say: 78, h: 78 },
-  { gun: "Bugün", say: 64, h: 64, bugun: true },
-];
+export function IlanYonetimiClient({
+  talep,
+  istatistik,
+  ilanlarim = [],
+}: {
+  /**
+   * Yönetilen ilan — oturum sahibinin kendi talebi, SUNUCUDAN gelir.
+   * Eskiden `oturumAnaTalepId()` + `getTalep()` ile çözülüyordu; ikisi de
+   * sabit (ve boş) dizileri okuduğu için ekran hiçbir zaman veri
+   * göstermiyordu.
+   */
+  talep?: Talep;
+  /** Gerçek kayıtlardan türetilmiş sayılar. */
+  istatistik?: TalepIstatistik;
+  /**
+   * Kullanıcının tüm ilanları — yalnızca seçici için (id + başlık).
+   *
+   * Sayfa eskiden her zaman ilk talebi açıyordu; birden fazla ilanı olan
+   * kullanıcı diğerlerine ulaşamıyordu.
+   */
+  ilanlarim?: { id: string; baslik: string }[];
+}) {
+  const router = useRouter();
+  const talepGorsel = talep ? talepGorselleri(talep)[0] : undefined;
 
-const huni = [
-  { ad: "Görüntülenme", sag: "1.284", sagMuted: false, w: 100, renk: "#7c3aed" },
-  { ad: "Takip eden", sag: "34 · %2,6", sagMuted: true, w: 42, renk: "#9f6ff0" },
-  { ad: "Sunum gönderen", sag: "12 · %0,9", sagMuted: true, w: 26, renk: "#c4a5f7" },
-  { ad: "Teklif istediğin", sag: "2", sagMuted: true, w: 13, renk: "#bef264" },
-  { ad: "Aktif sohbet", sag: "1", sagMuted: true, w: 7, renk: "#ddf6a8" },
-];
-
-const statCards = [
-  { etiket: "Görüntülenme", deger: "1.284", alt: "↑ %18 bu hafta", altKind: "good" as const },
-  { etiket: "Takip", deger: "34", alt: "↑ 6 yeni", altKind: "good" as const },
-  { etiket: "Sunum", deger: "12", alt: "İncele ›", altKind: "link" as const, href: "/sunum-karsilastirma" },
-  { etiket: "Teklif istenen", deger: "2", alt: "1 aktif sohbet ›", altKind: "link" as const, href: "/mesajlar" },
-];
-
-const uzatBtn =
-  "flex-1 cursor-pointer rounded-control bg-primary-soft px-3 py-3 text-[12.5px] font-bold text-primary-hover hover:bg-primary-soft-hover";
-
-export function IlanYonetimiClient() {
-  const [kalanGun, setKalanGun] = useState(21);
-  const [uzatildi, setUzatildi] = useState(false);
-  const [durum, setDurum] = useState<Durum>("yayinda");
+  const [isliyor, setIsliyor] = useState(false);
+  const [hata, setHata] = useState("");
   const [kaldirSoru, setKaldirSoru] = useState(false);
 
-  const surePct = Math.max(4, Math.min(100, Math.round((kalanGun / 30) * 100)));
-  // Yalnızca yayında olan ilanın süresi uzatılabilir.
-  const uzatilabilir = kalanGun < 30 && durum === "yayinda";
+  // Durum ve kalan gün ARTIK yerel state değil: ikisi de talebin kendi
+  // kaydından okunur, işlem sonrası `router.refresh()` ile tazelenir.
+  const donduruldu = Boolean(talep?.donduruldu);
+  const kaldirildi = Boolean(talep?.silindi);
+  const kalan = talep ? kalanGun(talep) : 0;
+  const surePct = Math.max(
+    4,
+    Math.min(100, Math.round((kalan / YAYIN_SURESI_GUN) * 100)),
+  );
 
-  function uzat(g: number) {
-    const yeni = Math.min(30, kalanGun + g);
-    if (yeni > kalanGun) {
-      setKalanGun(yeni);
-      setUzatildi(true);
+  const sayi = istatistik ?? {
+    sunum: 0,
+    takip: 0,
+    teklifli: 0,
+    aktifSohbet: 0,
+  };
+
+  /** Talebi dondurur ya da yeniden yayına alır — gerçek uca yazar. */
+  async function yayinDurumu(islem: "dondur" | "yayinla") {
+    if (isliyor || !talep) return;
+    setIsliyor(true);
+    setHata("");
+    try {
+      const r = await fetch(`/api/talepler/${talep.id}/yayin`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ islem }),
+      });
+      if (!r.ok) {
+        const v = await r.json().catch(() => ({}));
+        throw new Error(v.hata ?? "İşlem tamamlanamadı.");
+      }
+      router.refresh();
+    } catch (e) {
+      setHata(e instanceof Error ? e.message : "İşlem tamamlanamadı.");
+    } finally {
+      setIsliyor(false);
     }
   }
 
-  let durumText = `Yayında · ${kalanGun} gün kaldı`;
+  /** İlanı yayından kaldırır. Sunucu gerekirse arşivler (bkz. talepSil). */
+  async function ilaniKaldir() {
+    if (isliyor || !talep) return;
+    setIsliyor(true);
+    setHata("");
+    try {
+      const r = await fetch(`/api/talepler/${talep.id}`, { method: "DELETE" });
+      if (!r.ok) {
+        const v = await r.json().catch(() => ({}));
+        throw new Error(v.hata ?? "İlan kaldırılamadı.");
+      }
+      setKaldirSoru(false);
+      router.replace("/profil");
+      router.refresh();
+    } catch (e) {
+      setHata(e instanceof Error ? e.message : "İlan kaldırılamadı.");
+      setIsliyor(false);
+    }
+  }
+
+  let durumText = `Yayında · ${kalan} gün kaldı`;
   let durumVariant: "good" | "muted" | "danger" = "good";
-  if (durum === "durakladi") {
+  if (donduruldu) {
     durumText = "Duraklatıldı — satıcılara kapalı";
     durumVariant = "muted";
   }
-  if (durum === "kaldirildi") {
+  if (kaldirildi) {
     durumText = "Yayından kaldırıldı";
     durumVariant = "danger";
+  }
+
+  if (!talep) {
+    return (
+      <main className="mx-auto max-w-[640px] px-6 pb-20 pt-16">
+        <div className="rounded-panel border border-border bg-card p-9 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-2xl text-primary-hover">
+            ⌕
+          </div>
+          <h1 className="mt-5 text-[22px] font-extrabold text-ink-900">
+            Yönetilecek bir ilanın yok
+          </h1>
+          <p className="mx-auto mt-2.5 max-w-md text-sm font-medium leading-relaxed text-ink-500">
+            Talep açtığında gelen sunumları, takip sayısını ve kalan süreyi
+            bu sayfadan izleyebilirsin.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2.5">
+            <ButtonLink href="/ilan-ac" variant="primary" size="lg">
+              Aradığını İlan Et
+            </ButtonLink>
+            <ButtonLink href="/kesfet" variant="secondary" size="lg">
+              Talepleri Keşfet
+            </ButtonLink>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -102,8 +179,30 @@ export function IlanYonetimiClient() {
             İlan Yönetimi
           </h1>
           <div className="mt-1.5 text-[13px] font-medium text-ink-400">
-            {talep.baslik} · İlan No: {talepNo(TALEP_ID)}
+            {talep.baslik} · İlan No: {talepNo(talep.id)}
           </div>
+          {/* Birden fazla ilan varsa hangisinin yönetildiği seçilebilmeli;
+              yoksa ekran sessizce hep aynı ilanı açar. */}
+          {ilanlarim.length > 1 && (
+            <label className="mt-2.5 flex flex-wrap items-center gap-2 text-[12.5px] font-semibold text-ink-500">
+              Yönetilen ilan:
+              <select
+                value={talep.id}
+                onChange={(e) =>
+                  router.push(
+                    `/ilan-yonetimi?id=${encodeURIComponent(e.target.value)}`,
+                  )
+                }
+                className="max-w-[320px] rounded-control border-[1.5px] border-border-input bg-card px-3 py-2 text-[12.5px] font-semibold text-ink-900 outline-none focus:border-primary"
+              >
+                {ilanlarim.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.baslik}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
         <Chip variant={durumVariant} className="text-[11.5px]">
           {durumText}
@@ -113,105 +212,94 @@ export function IlanYonetimiClient() {
       <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_384px]">
         {/* ── SOL: İSTATİSTİK ── */}
         <div className="flex min-w-0 flex-col gap-4">
-          {/* Özet kartları */}
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {statCards.map((c) => (
-              <div
-                key={c.etiket}
-                className="rounded-card border border-border bg-card p-4"
-              >
-                <div className="text-[11.5px] font-medium text-ink-400">
-                  {c.etiket}
-                </div>
-                <div className="mt-2 text-2xl font-extrabold text-ink-900">
-                  {c.deger}
-                </div>
-                {c.altKind === "good" ? (
-                  <div className="mt-[7px] text-[11px] font-bold text-accent-ink">
-                    {c.alt}
-                  </div>
-                ) : (
-                  <Link
-                    href={c.href!}
-                    className="mt-[7px] inline-block text-[11px] font-bold"
-                  >
-                    {c.alt}
-                  </Link>
-                )}
+          {/* Özet kartları — hepsi gerçek kayıttan sayılır. */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-card border border-border bg-card p-4">
+              <div className="text-[11.5px] font-medium text-ink-400">
+                Takip
               </div>
-            ))}
+              <div className="mt-2 text-2xl font-extrabold text-ink-900">
+                {sayi.takip}
+              </div>
+              <div className="mt-[7px] text-[11px] font-medium text-ink-300">
+                {sayi.takip === 1 ? "kişi favoriledi" : "kişi favoriledi"}
+              </div>
+            </div>
+
+            <div className="rounded-card border border-border bg-card p-4">
+              <div className="text-[11.5px] font-medium text-ink-400">
+                Açık sunum
+              </div>
+              <div className="mt-2 text-2xl font-extrabold text-ink-900">
+                {sayi.sunum}
+              </div>
+              {sayi.sunum > 0 ? (
+                <Link
+                  href="/sunum-karsilastirma"
+                  className="mt-[7px] inline-block text-[11px] font-bold"
+                >
+                  Karşılaştır ›
+                </Link>
+              ) : (
+                <div className="mt-[7px] text-[11px] font-medium text-ink-300">
+                  henüz sunum yok
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-card border border-border bg-card p-4">
+              <div className="text-[11.5px] font-medium text-ink-400">
+                Pazarlık
+              </div>
+              <div className="mt-2 text-2xl font-extrabold text-ink-900">
+                {sayi.teklifli}
+              </div>
+              {sayi.aktifSohbet > 0 ? (
+                <Link
+                  href="/mesajlar"
+                  className="mt-[7px] inline-block text-[11px] font-bold"
+                >
+                  {sayi.aktifSohbet} aktif sohbet ›
+                </Link>
+              ) : (
+                <div className="mt-[7px] text-[11px] font-medium text-ink-300">
+                  teklif gelmedi
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Görüntülenme grafiği */}
+          {/* Sunum durumu */}
           <section className="rounded-panel border border-border bg-card p-[22px]">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="text-[17px] font-extrabold text-ink-900">
-                Günlük Görüntülenme
-              </h2>
-              <span className="text-xs font-semibold text-ink-400">
-                Son 14 gün
-              </span>
-            </div>
-            <div className="mt-[18px] flex h-[150px] items-end gap-2">
-              {gunler.map((g) => (
-                <div
-                  key={g.gun}
-                  title={`${g.gun} · ${g.say} görüntülenme`}
-                  className={`flex-1 rounded-t-md ${g.bugun ? "bg-primary" : ""}`}
-                  style={{
-                    height: `${g.h}%`,
-                    background: g.bugun ? undefined : "#d8ccf0",
-                    borderRadius: "6px 6px 3px 3px",
-                  }}
-                />
-              ))}
-            </div>
-            <div className="mt-2 flex justify-between text-[10.5px] font-semibold text-ink-300">
-              <span>29 Haz</span>
-              <span>6 Tem</span>
-              <span>Bugün</span>
-            </div>
-            <p className="mt-3.5 rounded-control bg-accent-soft px-3 py-2.5 text-xs font-medium leading-relaxed text-ink-400">
-              <strong className="text-accent-ink">
-                10 Temmuz&apos;daki sıçrama
-              </strong>
-              , ilanın &quot;Müzik &amp; Plak&quot; kategorisinde öne çıkmasıyla
-              geldi. Çubukların üzerine gelerek gün detayını görebilirsin.
-            </p>
-          </section>
-
-          {/* Dönüşüm hunisi */}
-          <section className="rounded-panel border border-border bg-card p-[22px]">
-            <h2 className="mb-[18px] text-[17px] font-extrabold text-ink-900">
-              Dönüşüm Hunisi
+            <h2 className="text-[17px] font-extrabold text-ink-900">
+              İlanın nerede?
             </h2>
-            <div className="flex flex-col gap-3">
-              {huni.map((h) => (
-                <div key={h.ad}>
-                  <div className="mb-1.5 flex justify-between text-[12.5px] font-semibold">
-                    <span className="text-ink-900">{h.ad}</span>
-                    <span
-                      className={
-                        h.sagMuted
-                          ? "text-ink-400"
-                          : "font-extrabold text-ink-900"
-                      }
-                    >
-                      {h.sag}
-                    </span>
-                  </div>
-                  <div
-                    className="h-[26px] rounded-lg"
-                    style={{ width: `${h.w}%`, background: h.renk }}
-                  />
-                </div>
-              ))}
-            </div>
-            <p className="mt-4 text-xs font-medium leading-relaxed text-ink-400">
-              Bu ilan, kategorisindeki ortalamanın{" "}
-              <strong className="text-accent-ink">2,1 katı</strong> sunum aldı.
-              Görüntülenme→sunum dönüşümünü artırmak için açıklamana pazarlık
-              payı ve durum toleransı ekleyebilirsin.
+            {sayi.sunum === 0 ? (
+              <p className="mt-3 text-[13px] font-medium leading-relaxed text-ink-500">
+                Henüz sunum gelmedi. Talebine uyan ürünü olan satıcılar
+                ilanını gördükçe sunum gönderir; sunumları yalnızca sen
+                görürsün.
+              </p>
+            ) : (
+              <p className="mt-3 text-[13px] font-medium leading-relaxed text-ink-500">
+                <strong className="text-ink-900">{sayi.sunum} açık sunum</strong>{" "}
+                değerlendirmeni bekliyor
+                {sayi.teklifli > 0 ? (
+                  <>
+                    {" "}
+                    ve{" "}
+                    <strong className="text-ink-900">
+                      {sayi.teklifli} tanesinde
+                    </strong>{" "}
+                    pazarlık başladı
+                  </>
+                ) : null}
+                . Sunumları yan yana koyup karşılaştırabilirsin.
+              </p>
+            )}
+            <p className="mt-3.5 rounded-control bg-page px-3 py-2.5 text-xs font-medium leading-relaxed text-ink-400">
+              Görüntülenme sayacı henüz yok; ölçülmeyen bir rakamı burada
+              göstermiyoruz.
             </p>
           </section>
         </div>
@@ -228,7 +316,7 @@ export function IlanYonetimiClient() {
                     alt=""
                     fill
                     sizes="62px"
-                    className="object-cover"
+                    className="object-contain"
                   />
                 )}
               </div>
@@ -242,7 +330,7 @@ export function IlanYonetimiClient() {
               </div>
             </div>
             <ButtonLink
-              href="/ilan/dawn-fm-imzali-cd"
+              href={`/ilan/${talep.id}`}
               variant="secondary"
               className="mt-3.5 w-full"
             >
@@ -250,14 +338,14 @@ export function IlanYonetimiClient() {
             </ButtonLink>
           </div>
 
-          {/* Süre */}
+          {/* Süre — kalan gün talebin kendi kaydından hesaplanır. */}
           <div className="rounded-card border border-border bg-card p-[18px]">
             <div className="flex items-baseline justify-between">
               <span className="text-sm font-extrabold text-ink-900">
                 İlan Süresi
               </span>
               <span className="text-[13.5px] font-extrabold text-ink-900">
-                {kalanGun} gün kaldı
+                {donduruldu ? "Duraklatıldı" : `${kalan} gün kaldı`}
               </span>
             </div>
             <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-[#efebf5]">
@@ -266,71 +354,54 @@ export function IlanYonetimiClient() {
                 style={{ width: `${surePct}%` }}
               />
             </div>
-            <div className="mt-3.5 flex gap-2">
-              {uzatilabilir ? (
-                <>
-                  <button type="button" onClick={() => uzat(7)} className={uzatBtn}>
-                    +7 gün uzat
-                  </button>
-                  <button type="button" onClick={() => uzat(14)} className={uzatBtn}>
-                    +14 gün uzat
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="flex-1 cursor-not-allowed rounded-control bg-[#efebf5] px-3 py-3 text-center text-[12.5px] font-bold text-ink-300">
-                    +7 gün uzat
-                  </div>
-                  <div className="flex-1 cursor-not-allowed rounded-control bg-[#efebf5] px-3 py-3 text-center text-[12.5px] font-bold text-ink-300">
-                    +14 gün uzat
-                  </div>
-                </>
-              )}
-            </div>
-            {uzatildi && (
-              <div className="mt-2.5 rounded-lg bg-accent-soft px-[11px] py-[9px] text-xs font-bold leading-snug text-accent-ink">
-                Süre uzatıldı ✓ — takipçilere bildirildi.
-              </div>
-            )}
+            {/*
+              "+7 / +14 gün uzat" düğmeleri kaldırıldı: karşılıkları yoktu,
+              yalnızca yerel sayacı artırıyorlardı. Sürenin gerçek karşılığı
+              yeniden yayına almaktır — sunucu sayacı YAYIN_SURESI_GUN'den
+              başlatır (bkz. talepYayinDurumu).
+            */}
             <p className="mt-3 text-[11px] font-medium leading-relaxed text-ink-300">
-              Süre en fazla 30 güne çıkarılabilir. Süre dolunca ilan yayından
-              kalkar; dilediğinde yeniden yayınlarsın.
+              İlan {YAYIN_SURESI_GUN} gün yayında kalır. Süre dolunca yayından
+              kalkar; yeniden yayına aldığında sayaç baştan başlar.
+              Duraklatırsan kalan süre saklanır.
             </p>
           </div>
 
-          {/* Eylemler */}
+          {/* Eylemler — hepsi gerçek uca yazar. */}
           <div className="rounded-card border border-border bg-card p-[18px]">
             <div className="mb-3 text-sm font-extrabold text-ink-900">
               Eylemler
             </div>
             <ButtonLink
-              href={`/ilan-ac?duzenle=${TALEP_ID}`}
+              href={`/ilan-ac?duzenle=${talep.id}`}
               variant="primary"
               className="w-full"
             >
               İlanı Düzenle
             </ButtonLink>
 
-            {durum !== "kaldirildi" &&
-              (durum === "yayinda" ? (
+            {!kaldirildi &&
+              (donduruldu ? (
+                <button
+                  type="button"
+                  disabled={isliyor}
+                  onClick={() => void yayinDurumu("yayinla")}
+                  className="mt-2 w-full cursor-pointer rounded-xl border-[1.5px] border-accent bg-accent-soft px-[18px] py-3.5 text-[13.5px] font-bold text-accent-ink hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isliyor ? "Yayınlanıyor…" : "Yayına Devam Et ▸"}
+                </button>
+              ) : (
                 <Button
                   variant="secondary"
                   className="mt-2 w-full"
-                  onClick={() => setDurum("durakladi")}
+                  disabled={isliyor}
+                  onClick={() => void yayinDurumu("dondur")}
                 >
-                  İlanı Duraklat
+                  {isliyor ? "Duraklatılıyor…" : "İlanı Duraklat"}
                 </Button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setDurum("yayinda")}
-                  className="mt-2 w-full cursor-pointer rounded-xl border-[1.5px] border-[#d9ebaa] bg-accent-soft px-[18px] py-3.5 text-[13.5px] font-bold text-accent-ink"
-                >
-                  Yayına Devam Et ▸
-                </button>
               ))}
 
-            {durum !== "kaldirildi" && !kaldirSoru && (
+            {!kaldirildi && !kaldirSoru && (
               <button
                 type="button"
                 onClick={() => setKaldirSoru(true)}
@@ -340,10 +411,13 @@ export function IlanYonetimiClient() {
               </button>
             )}
 
-            {durum !== "kaldirildi" && kaldirSoru && (
+            {!kaldirildi && kaldirSoru && (
               <div className="mt-2.5 rounded-control border border-danger-line bg-danger-soft p-3">
                 <div className="text-[12.5px] font-bold leading-snug text-danger">
-                  İlan kaldırılsın mı? 12 sunum ve 1 aktif sohbet kapanır.
+                  İlan kaldırılsın mı?
+                  {sayi.sunum > 0 || sayi.aktifSohbet > 0
+                    ? ` ${sayi.sunum} sunum ve ${sayi.aktifSohbet} sohbet kapanır.`
+                    : " Bu işlem geri alınamaz."}
                 </div>
                 <div className="mt-2.5 flex gap-2">
                   <button
@@ -355,38 +429,40 @@ export function IlanYonetimiClient() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setKaldirSoru(false);
-                      setDurum("kaldirildi");
-                    }}
-                    className="flex-1 cursor-pointer rounded-control bg-danger px-2.5 py-2.5 text-xs font-bold text-white"
+                    disabled={isliyor}
+                    onClick={() => void ilaniKaldir()}
+                    className="flex-1 cursor-pointer rounded-control bg-danger px-2.5 py-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Evet, kaldır
+                    {isliyor ? "Kaldırılıyor…" : "Evet, kaldır"}
                   </button>
                 </div>
               </div>
             )}
 
-            {durum === "kaldirildi" && (
+            {kaldirildi && (
               <div className="mt-2.5 rounded-control bg-page p-3 text-center">
                 <div className="text-[12.5px] font-bold leading-snug text-ink-500">
                   İlan yayından kaldırıldı.
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setDurum("yayinda")}
-                  className="mt-2 cursor-pointer p-1 text-[12.5px] font-bold text-primary"
-                >
-                  Geri al
-                </button>
               </div>
+            )}
+
+            {hata && (
+              <p
+                role="alert"
+                className="mt-2.5 rounded-control bg-danger-soft px-3 py-2.5 text-xs font-semibold leading-snug text-danger"
+              >
+                {hata}
+              </p>
             )}
           </div>
 
           {/* Bilgi + karşılaştır */}
           <div className="rounded-card bg-ink-900 p-[18px] text-white">
             <div className="text-[13.5px] font-extrabold">
-              Sunumların 12&apos;si de sana özel
+              {sayi.sunum > 0
+                ? `Sunumların ${sayi.sunum} tanesi de sana özel`
+                : "Gelen sunumlar yalnızca sana görünür"}
             </div>
             <p className="mt-2 text-[11.5px] font-medium leading-relaxed text-[#cfc5e8]">
               Sunumları yalnızca sen görürsün. Beğendiklerinden teklif iste —
@@ -397,7 +473,7 @@ export function IlanYonetimiClient() {
               variant="lime"
               className="mt-3 w-full"
             >
-              ⇄ Sunumları Karşılaştır
+              ⇄ Sunum Karşılaştırma
             </ButtonLink>
           </div>
         </aside>

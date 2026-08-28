@@ -1,12 +1,20 @@
 import Link from "next/link";
 
-const items = [
+/** Varsayılan aktif sekme rengi: patlıcan moru dolgu, beyaz yazı. */
+const AKTIF_VARSAYILAN = "bg-ink-900 text-white";
+
+const items: { label: string; href: string; aktifCls?: string }[] = [
   { label: "Profilim", href: "/profil" },
-  { label: "Siparişlerim", href: "/siparislerim" },
-  { label: "Kazançlarım", href: "/cuzdan" },
+  { label: "Mali Tablom", href: "/cuzdan" },
+  { label: "Aldıklarım", href: "/aldiklarim" },
+  // Satış tarafı yeşille anılır — aktifken lime dolgu, patlıcan moru yazı.
+  { label: "Sattıklarım", href: "/sattiklarim", aktifCls: "bg-accent text-footer" },
 ];
 
-/** Hesap sayfaları arası ortak üst menü (Profilim · Siparişlerim · Kazançlarım). */
+/**
+ * Hesap sayfaları arası ortak üst menü
+ * (Profilim · Mali Tablom · Aldıklarım · Sattıklarım).
+ */
 export function HesapNav({ active }: { active: string }) {
   return (
     <nav className="mb-5 flex flex-wrap gap-1.5">
@@ -19,7 +27,7 @@ export function HesapNav({ active }: { active: string }) {
             aria-current={isActive ? "page" : undefined}
             className={`rounded-full px-[15px] py-[10px] text-[13px] font-bold transition-colors ${
               isActive
-                ? "bg-ink-900 text-white"
+                ? (n.aktifCls ?? AKTIF_VARSAYILAN)
                 : "bg-card text-ink-500 ring-1 ring-inset ring-border hover:text-primary"
             }`}
           >

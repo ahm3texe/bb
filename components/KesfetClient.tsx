@@ -1,12 +1,20 @@
 "use client";
 
+import { karsilastirmaAnahtari } from "@/lib/metin";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { talepler, kategoriler, iller, kategoriSayilari } from "@/lib/data";
+import {
+  kategoriler,
+  iller,
+  talepDurumlari,
+  talepDurumUyar,
+} from "@/lib/data";
 import type { Talep } from "@/lib/data";
 import { TalepCard } from "@/components/TalepCard";
+import { muadilKabulEder, talepleriSirala } from "@/lib/talep-durum";
+import type { TalepSirasi } from "@/lib/talep-durum";
 
-type Sort = "yeni" | "eski" | "artan" | "azalan" | "sunum";
+type Sort = TalepSirasi;
 
 const PAGE = 6;
 
@@ -18,20 +26,41 @@ const sortOptions: { value: Sort; label: string }[] = [
   { value: "sunum", label: "En çok sunum" },
 ];
 
-// Ürün durumu filtresi — mevcut taleplerdeki gerçek durum değerlerinden.
-const durumSecenekleri = [...new Set(talepler.map((t) => t.durum))];
-
-function tr(s: string) {
-  return s.toLocaleLowerCase("tr");
-}
+// Arama karşılaştırması ortak anahtar üzerinden: `toLocaleLowerCase("tr")`
+// I → ı, İ → i yaptığı için "istanbul" araması "İstanbul" ilanını
+// bulamıyordu (bkz. lib/metin.ts).
+const tr = karsilastirmaAnahtari;
 
 export function KesfetClient({
+  talepler,
+  katSayilari,
   initialQ = "",
   initialKats = [],
+  initialMuadil = false,
+  ilgiliTalepler = [],
 }: {
+  /** Sunucudan gelen talepler — client bileşen veri katmanına dokunmaz. */
+  talepler: Talep[];
+  katSayilari: Record<string, number>;
   initialQ?: string;
   initialKats?: string[];
+  /**
+   * Yalnızca "muadil kabul" talepleri — `?muadil=1` ile gelir.
+   *
+   * Muadil kabul artık ilan kartında etiket olarak gösterilmiyor; alıcının
+   * bu tercihi ARAMADA işe yarar: muadil ürün getirebilen satıcı filtreyi
+   * işaretler ve yalnızca muadile açık talepleri görür.
+   */
+  initialMuadil?: boolean;
+  /** Kullanıcının kendi açtığı ya da sunum yaptığı talepler. */
+  ilgiliTalepler?: string[];
 }) {
+  // Ürün durumu filtresi — gelen taleplerdeki gerçek durum değerlerinden.
+  const durumSecenekleri = useMemo(
+    // Talep birden çok durum kabul edebilir; seçenekler tekil değerlerden kurulur.
+    () => [...new Set(talepler.flatMap((t) => talepDurumlari(t)))],
+    [talepler],
+  );
   const [q, setQ] = useState(initialQ);
   const [kats, setKats] = useState<string[]>(initialKats);
   const [il, setIl] = useState<string>("Tümü");
@@ -39,13 +68,9 @@ export function KesfetClient({
   const [maxF, setMaxF] = useState("");
   const [durumlar, setDurumlar] = useState<string[]>([]);
   const [sadeceAcil, setSadeceAcil] = useState(false);
-  const [sadecePazarlik, setSadecePazarlik] = useState(false);
-  const [sadeceDogrulanmis, setSadeceDogrulanmis] = useState(false);
+  const [sadeceMuadil, setSadeceMuadil] = useState(initialMuadil);
   const [sort, setSort] = useState<Sort>("yeni");
   const [visible, setVisible] = useState(PAGE);
-
-  // Kategori sayaçları tek kaynaktan (lib/data) — anasayfa/menü ile aynı.
-  const katSayilari = useMemo(() => kategoriSayilari(), []);
 
   const sonuclar = useMemo(() => {
     const qq = tr(q.trim());
@@ -55,38 +80,37 @@ export function KesfetClient({
     const filtered = talepler.filter((t) => {
       if (
         qq &&
-        !tr(t.baslik).includes(qq) &&
-        !tr(t.marka).includes(qq) &&
-        !tr(t.kategori).includes(qq)
+        // Arama başlıkla sınırlı kalmasın: ürün ağacı ve açıklama da taransın.
+        ![
+          t.baslik,
+          t.marka,
+          t.kategori,
+          t.aciklama,
+          t.tur,
+          t.cesit,
+          t.model,
+          t.renk,
+          t.il,
+          t.ilce,
+        ].some((alan) => alan && tr(alan).includes(qq))
       )
         return false;
       if (kats.length && !kats.includes(t.kategori)) return false;
       if (il !== "Tümü" && t.il !== il) return false;
       if (minN != null && t.fiyatNum < minN) return false;
       if (maxN != null && t.fiyatNum > maxN) return false;
-      if (durumlar.length && !durumlar.includes(t.durum)) return false;
+      // Talep hangi durumları kabul ediyorsa onlardan biri seçiliyse geçer.
+      if (durumlar.length && !durumlar.some((d) => talepDurumUyar(t, d)))
+        return false;
       if (sadeceAcil && !t.acil) return false;
-      if (sadecePazarlik && !t.pazarlik) return false;
-      if (sadeceDogrulanmis && !t.dogrulanmis) return false;
+      if (sadeceMuadil && !muadilKabulEder(t)) return false;
       return true;
     });
 
-    const sorted = [...filtered].sort((a, b) => {
-      switch (sort) {
-        case "eski":
-          return b.eklendi - a.eklendi; // en eski önce
-        case "artan":
-          return a.fiyatNum - b.fiyatNum;
-        case "azalan":
-          return b.fiyatNum - a.fiyatNum;
-        case "sunum":
-          return b.sunum - a.sunum;
-        default:
-          return a.eklendi - b.eklendi; // en yeni önce
-      }
-    });
-    return sorted;
-  }, [q, kats, il, minF, maxF, durumlar, sadeceAcil, sadecePazarlik, sadeceDogrulanmis, sort]);
+    // Karşılaştırma buraya gömülüydü ve test edilemiyordu; tarih
+    // sıralaması da tam bu yüzden uzun süre sessizce bozuk kaldı.
+    return talepleriSirala(filtered, sort);
+  }, [talepler, q, kats, il, minF, maxF, durumlar, sadeceAcil, sadeceMuadil, sort]);
 
   const goster = sonuclar.slice(0, visible);
   const dahaVar = visible < sonuclar.length;
@@ -112,8 +136,7 @@ export function KesfetClient({
     setMaxF("");
     setDurumlar([]);
     setSadeceAcil(false);
-    setSadecePazarlik(false);
-    setSadeceDogrulanmis(false);
+    setSadeceMuadil(false);
     setVisible(PAGE);
   }
 
@@ -125,14 +148,13 @@ export function KesfetClient({
     !!maxF ||
     durumlar.length > 0 ||
     sadeceAcil ||
-    sadecePazarlik ||
-    sadeceDogrulanmis;
+    sadeceMuadil;
 
   const inputCls =
-    "w-full min-w-0 box-border rounded-control border-[1.5px] border-border-input px-2.5 py-2 text-[12.5px] font-semibold text-ink-900 outline-none focus:border-primary";
+    "w-full min-w-0 box-border rounded-control border-[1.5px] border-border-input px-2.5 py-2 text-[13px] font-semibold text-ink-900 outline-none focus:border-primary";
 
   return (
-    <main className="mx-auto max-w-[1180px] px-6 pb-14 pt-[22px]">
+    <main className="mx-auto max-w-[1440px] px-6 pb-14 pt-[22px]">
       <div className="mb-[18px]">
         <h1 className="text-[28px] font-extrabold tracking-[-0.7px] text-ink-900">
           Talepleri Keşfet
@@ -147,15 +169,15 @@ export function KesfetClient({
         {/* ── Filtreler (ana ekrandan bağımsız kaydırılabilir) ── */}
         <aside className="rounded-card border border-border bg-card md:sticky md:top-[150px] md:max-h-[calc(100vh-170px)] md:overflow-y-auto md:overscroll-contain">
           <div className="p-[18px]">
-          <div className="flex items-baseline justify-between">
-            <span className="text-[14.5px] font-extrabold text-ink-900">
-              Filtreler
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[13px] font-extrabold text-ink-900">
+              FİLTRE
             </span>
             {hasFilters && (
               <button
                 type="button"
                 onClick={temizle}
-                className="cursor-pointer text-xs font-semibold text-danger"
+                className="cursor-pointer text-[13px] font-semibold text-danger"
               >
                 Temizle
               </button>
@@ -164,7 +186,7 @@ export function KesfetClient({
 
           {/* Öne çıkanlar */}
           <div className="mt-4">
-            <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[1.2px] text-ink-400">
+            <div className="mb-2.5 text-[13px] font-bold uppercase tracking-[1.2px] text-ink-400">
               Öne çıkanlar
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -175,49 +197,38 @@ export function KesfetClient({
                   setVisible(PAGE);
                 }}
                 aria-pressed={sadeceAcil}
-                className={`rounded-full border-[1.5px] px-3 py-[7px] text-[11.5px] font-bold transition-colors ${
+                className={`cursor-pointer rounded-full border-[1.5px] px-3 py-[7px] text-[13px] font-bold transition-colors ${
                   sadeceAcil
-                    ? "border-danger bg-danger text-white"
-                    : "border-border-input bg-card text-ink-500 hover:border-danger hover:text-danger"
+                    ? "border-acil bg-acil text-white"
+                    : "border-border-input bg-card text-ink-500 hover:border-acil hover:text-acil"
                 }`}
               >
                 ! Acil
               </button>
+              {/* Muadil kabul — alıcı, aradığı ürünün eşdeğerini de
+                  değerlendiriyorsa talebi burada görünür. Etiket ilan
+                  kartından kaldırıldı; tercih yalnızca bu filtreyle işe
+                  yarıyor. */}
               <button
                 type="button"
                 onClick={() => {
-                  setSadecePazarlik((v) => !v);
+                  setSadeceMuadil((v) => !v);
                   setVisible(PAGE);
                 }}
-                aria-pressed={sadecePazarlik}
-                className={`rounded-full border-[1.5px] px-3 py-[7px] text-[11.5px] font-bold transition-colors ${
-                  sadecePazarlik
-                    ? "border-accent bg-accent-soft text-accent-ink"
-                    : "border-border-input bg-card text-ink-500 hover:border-accent hover:text-accent-ink"
-                }`}
-              >
-                Pazarlığa açık
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSadeceDogrulanmis((v) => !v);
-                  setVisible(PAGE);
-                }}
-                aria-pressed={sadeceDogrulanmis}
-                className={`rounded-full border-[1.5px] px-3 py-[7px] text-[11.5px] font-bold transition-colors ${
-                  sadeceDogrulanmis
-                    ? "border-primary bg-primary-soft text-primary-hover"
+                aria-pressed={sadeceMuadil}
+                className={`cursor-pointer rounded-full border-[1.5px] px-3 py-[7px] text-[13px] font-bold transition-colors ${
+                  sadeceMuadil
+                    ? "border-primary bg-primary text-white"
                     : "border-border-input bg-card text-ink-500 hover:border-primary hover:text-primary"
                 }`}
               >
-                ✓ Doğrulanmış
+                Muadil kabul
               </button>
             </div>
           </div>
 
           <div className="mt-4">
-            <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[1.2px] text-ink-400">
+            <div className="mb-2.5 text-[13px] font-bold uppercase tracking-[1.2px] text-ink-400">
               Kategori
             </div>
             <div className="flex flex-col gap-1">
@@ -228,7 +239,7 @@ export function KesfetClient({
                     key={k.ad}
                     type="button"
                     onClick={() => toggleKat(k.ad)}
-                    className={`flex items-center gap-[9px] rounded-control px-[9px] py-2 text-left transition-colors ${
+                    className={`flex cursor-pointer items-center gap-[9px] rounded-control px-[9px] py-2 text-left transition-colors ${
                       active ? "bg-primary-soft" : "hover:bg-page"
                     }`}
                   >
@@ -242,7 +253,7 @@ export function KesfetClient({
                       {active ? "✓" : ""}
                     </span>
                     <span
-                      className={`flex-1 text-[12.5px] ${
+                      className={`flex-1 text-[13px] ${
                         active
                           ? "font-bold text-primary-hover"
                           : "font-semibold text-ink-700"
@@ -250,7 +261,7 @@ export function KesfetClient({
                     >
                       {k.ad}
                     </span>
-                    <span className="text-[11px] font-semibold text-ink-400">
+                    <span className="text-[13px] font-semibold text-ink-400">
                       {katSayilari[k.ad] ?? 0}
                     </span>
                   </button>
@@ -260,7 +271,7 @@ export function KesfetClient({
           </div>
 
           <div className="mt-[18px] border-t border-hairline pt-4">
-            <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[1.2px] text-ink-400">
+            <div className="mb-2.5 text-[13px] font-bold uppercase tracking-[1.2px] text-ink-400">
               İl
             </div>
             <select
@@ -282,7 +293,7 @@ export function KesfetClient({
           </div>
 
           <div className="mt-[18px] border-t border-hairline pt-4">
-            <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[1.2px] text-ink-400">
+            <div className="mb-2.5 text-[13px] font-bold uppercase tracking-[1.2px] text-ink-400">
               Fiyat aralığı (TL)
             </div>
             <div className="flex items-center gap-2">
@@ -297,7 +308,7 @@ export function KesfetClient({
                 placeholder="En az"
                 className={inputCls}
               />
-              <span className="flex-none text-xs font-semibold text-ink-300">
+              <span className="flex-none text-[13px] font-semibold text-ink-300">
                 —
               </span>
               <input
@@ -315,7 +326,7 @@ export function KesfetClient({
           </div>
 
           <div className="mt-[18px] border-t border-hairline pt-4">
-            <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[1.2px] text-ink-400">
+            <div className="mb-2.5 text-[13px] font-bold uppercase tracking-[1.2px] text-ink-400">
               Ürün durumu
             </div>
             <div className="flex flex-col gap-1">
@@ -326,7 +337,7 @@ export function KesfetClient({
                     key={d}
                     type="button"
                     onClick={() => toggleDurum(d)}
-                    className={`flex items-center gap-[9px] rounded-control px-[9px] py-2 text-left transition-colors ${
+                    className={`flex cursor-pointer items-center gap-[9px] rounded-control px-[9px] py-2 text-left transition-colors ${
                       active ? "bg-primary-soft" : "hover:bg-page"
                     }`}
                   >
@@ -340,7 +351,7 @@ export function KesfetClient({
                       {active ? "✓" : ""}
                     </span>
                     <span
-                      className={`flex-1 text-[12.5px] ${
+                      className={`flex-1 text-[13px] ${
                         active
                           ? "font-bold text-primary-hover"
                           : "font-semibold text-ink-700"
@@ -353,20 +364,18 @@ export function KesfetClient({
               })}
             </div>
           </div>
-
-          <div className="mt-[18px] rounded-control bg-accent-soft p-3">
-            <div className="text-xs font-bold text-accent-ink">Satıcı ipucu</div>
-            <p className="mt-1.5 text-[11.5px] font-medium leading-relaxed text-accent-ink">
-              Kendi kategorindeki talepleri takip et — yeni talep düşünce ilk
-              sunumu gönderen avantajlı.
-            </p>
-          </div>
           </div>
         </aside>
 
         {/* ── Sonuçlar ── */}
         <section className="min-w-0">
           <div className="mb-3.5 flex flex-wrap items-center gap-3">
+            <Link
+              href="/talep-alarmlari"
+              className="rounded-control border-[1.5px] border-accent bg-accent-soft px-3.5 py-[9px] text-[14px] font-extrabold text-accent-ink hover:brightness-95"
+            >
+              Talep Alarmı Kur
+            </Link>
             <span className="text-sm font-bold text-ink-900">
               {sonuclar.length} açık talep
             </span>
@@ -395,12 +404,6 @@ export function KesfetClient({
               ))}
             </div>
             <div className="ml-auto flex items-center gap-2">
-              <Link
-                href="/talep-alarmlari"
-                className="mr-1.5 rounded-full bg-primary-soft px-[13px] py-[9px] text-xs font-bold text-primary-hover hover:bg-primary-soft-hover"
-              >
-                Talep Alarmı Kur
-              </Link>
               <span className="text-[13.5px] font-bold text-ink-700">Sırala:</span>
               <select
                 value={sort}
@@ -436,9 +439,13 @@ export function KesfetClient({
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
                 {goster.map((t: Talep) => (
-                  <TalepCard key={t.id} talep={t} />
+                  <TalepCard
+                    key={t.id}
+                    talep={t}
+                    ilgili={ilgiliTalepler.includes(t.id)}
+                  />
                 ))}
               </div>
               {dahaVar && (

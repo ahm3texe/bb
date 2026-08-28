@@ -1,4 +1,6 @@
-// ── BulBana seed data (ported from the .dc.html design prototype) ──────
+import { ayniMi } from "./metin";
+import { sadeceFotograflar, sadeceVideolar } from "./gorsel";
+// ── Bulbana seed data (ported from the .dc.html design prototype) ──────
 // In production these become API/DB reads; here they are typed fixtures.
 
 export type Talep = {
@@ -10,28 +12,122 @@ export type Talep = {
   kategori: string;
   il: string;
   ilce: string;
+  /** Mahalle — ilan kartında ilçeyle birlikte görünür; opsiyonel. */
+  mahalle?: string;
   sunum: number;
   gun: number; // days left
+  /**
+   * Kabul edilen ürün durumlarının okunabilir özeti — "Hepsi", tek seçim
+   * ya da "Yenilenmiş / Az kullanılmış" gibi birleşik metin. Karşılaştırma
+   * için `durumlar` kullanılır (bkz. talepDurumlari).
+   */
   durum: string;
-  eklendi: number; // "days ago" metric, used for the "En yeni" sort
+  /** Alıcının işaretlediği durumlar; boş/yoksa hepsi kabul ediliyor demektir. */
+  durumlar?: string[];
+  /**
+   * ESKİ ALAN — "kaç gün önce açıldı". Yazılırken her zaman `0` konur ve
+   * bir daha güncellenmez, yani TEK BAŞINA GÜVENİLMEZ. Bir dönem ilan
+   * tarihi, keşfet sıralaması ve kart tarihi bunu okuyordu; sonuç olarak
+   * her ilan "bugün açılmış" görünüyor ve "En yeni/En eski" sıralaması
+   * hiçbir şey yapmıyordu.
+   *
+   * Gerçek kaynak `olusturuldu`. Gün farkı için `gecenGun(talep)`,
+   * sıralama için `yayinZamani(talep)` kullanın (lib/talep-durum.ts);
+   * ikisi de damgası olmayan eski kayıtlarda bu alana düşer.
+   */
+  eklendi: number;
+  /** Yayına alındığı an (ISO). Süre bitimi buradan hesaplanır. */
+  olusturuldu?: string;
+  /** Alıcının talebi dondurduğu an (ISO). Doluysa yayında değildir. */
+  donduruldu?: string;
+  /**
+   * Dondurulurken yayın süresinden kalan gün. Talep geri açıldığında
+   * sayaç sıfırdan değil, kaldığı yerden devam eder — dondurmak süre
+   * kaybettirmemeli.
+   */
+  dondurmaKalanGun?: number;
+  /**
+   * Talebin YAYINDAN KALDIRILDIĞI an (ISO). Kayıt tamamen silinmez —
+   * sohbet, sipariş ve sunum geçmişi iki tarafta da durmalı — ama herkese
+   * açık listelerden kalkar ve yeniden yayına alınamaz.
+   */
+  silindi?: string;
+  /**
+   * Talep neden yayından kalktı?
+   *
+   *   • `alisveris` — bir siparişe dönüştüğü için,
+   *   • `kullanici` — sahibi kendi isteğiyle kaldırdığı için.
+   *
+   * Kullanıcıya gösterilir: "neden listede yok?" sorusu ekranda
+   * yanıtlanmalı. Damgası olmayan eski kayıtlarda `undefined` kalır ve
+   * ekran gerekçe yerine bir şey yazmaz — uydurmaktansa boş bırakmak
+   * doğrudur.
+   */
+  kaldirmaSebebi?: "alisveris" | "kullanici";
+  /** Talebi açan kullanıcının kullanıcı adı — lib/kullanicilar ile eşleşir. */
+  sahibi: string;
   acil?: boolean;
+  /**
+   * Talebin kapandığı an (ISO). Gelen sunumlardan biri kabul ya da
+   * reddedilince dolar: talep artık yeni sunum kabul etmez ve bir gün
+   * sonra herkese açık listelerden kalkar.
+   */
+  kapandi?: string;
   pazarlik?: boolean;
-  dogrulanmis?: boolean; // kimliği doğrulanmış talep sahibi → mor rozet
   // İlan Aç formundan gelen ürün detayları — detay sayfasında "Beklentiler".
+  /** Kategori altındaki ürün türü (ör. Bilgisayar). */
+  tur?: string;
+  /** Tür altındaki çeşit (ör. Dizüstü). */
+  cesit?: string;
   model?: string;
   yil?: string;
   renk?: string;
   defoKabul?: boolean; // true → defolu olabilir, false → defosuz olmalı
+  muadilKabul?: boolean; // true → muadil/eşdeğer ürün de kabul ediliyor
+  /** Yüklenen görsel/video yolları (ilki kapak). Kullanıcı talepleri doldurur. */
+  gorseller?: string[];
 };
 
 export type Kategori = {
   ad: string;
   harf: string;
-  sayi: number;
 };
 
 export function fiyatText(n: number): string {
   return n.toLocaleString("tr-TR") + " TL";
+}
+
+/** Alıcının kabul edebileceği somut ürün durumları — "Hepsi" bunların tümü. */
+export const URUN_DURUMLARI = [
+  "Kutusu açılmamış",
+  "Yenilenmiş",
+  "Az kullanılmış",
+  "Kullanılmış",
+] as const;
+
+
+/**
+ * İlanın açılış tarihi (gün/ay/yıl) — DAMGADAN.
+ *
+ * İki hata birden düzeltir:
+ *
+ * 1. Fonksiyon eskiden `talep.eklendi` (kaç gün önce) alıyordu ve o alan
+ *    yazılırken her zaman `0` konup bir daha güncellenmiyordu: her ilan
+ *    "bugün açılmış" görünüyordu.
+ * 2. Gün sayısına çevirip geri tarihe dönmek bir gün KAYDIRIYORDU: 20
+ *    Ağustos 08:16'da açılan ilan, 24 Ağustos öğleden önce bakıldığında
+ *    3 tam gün ettiği için 21 Ağustos yazıyordu. Damgayı doğrudan
+ *    biçimlendirmek bu gidiş-dönüşü ortadan kaldırır.
+ *
+ * Damgası olmayan eski kayıtlarda `eklendi` alanına düşülür.
+ */
+export function ilanTarihi(talep: Pick<Talep, "olusturuldu" | "eklendi">): string {
+  const d = talep.olusturuldu ? new Date(talep.olusturuldu) : new Date();
+  if (!talep.olusturuldu || !Number.isFinite(d.getTime()))
+    d.setDate(d.getDate() - (talep.eklendi ?? 0));
+  const gun = String(d.getDate()).padStart(2, "0");
+  const ay = String(d.getMonth() + 1).padStart(2, "0");
+  return `${gun}/${ay}/${d.getFullYear()}`;
 }
 
 // Talep id'sinden sabit (deterministik) referans numarası — TEK KAYNAK.
@@ -42,244 +138,22 @@ export function talepNo(id: string): string {
   return `BB-${100000 + (h % 900000)}`;
 }
 
-// Kategori "açık talep" sayıları seed'den türetilir (aşağıdaki kategoriSayilari
-// ile birebir aynı) — anasayfa, mega-menü ve keşfet aynı sayıyı gösterir.
+// Kategori listesi — referans veri. Sıra bilinçli: en çok talep alan
+// kategoriler önde. Kategori şeridi, mega-menü ve keşfet filtresi bu diziyi
+// olduğu gibi kullanır.
+//
+// AÇIK TALEP SAYISI BURADA TUTULMAZ. `Kategori.sayi` diye sabit bir alan
+// vardı (3 / 2 / 0 / 2) ve gerçek taleplerle ilgisi yoktu: site boşken bile
+// "3 açık talep" yazıyordu. Gerçek sayılar `/api/kategori-sayilari`
+// ucundan gelir (bkz. lib/kategori-sayilari.ts) ve ölçüm alınamazsa sayı
+// hiç gösterilmez.
 export const kategoriler: Kategori[] = [
-  { ad: "Müzik & Plak", harf: "M", sayi: 3 },
-  { ad: "Elektronik", harf: "E", sayi: 3 },
-  { ad: "Koleksiyon", harf: "K", sayi: 2 },
-  { ad: "Oyun & Konsol", harf: "O", sayi: 1 },
-  { ad: "Moda & Aksesuar", harf: "M", sayi: 0 },
-  { ad: "Saat", harf: "S", sayi: 2 },
-  { ad: "Kitap & Dergi", harf: "K", sayi: 1 },
-  { ad: "Ev & Yaşam", harf: "E", sayi: 0 },
+  { ad: "Elektronik", harf: "E" },
+  { ad: "Saat", harf: "S" },
+  { ad: "Giyim & Aksesuar", harf: "G" },
+  { ad: "Koleksiyon & Değerli Eşyalar", harf: "K" },
 ];
 
-export const talepler: Talep[] = [
-  {
-    id: "dawn-fm-imzali-cd",
-    baslik: 'İmzalı "Dawn FM" CD arıyorum',
-    marka: "The Weeknd",
-    model: "Dawn FM",
-    yil: "2022",
-    defoKabul: false,
-    aciklama: "İmzalı, sertifikalı orijinal baskı; jelatinli olursa tercihim.",
-    fiyatNum: 4500,
-    kategori: "Müzik & Plak",
-    il: "İstanbul",
-    ilce: "Kadıköy",
-    sunum: 12,
-    gun: 21,
-    durum: "Yeni / az kullanılmış",
-    eklendi: 2,
-    pazarlik: true,
-    dogrulanmis: true,
-  },
-  {
-    id: "daft-punk-discovery-plak",
-    baslik: '"Discovery" ilk baskı plak arıyorum',
-    marka: "Daft Punk",
-    model: "Discovery (ilk baskı)",
-    yil: "2001",
-    defoKabul: false,
-    aciklama: "İlk baskı, çiziksiz plak; kapak temiz olsun.",
-    fiyatNum: 6000,
-    kategori: "Müzik & Plak",
-    il: "İstanbul",
-    ilce: "Beşiktaş",
-    sunum: 8,
-    gun: 12,
-    durum: "Fark etmez",
-    eklendi: 5,
-    dogrulanmis: true,
-  },
-  {
-    id: "nokia-3310-kutulu",
-    baslik: "3310 arıyorum — kutulu, çalışır",
-    marka: "Nokia",
-    model: "3310",
-    yil: "2000",
-    renk: "Mavi",
-    defoKabul: true,
-    aciklama: "Kutulu ve çalışır durumda; şarj aleti olursa süper.",
-    fiyatNum: 1500,
-    kategori: "Elektronik",
-    il: "Ankara",
-    ilce: "Çankaya",
-    sunum: 21,
-    gun: 6,
-    durum: "İyi durumda",
-    eklendi: 9,
-    acil: true,
-    pazarlik: true,
-  },
-  {
-    id: "sega-dreamcast-tam-set",
-    baslik: "Dreamcast tam set arıyorum (2 kol)",
-    marka: "Sega",
-    model: "Dreamcast",
-    yil: "1999",
-    renk: "Beyaz",
-    defoKabul: true,
-    aciklama: "2 kollu tam set; kabloları ve hafıza kartıyla olsun.",
-    fiyatNum: 4250,
-    kategori: "Oyun & Konsol",
-    il: "İzmir",
-    ilce: "Bornova",
-    sunum: 4,
-    gun: 18,
-    durum: "Çalışır durumda",
-    eklendi: 4,
-    dogrulanmis: true,
-  },
-  {
-    id: "seiko-5-otomatik",
-    baslik: "Vintage 5 otomatik saat arıyorum",
-    marka: "Seiko",
-    model: "5 Otomatik",
-    yil: "1970'ler",
-    renk: "Gümüş",
-    defoKabul: true,
-    aciklama: "Vintage otomatik, orijinal kadran; bakımlı tercih.",
-    fiyatNum: 3800,
-    kategori: "Saat",
-    il: "İzmir",
-    ilce: "Konak",
-    sunum: 6,
-    gun: 14,
-    durum: "Az kullanılmış",
-    eklendi: 6,
-  },
-  {
-    id: "lego-colosseum-10276",
-    baslik: "10276 Colosseum arıyorum — eksiksiz",
-    marka: "Lego",
-    model: "10276 Colosseum",
-    yil: "2020",
-    defoKabul: false,
-    aciklama: "Eksiksiz parça ve talimat kitapçığıyla; kutulu olsun.",
-    fiyatNum: 12000,
-    kategori: "Koleksiyon",
-    il: "Bursa",
-    ilce: "Nilüfer",
-    sunum: 3,
-    gun: 25,
-    durum: "Yeni / etiketli",
-    eklendi: 1,
-    dogrulanmis: true,
-  },
-  {
-    id: "polaroid-600-film",
-    baslik: "600 arıyorum — filmiyle olursa süper",
-    marka: "Polaroid",
-    model: "600 Serisi",
-    yil: "1990'lar",
-    renk: "Gri",
-    defoKabul: true,
-    aciklama: "Çalışır 600 serisi; filmiyle birlikte olması tercihim.",
-    fiyatNum: 2200,
-    kategori: "Elektronik",
-    il: "Antalya",
-    ilce: "Muratpaşa",
-    sunum: 5,
-    gun: 9,
-    durum: "Çalışır durumda",
-    eklendi: 8,
-    acil: true,
-  },
-  {
-    id: "commodore-64-kutulu",
-    baslik: "64 arıyorum — çalışır, kutulu",
-    marka: "Commodore",
-    model: "64 (C64)",
-    yil: "1982",
-    renk: "Bej",
-    defoKabul: true,
-    aciklama: "Çalışır C64, kutulu; kabloları tam olsun.",
-    fiyatNum: 5500,
-    kategori: "Elektronik",
-    il: "Adana",
-    ilce: "Seyhan",
-    sunum: 2,
-    gun: 27,
-    durum: "Fark etmez",
-    eklendi: 0.5,
-    acil: true,
-    pazarlik: true,
-    dogrulanmis: true,
-  },
-  {
-    id: "kraftwerk-man-machine-plak",
-    baslik: '"The Man-Machine" plak arıyorum',
-    marka: "Kraftwerk",
-    model: "The Man-Machine",
-    yil: "1978",
-    defoKabul: false,
-    aciklama: "Az kullanılmış plak; kapağı temiz olması tercihim.",
-    fiyatNum: 3200,
-    kategori: "Müzik & Plak",
-    il: "İstanbul",
-    ilce: "Kadıköy",
-    sunum: 4,
-    gun: 15,
-    durum: "Az kullanılmış",
-    eklendi: 3,
-  },
-  {
-    id: "tutunamayanlar-ilk-baski",
-    baslik: '"Tutunamayanlar" ilk baskı arıyorum',
-    marka: "Oğuz Atay",
-    model: "Tutunamayanlar (1. baskı)",
-    yil: "1972",
-    defoKabul: false,
-    aciklama: "İlk baskı; sayfaları temiz ve tam olsun.",
-    fiyatNum: 7500,
-    kategori: "Kitap & Dergi",
-    il: "İstanbul",
-    ilce: "Beyoğlu",
-    sunum: 6,
-    gun: 19,
-    durum: "Fark etmez",
-    eklendi: 7,
-    dogrulanmis: true,
-  },
-  {
-    id: "casio-a168-kutulu",
-    baslik: "A168 arıyorum — kutulu, sıfır tercih",
-    marka: "Casio",
-    model: "A168",
-    yil: "1980'ler",
-    renk: "Gümüş",
-    defoKabul: false,
-    aciklama: "Retro dijital A168; kutulu ve sıfır tercihim.",
-    fiyatNum: 950,
-    kategori: "Saat",
-    il: "Ankara",
-    ilce: "Çankaya",
-    sunum: 9,
-    gun: 11,
-    durum: "Yeni / etiketli",
-    eklendi: 2.5,
-  },
-  {
-    id: "beyblade-takimi-2000ler",
-    baslik: "2000'ler takımı arıyorum",
-    marka: "Beyblade",
-    model: "Metal Fusion serisi",
-    yil: "2000'ler",
-    defoKabul: true,
-    aciklama: "Orijinal 2000'ler takım; launcher'larıyla birlikte.",
-    fiyatNum: 1200,
-    kategori: "Koleksiyon",
-    il: "Bursa",
-    ilce: "Osmangazi",
-    sunum: 7,
-    gun: 8,
-    durum: "İyi durumda",
-    eklendi: 10,
-    acil: true,
-  },
-];
 
 export const iller = [
   "İstanbul",
@@ -290,32 +164,75 @@ export const iller = [
   "Adana",
 ] as const;
 
-export function getTalep(id: string): Talep | undefined {
-  return talepler.find((t) => t.id === id);
+// `getTalep(id)` de kaldırıldı: aynı boş `talepler` dizisinde arıyordu,
+// yani her zaman `undefined` dönüyordu. Sunucuda `talepGetir` (lib/veri.ts),
+// istemcide prop olarak gelen listede arama kullanılır — bileşenler zaten
+// kendi yerel `getTalep` yardımcılarını böyle kuruyor.
+
+/**
+ * Talebin kabul ettiği ürün durumları. Boş dizi = "Hepsi" (her durum uyar).
+ * Eski kayıtlarda yalnızca `durum` metni var; o da tek elemanlı listeye
+ * çevrilir.
+ */
+export function talepDurumlari(talep: Pick<Talep, "durum" | "durumlar">): string[] {
+  if (talep.durumlar?.length) return talep.durumlar;
+  if (!talep.durum || talep.durum === "Hepsi") return [];
+  // Birleşik metin ("A / B") de listeye açılır.
+  return talep.durum.split("/").map((d) => d.trim()).filter(Boolean);
 }
 
-// ── Talep görselleri (public/talepler/) ────────────────────────────────
-// Sağlanan görsel adedi. Listede olmayan talepler placeholder gösterir.
-// Yeni görsel geldikçe buraya id → adet eklenir.
-const GORSEL_ADEDI: Record<string, number> = {
-  "dawn-fm-imzali-cd": 4,
-  "daft-punk-discovery-plak": 4,
-  "nokia-3310-kutulu": 4,
-  "sega-dreamcast-tam-set": 4,
-  "seiko-5-otomatik": 3,
-  "lego-colosseum-10276": 4,
-};
-
-/** Bir talebin görsel yollarını döndürür (yoksa boş dizi → placeholder). */
-export function talepGorselleri(id: string): string[] {
-  const n = GORSEL_ADEDI[id] ?? 0;
-  return Array.from({ length: n }, (_, i) => `/talepler/${id}-${i + 1}.jpg`);
+/** Verilen ürün durumu talebin kabul listesine uyuyor mu? */
+export function talepDurumUyar(
+  talep: Pick<Talep, "durum" | "durumlar">,
+  durum: string,
+): boolean {
+  const liste = talepDurumlari(talep);
+  if (liste.length === 0) return true;
+  // Türkçe I/İ tuzağına düşmemek için ortak anahtar (bkz. lib/metin.ts).
+  return liste.some((d) => ayniMi(d, durum));
 }
 
-// Category counts derived from the seed (keeps the filter panel honest).
-export function kategoriSayilari(): Record<string, number> {
-  return talepler.reduce<Record<string, number>>((acc, t) => {
-    acc[t.kategori] = (acc[t.kategori] ?? 0) + 1;
-    return acc;
-  }, {});
+export function talepGorselleri(talep: Talep): string[] {
+  // YALNIZCA FOTOĞRAFLAR. Ham `gorseller` dizisi videoları da taşıyor ve
+  // bu fonksiyonun çıktısı doğrudan `<Image>` içine gidiyor: video yolu
+  // karışınca kart kapağı ve detay galerisi kırık görsel gösteriyordu.
+  return sadeceFotograflar(talep.gorseller);
 }
+
+/** Talebe yüklenmiş videolar — oynatıcıya verilir. */
+export function talepVideolari(talep: Talep): string[] {
+  return sadeceVideolar(talep.gorseller);
+}
+
+// BOŞ TOHUM DİZİSİNDEN OKUYAN İKİ FONKSİYON KALDIRILDI.
+//
+// `kategoriMarkalari(kategori)` ve `kategoriSayilari()` — ikisi de bu
+// dosyadaki `talepler` dizisini tarıyordu, o dizi ise HER ZAMAN BOŞTU
+// (gerçek talepler `.veri/talepler.json` içinde).
+//
+//   • `kategoriMarkalari` sunum formunda çağrılıyordu: muadil sunum yapan
+//     satıcı marka açılır kutusunda hiçbir zaman marka göremiyor, yalnızca
+//     "Diğer" çıkıyordu. Doğru kaynak ürün ağacı — `markalarFor` (İlan Aç
+//     formu zaten onu kullanıyordu).
+//   • `kategoriSayilari` hiçbir yerden çağrılmıyordu; gerçek sayılar
+//     `/api/kategori-sayilari` ucundan geliyor.
+
+/** "4500" → "4.500" — fiyat alanlarında yazarken binlik ayracı gösterir. */
+export function binlikAyir(rakamlar: string): string {
+  const temiz = rakamlar.replace(/\D/g, "");
+  return temiz ? Number(temiz).toLocaleString("tr-TR") : "";
+}
+
+/**
+ * İlan kartındaki görsel alanının en-boy oranı.
+ *
+ * TEK SABİTTEN OKUNUR: kartın kendisi (`TalepCard`) ve İlan Aç formundaki
+ * CANLI ÖNİZLEMESİ (`IlanAcForm`) aynı kutuyu çiziyor. İkisi ayrı ayrı
+ * yazıldığı sürece biri değişince öteki geride kalır ve önizleme, kartın
+ * gerçekte nasıl görüneceği hakkında yanlış söz vermiş olur.
+ *
+ * Oran 3/4 idi; kart ızgarada gereğinden uzun duruyordu. 4/5 hem dikey
+ * kalır (ürün fotoğrafları çoğunlukla dikey) hem de kartı yaklaşık bir
+ * satır boyu kısaltır.
+ */
+export const KART_GORSEL_ORANI = "aspect-[4/5]";

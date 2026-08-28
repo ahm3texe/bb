@@ -4,12 +4,7 @@ import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
 // Header/Footer gösterilmeyen tam ekran auth sayfaları.
-const authRoutes = [
-  "/giris",
-  "/sifre-sifirlama",
-  "/hos-geldin",
-  "/kimlik-dogrulama",
-];
+const authRoutes = ["/giris", "/sifre-sifirlama"];
 
 // Kendi çatısı olan iç araçlar — site Header/Footer'ı olmadan, tam genişlik.
 const bareRoutes = ["/admin"];

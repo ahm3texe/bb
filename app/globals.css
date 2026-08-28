@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ── BulBana design tokens (from the design handoff) ──────────────────
+/* ── Bulbana design tokens (from the design handoff) ──────────────────
    Reverse-marketplace: violet primary, lime accent, purple-tinted neutrals.
    Light theme only — the source design has no dark variant. */
 @theme {
@@ -13,9 +13,11 @@
   /* Ink (purple-tinted neutrals) */
   --color-ink-900: #2e1a47;
   --color-ink-700: #4b4263;
-  --color-ink-500: #6a6280;
-  --color-ink-400: #8b84a3;
-  --color-ink-300: #a6a0b8;
+  --color-ink-500: #615a77;
+  /* ink-400 ve ink-300 ikincil metin renkleridir; beyaz kart üzerinde
+     WCAG AA küçük metin eşiğini (4.5:1) geçecek kadar koyu tutulur. */
+  --color-ink-400: #6e6786;
+  --color-ink-300: #787193;
 
   /* Primary (violet) */
   --color-primary: #7c3aed;
@@ -23,11 +25,17 @@
   --color-primary-soft: #f3e8ff;
   --color-primary-soft-hover: #e9d5ff;
 
-  /* Accent (lime) */
+  /* Accent (lime) — sitedeki tek yeşil: #bef264.
+     Sitedeki TEK yeşil budur; koyu/zeytin yeşili kullanılmaz.
+     Dolgu/zemin rolleri (accent, accent-hover, accent-soft) birebir aynı tondur;
+     hover geri bildirimi renk değiştirerek değil, brightness ile verilir.
+     accent-ink ise lime üzerine yazılan metnin rengidir — okunurluk için
+     patlıcan moru; beyaz zeminde lime metin okunmadığı için o yerlerde de
+     bu ton kullanılır. */
   --color-accent: #bef264;
-  --color-accent-hover: #a3e635;
-  --color-accent-soft: #ecfccb;
-  --color-accent-ink: #4d7c0f;
+  --color-accent-hover: #bef264;
+  --color-accent-soft: #bef264;
+  --color-accent-ink: #1f1235;
 
   /* Dark surfaces */
   --color-footer: #1f1235;
@@ -37,11 +45,24 @@
   --color-border: #e7e2f0;
   --color-border-input: #dad3e8;
 
+  /* Acil (aciliyet vurgusu) — kan kırmızısı.
+     Hata rengiyle (danger) bilerek ayrıldı: biri "yanlış bir şey oldu",
+     diğeri "bu talep acele" demek. Beyaz üzerinde 5.9:1, yani küçük metin
+     için de AA eşiğini geçer; solid zeminde beyaz yazı da aynı oranda okunur. */
+  --color-acil: #cc0000;
+  --color-acil-soft: #fdeaea;
+  --color-acil-line: #f6cccc;
+
   /* Semantic */
   --color-danger: #b4443e;
   --color-danger-soft: #fbeae9;
   --color-danger-line: #eed4d2;
-  --color-star: #c99a2e;
+  /* Yıldız — civciv sarısı. Hem ikon dolgusu hem puan yazısı bu tondur.
+     UYARI: beyaz/kart zemininde kontrastı ~1,4:1, yani WCAG AA'nın 4,5:1
+     eşiğinin çok altında. Puan sayıları bilinçli bir tasarım tercihiyle bu
+     renge alındı; okunurluk gerekirse --color-star-ink koyulaştırılmalı. */
+  --color-star: #ffd93d;
+  --color-star-ink: #ffd93d;
 
   /* Radii */
   --radius-card: 16px;
@@ -109,6 +130,33 @@
     outline-offset: 2px;
   }
 
+  /* Seçilebilir/tıklanabilir her şeyde el imleci — tek tek `cursor-pointer`
+     yazmayı beklemeden. Utility katmanı gerektiğinde bunu ezebilir. */
+  a[href],
+  button,
+  select,
+  summary,
+  label[for],
+  [role="tab"],
+  [role="button"],
+  [role="option"],
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="range"],
+  input[type="color"],
+  input[type="file"],
+  input[type="submit"],
+  input[type="reset"] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled,
+  input:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -133,3 +181,5 @@
   }
 }
 
+
+/* yıldız tonu güncellendi */

@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Yerel veri deposu ve kullanıcı yüklemeleri
+/.veri
+/public/yuklemeler

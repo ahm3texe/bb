@@ -10,7 +10,7 @@ const columns: Col[] = [
       { label: "Talepleri keşfet", href: "/kesfet" },
       { label: "Aradığını ilan et", href: "/ilan-ac" },
       { label: "Nasıl çalışır?", href: "/nasil-calisir" },
-      { label: "%7 komisyon modeli", href: "/nasil-calisir#komisyon" },
+      { label: "%4 komisyon modeli", href: "/nasil-calisir#komisyon" },
     ],
   },
   {
@@ -60,8 +60,8 @@ export function Footer() {
               </div>
             </div>
             <p className="mt-4 max-w-[280px] text-[12.5px] font-medium leading-relaxed text-[#b4a8d6]">
-              Türkiye&apos;nin ters pazar platformu: ilanı alıcı açar, fiyatı
-              alıcı belirler; satıcılar ürünleriyle talebe gelir.
+              Türkiye&apos;nin ters pazar platformu: Talebi alıcı oluşturur,
+              satıcılar ise uygun ürünleriyle doğrudan teklif sunar.
             </p>
             <div className="mt-3.5 text-[12px] font-semibold leading-relaxed text-[#8b7bb0]">
               İstanbul, Türkiye
@@ -89,10 +89,20 @@ export function Footer() {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-4 py-6 text-[12px] text-[#8b7bb0]">
-          <span>© 2026 BulBana Teknoloji A.Ş. — Tüm hakları saklıdır.</span>
+          <span>© 2026 Bulbana Teknoloji A.Ş. — Tüm hakları saklıdır.</span>
+          {/*
+            "Ödemeler 256-bit SSL ile korunur" YAZIYORDU ve bu satır HER
+            SAYFANIN altında duruyordu. İki sebeple yanlıştı: ortada tahsil
+            edilen bir ödeme yok (sağlayıcı bağlı değil, bkz. BACKEND.md →
+            Ödeme gerçek değil) ve "256-bit SSL" sitenin dağıtımına bağlı
+            bir şey, ürünün vaat edebileceği bir özellik değil.
+
+            Güvence cümlesi ise tasarlanan akışı anlatıyor; ödeme ekranında
+            prototip uyarısı zaten var. Tahsilat bağlandığında bu satır
+            gerçek bir ifadeyle geri gelebilir.
+          */}
           <span className="text-[11.5px] font-semibold">
-            Ödemeler 256-bit SSL ile korunur · Alıcı onayına kadar BulBana
-            güvencesinde
+            Alıcı onayına kadar ödeme satıcıya aktarılmaz
           </span>
         </div>
       </div>

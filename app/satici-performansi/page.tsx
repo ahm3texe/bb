@@ -1,51 +1,112 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SaticiPerformansiBaslik } from "@/components/SaticiPerformansiBaslik";
 import { fiyatText } from "@/lib/data";
+import {
+  islemlerGetir,
+  gonderdigimSunumlarGetir,
+  kullaniciMetrikleriGetir,
+} from "@/lib/veri";
+import { satislar, satisOzeti, komisyon } from "@/lib/islemler";
+import type { Islem } from "@/lib/islemler";
+import { istekKullaniciAdi } from "@/lib/oturum-sunucu";
+import { sureMetni } from "@/lib/olcum";
+
+// Oturuma bağlı: sayfa giriş yapmış hesabın verisini gösteriyor ve kimlik
+// çerezden geliyor. Ön-render edilirse derleme anında istek bağlamı olmaz
+// ve ekran oturumsuz çizilirdi.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Satıcı Performansım",
   description:
-    "Sunum, teklif ve satış dönüşümlerin, aylık net kazancın ve satıcı seviyen — hangi taleplere sunum yapmanın kazandırdığını gör.",
+    "Sunum, teklif ve satış dönüşümlerin, aylık net kazancın ve kargo performansın — hepsi tamamlanmış kayıtlardan.",
 };
 
-// Aylık net kazanç — "Net kazanç" kartındaki rakam bu dizinin toplamına eşittir.
-const aylikKazanc = [
-  { ay: "Şub", tam: "Şubat", tl: 3150 },
-  { ay: "Mar", tam: "Mart", tl: 5400 },
-  { ay: "Nis", tam: "Nisan", tl: 4230 },
-  { ay: "May", tam: "Mayıs", tl: 7560 },
-  { ay: "Haz", tam: "Haziran", tl: 8930 },
-  { ay: "Tem", tam: "Temmuz", tl: 9450 },
-];
-const netKazanc = aylikKazanc.reduce((t, m) => t + m.tl, 0); // 38.720 TL
-const maxAy = Math.max(...aylikKazanc.map((m) => m.tl));
+/*
+ * BU SAYFA TAMAMEN UYDURMAYDI.
+ *
+ * Aylık kazanç grafiği, dönüşüm hunisi, kategori dağılımı ve "Usta Satıcı"
+ * seviye tablosu koda gömülü sabit sayılardı. Sayfa hiçbir prop almıyor,
+ * hiçbir uca bağlanmıyordu — yani HİÇ SATIŞI OLMAYAN bir hesap da
+ * "38.720 TL net kazanç", "214/50 tamamlanmış satış ✓" ve "%98 zamanında
+ * kargo" görüyordu. Uydurma bir finansal geçmiş sunan, sitedeki en
+ * yanıltıcı ekrandı.
+ *
+ * Artık her sayı tamamlanmış kayıtlardan türetiliyor. Ölçülmeyen hiçbir şey
+ * gösterilmiyor: kaldırılan bölümler (kategori dönüşüm ortalaması, satıcı
+ * seviyesi) ölçülebilir olmadıkları için geri EKLENMEMELİ.
+ */
 
-// Sunum → satış hunisi — bar genişliği ilk adıma (gönderilen sunum) oranlanır.
-const huni = [
-  { ad: "Gönderilen sunum", n: 47, renk: "bg-primary" },
-  { ad: "Teklif istendi", n: 19, renk: "bg-[#9f6ff0]" },
-  { ad: "Pazarlık sohbeti", n: 16, renk: "bg-[#c4a5f7]" },
-  { ad: "Satış", n: 11, renk: "bg-accent" },
-];
-const huniBase = huni[0].n;
-
-const katDonusum = [
-  { ad: "Müzik & Plak", yuzde: 31, satis: 7, renk: "bg-accent", vurgu: true },
-  { ad: "Koleksiyon", yuzde: 22, satis: 3, renk: "bg-[#c4a5f7]", vurgu: false },
-  { ad: "Elektronik", yuzde: 12, satis: 1, renk: "bg-[#c4a5f7]", vurgu: false },
+const AY_ADI = [
+  "Oca", "Şub", "Mar", "Nis", "May", "Haz",
+  "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara",
 ];
 
-// Usta Satıcı kriterleri — karşılanan (lime + ✓) / karşılanmayan (mor bar).
-const seviyeKriter = [
-  { ad: "50 tamamlanmış satış", deger: "214/50 ✓", genislik: 100, karsilandi: true },
-  { ad: "Puan ortalaması ≥ 4.9", deger: "4.8/4.9", genislik: 92, karsilandi: false },
-  { ad: "Zamanında kargo ≥ %97", deger: "%98 ✓", genislik: 100, karsilandi: true },
-];
+/** Son 6 ayın net satış geliri — tamamlanmış işlemlerden. */
+function aylikKazanc(islemler: Islem[]): { ay: string; tl: number }[] {
+  const simdi = new Date();
+  const aylar: { ay: string; anahtar: string; tl: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(simdi.getFullYear(), simdi.getMonth() - i, 1);
+    aylar.push({
+      ay: AY_ADI[d.getMonth()],
+      anahtar: `${d.getFullYear()}-${d.getMonth()}`,
+      tl: 0,
+    });
+  }
+  for (const i of islemler) {
+    const d = new Date(i.tarihIso);
+    const anahtar = `${d.getFullYear()}-${d.getMonth()}`;
+    const hedef = aylar.find((a) => a.anahtar === anahtar);
+    if (hedef) hedef.tl += i.fiyat - komisyon(i);
+  }
+  return aylar.map(({ ay, tl }) => ({ ay, tl }));
+}
 
-export default function SaticiPerformansiPage() {
+export default async function SaticiPerformansiPage() {
+  const ben = await istekKullaniciAdi();
+  const [islemler, sunumlarim, metrik] = await Promise.all([
+    islemlerGetir(ben),
+    gonderdigimSunumlarGetir(ben),
+    kullaniciMetrikleriGetir(ben),
+  ]);
+
+  const kendiSatislari = satislar(islemler, ben);
+  const { net } = satisOzeti(islemler, ben);
+  const aylar = aylikKazanc(kendiSatislari);
+  const maxAy = Math.max(1, ...aylar.map((m) => m.tl));
+
+  // Huni GERÇEK sunum kayıtlarından: gönderilen → alıcı yanıtladı → satışa döndü.
+  const gonderilen = sunumlarim.length;
+  const yanitlanan = sunumlarim.filter(
+    (s) => s.sonuc === "kabul" || s.sonuc === "red",
+  ).length;
+  const satisaDonen = metrik.tamamlananSatis;
+  const huni = [
+    { ad: "Gönderilen sunum", n: gonderilen, renk: "bg-primary" },
+    { ad: "Alıcı yanıtladı", n: yanitlanan, renk: "bg-[#9f6ff0]" },
+    { ad: "Satışa döndü", n: satisaDonen, renk: "bg-accent" },
+  ];
+  const huniBase = Math.max(1, gonderilen);
+
+  // Kategori dağılımı — tamamlanmış satışlardan sayılır.
+  const kategoriler = new Map<string, number>();
+  for (const i of kendiSatislari)
+    kategoriler.set(i.kategori, (kategoriler.get(i.kategori) ?? 0) + 1);
+  const katDagilim = [...kategoriler.entries()]
+    .map(([ad, satis]) => ({ ad, satis }))
+    .sort((a, b) => b.satis - a.satis)
+    .slice(0, 5);
+
+  const hicVeriYok = gonderilen === 0 && kendiSatislari.length === 0;
+
+  const kartCls = "rounded-[14px] border border-border bg-card p-4";
+  const etiketCls = "text-[11.5px] font-medium leading-snug text-ink-400";
+  const sayiCls = "mt-2 text-2xl font-extrabold text-ink-900";
+
   return (
     <main className="mx-auto max-w-[1180px] px-6 pb-16 pt-[18px]">
-      {/* Breadcrumb */}
       <nav className="py-1.5 pb-3.5 text-[12.5px] font-medium text-ink-400">
         <Link href="/profil" className="text-ink-400 hover:text-primary">
           Profilim
@@ -54,262 +115,220 @@ export default function SaticiPerformansiPage() {
         <span className="font-semibold text-ink-900">Satıcı Performansım</span>
       </nav>
 
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-[28px] font-extrabold tracking-[-0.7px] text-ink-900">
-            Satıcı Performansım
-          </h1>
-          <div className="mt-[5px] text-[13px] font-medium text-ink-400">
-            Son 90 gün · emre.k
-          </div>
+      <SaticiPerformansiBaslik />
+
+      {hicVeriYok ? (
+        <div className="rounded-panel border border-border bg-card p-9 text-center">
+          <h2 className="text-[20px] font-extrabold text-ink-900">
+            Henüz ölçecek bir şey yok
+          </h2>
+          <p className="mx-auto mt-2.5 max-w-md text-sm font-medium leading-relaxed text-ink-500">
+            Sunum göndermeye başladığında dönüşüm oranların, kargo
+            performansın ve net kazancın burada birikir.
+          </p>
+          <Link
+            href="/kesfet"
+            className="mt-5 inline-block rounded-control bg-primary px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-primary-hover"
+          >
+            Talepleri Keşfet
+          </Link>
         </div>
-        <span className="rounded-full bg-ink-900 px-3 py-2 text-[11.5px] font-bold text-accent">
-          Güvenilir Satıcı
-        </span>
-      </div>
-
-      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_384px]">
-        {/* ── SOL ── */}
-        <div className="flex min-w-0 flex-col gap-4">
-          {/* Özet kartları */}
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="rounded-[14px] border border-border bg-card p-4">
-              <div className="text-[11.5px] font-medium text-ink-400">
-                Gönderilen sunum
+      ) : (
+        <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_384px]">
+          {/* ── SOL ── */}
+          <div className="flex min-w-0 flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div className={kartCls}>
+                <div className={etiketCls}>Gönderilen sunum</div>
+                <div className={sayiCls}>{gonderilen}</div>
               </div>
-              <div className="mt-2 text-2xl font-extrabold text-ink-900">47</div>
-            </div>
-            <div className="rounded-[14px] border border-border bg-card p-4">
-              <div className="text-[11.5px] font-medium text-ink-400">
-                Teklif istenen
-              </div>
-              <div className="mt-2 text-2xl font-extrabold text-ink-900">19</div>
-              <div className="mt-[7px] text-[11px] font-bold text-accent-ink">
-                %40 dönüşüm
-              </div>
-            </div>
-            <div className="rounded-[14px] border border-border bg-card p-4">
-              <div className="text-[11.5px] font-medium text-ink-400">
-                Satışa dönen
-              </div>
-              <div className="mt-2 text-2xl font-extrabold text-ink-900">11</div>
-              <div className="mt-[7px] text-[11px] font-bold text-accent-ink">
-                %23 dönüşüm
-              </div>
-            </div>
-            <div className="rounded-[14px] border border-border bg-card p-4">
-              <div className="text-[11.5px] font-medium leading-snug text-ink-400">
-                Net kazanç · Son 6 ay
-              </div>
-              <div className="mt-2 text-2xl font-extrabold text-ink-900">
-                {fiyatText(netKazanc)}
-              </div>
-              <Link
-                href="/cuzdan"
-                className="mt-[7px] inline-block text-[11px] font-bold text-primary hover:text-primary-hover"
-              >Kazançlarım ›
-              </Link>
-            </div>
-          </div>
-
-          {/* Sunum hunisi */}
-          <section className="rounded-panel border border-border bg-card p-[22px]">
-            <h2 className="mb-[18px] text-[17px] font-extrabold text-ink-900">
-              Sunum → Satış Hunisi
-            </h2>
-            <div className="flex flex-col gap-3">
-              {huni.map((h, i) => {
-                const pct = Math.round((h.n / huniBase) * 100);
-                return (
-                  <div key={h.ad}>
-                    <div className="mb-1.5 flex justify-between text-[12.5px] font-semibold">
-                      <span className="text-ink-900">{h.ad}</span>
-                      {i === 0 ? (
-                        <span className="font-extrabold text-ink-900">{h.n}</span>
-                      ) : (
-                        <span className="text-ink-400">
-                          {h.n} · %{pct}
-                        </span>
-                      )}
-                    </div>
-                    <div
-                      className={`h-[26px] rounded-lg ${h.renk}`}
-                      style={{ width: `${pct}%` }}
-                    />
+              <div className={kartCls}>
+                <div className={etiketCls}>Alıcı yanıtladı</div>
+                <div className={sayiCls}>{yanitlanan}</div>
+                {gonderilen > 0 && (
+                  <div className="mt-[7px] text-[11px] font-bold text-accent-ink">
+                    %{Math.round((yanitlanan / gonderilen) * 100)} dönüşüm
                   </div>
-                );
-              })}
-            </div>
-            <p className="mt-4 text-xs font-medium leading-relaxed text-ink-400">
-              Kategori ortalaması %14 — satış dönüşümün ortalamanın{" "}
-              <strong className="text-accent-ink">1,6 katı</strong>. Sunumlarına
-              video eklediğinde teklif isteme oranın %52&apos;ye çıkıyor.
-            </p>
-          </section>
-
-          {/* Aylık kazanç */}
-          <section className="rounded-panel border border-border bg-card p-[22px]">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="text-[17px] font-extrabold text-ink-900">
-                Aylık Net Kazanç
-              </h2>
-              <span className="text-xs font-semibold text-ink-400">
-                Son 6 ay · komisyon düşülmüş
-              </span>
-            </div>
-            <div className="mt-[18px] flex h-[150px] items-end gap-3.5">
-              {aylikKazanc.map((m, i) => {
-                const son = i === aylikKazanc.length - 1;
-                const h = Math.round((m.tl / maxAy) * 73);
-                return (
-                  <div
-                    key={m.ay}
-                    className="flex h-full flex-1 flex-col justify-end"
-                  >
-                    <div
-                      title={`${m.tam} · ${fiyatText(m.tl)}`}
-                      className={`rounded-t-md ${son ? "bg-primary" : "bg-[#d8ccf0]"}`}
-                      style={{ height: `${h}%` }}
-                    />
+                )}
+              </div>
+              <div className={kartCls}>
+                <div className={etiketCls}>Satışa dönen</div>
+                <div className={sayiCls}>{satisaDonen}</div>
+                {gonderilen > 0 && (
+                  <div className="mt-[7px] text-[11px] font-bold text-accent-ink">
+                    %{Math.round((satisaDonen / gonderilen) * 100)} dönüşüm
                   </div>
-                );
-              })}
-            </div>
-            <div className="mt-2 grid grid-cols-6 gap-3.5 text-center text-[10.5px] font-semibold text-ink-300">
-              {aylikKazanc.map((m) => (
-                <span key={m.ay}>{m.ay}</span>
-              ))}
-            </div>
-          </section>
-
-          {/* Kategori dönüşümü */}
-          <section className="rounded-panel border border-border bg-card p-[22px]">
-            <h2 className="mb-1 text-[17px] font-extrabold text-ink-900">
-              Kategoriye Göre Satış Dönüşümü
-            </h2>
-            <p className="mb-4 text-[12.5px] font-medium leading-normal text-ink-400">
-              Hangi taleplere sunum göndermenin sana daha çok kazandırdığını
-              gösterir.
-            </p>
-            <div className="flex flex-col gap-3">
-              {katDonusum.map((k) => (
-                <div
-                  key={k.ad}
-                  className="grid grid-cols-[110px_1fr_92px] items-center gap-3 sm:grid-cols-[130px_1fr_92px]"
+                )}
+              </div>
+              <div className={kartCls}>
+                <div className={etiketCls}>Net kazanç · Toplam</div>
+                <div className={sayiCls}>{fiyatText(net)}</div>
+                <Link
+                  href="/cuzdan"
+                  className="mt-[7px] inline-block text-[11px] font-bold text-primary hover:text-primary-hover"
                 >
-                  <span className="text-[12.5px] font-semibold leading-snug text-ink-900">
-                    {k.ad}
-                  </span>
-                  <div className="h-[18px] overflow-hidden rounded-md bg-hairline">
-                    <div
-                      className={`h-full ${k.renk}`}
-                      style={{ width: `${k.yuzde * 2}%` }}
-                    />
-                  </div>
-                  <span
-                    className={`text-right text-xs font-bold ${
-                      k.vurgu ? "text-accent-ink" : "text-ink-500"
-                    }`}
-                  >
-                    %{k.yuzde} · {k.satis} satış
-                  </span>
-                </div>
-              ))}
+                  Mali Tablom ›
+                </Link>
+              </div>
             </div>
-          </section>
+
+            {/* Huni */}
+            <section className="rounded-panel border border-border bg-card p-[22px]">
+              <h2 className="mb-[18px] text-[17px] font-extrabold text-ink-900">
+                Sunum → Satış Hunisi
+              </h2>
+              <div className="flex flex-col gap-3">
+                {huni.map((h, i) => {
+                  const pct = Math.round((h.n / huniBase) * 100);
+                  return (
+                    <div key={h.ad}>
+                      <div className="mb-1.5 flex justify-between text-[12.5px] font-semibold">
+                        <span className="text-ink-900">{h.ad}</span>
+                        {i === 0 ? (
+                          <span className="font-extrabold text-ink-900">{h.n}</span>
+                        ) : (
+                          <span className="text-ink-400">
+                            {h.n} · %{pct}
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        className={`h-[26px] rounded-lg ${h.renk}`}
+                        style={{ width: `${Math.max(2, pct)}%` }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="mt-4 text-xs font-medium leading-relaxed text-ink-400">
+                Sayılar gönderdiğin sunum kayıtlarından gelir. “Alıcı
+                yanıtladı”, kabul ya da ret kararı verilmiş sunumları sayar;
+                hâlâ beklemede olanlar dahil değildir.
+              </p>
+            </section>
+
+            {/* Kategori dağılımı */}
+            {katDagilim.length > 0 && (
+              <section className="rounded-panel border border-border bg-card p-[22px]">
+                <h2 className="mb-[18px] text-[17px] font-extrabold text-ink-900">
+                  Hangi kategoride satıyorsun?
+                </h2>
+                <div className="flex flex-col gap-3">
+                  {katDagilim.map((k) => {
+                    const pct = Math.round(
+                      (k.satis / Math.max(1, kendiSatislari.length)) * 100,
+                    );
+                    return (
+                      <div key={k.ad}>
+                        <div className="mb-1.5 flex justify-between text-[12.5px] font-semibold">
+                          <span className="text-ink-900">{k.ad}</span>
+                          <span className="text-ink-400">
+                            {k.satis} satış · %{pct}
+                          </span>
+                        </div>
+                        <div
+                          className="h-[22px] rounded-lg bg-accent"
+                          style={{ width: `${Math.max(2, pct)}%` }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+          </div>
+
+          {/* ── SAĞ ── */}
+          <aside className="flex flex-col gap-4">
+            <section className="rounded-panel border border-border bg-card p-[22px]">
+              <h2 className="mb-[18px] text-[17px] font-extrabold text-ink-900">
+                Aylık net kazanç
+              </h2>
+              <div className="flex h-[150px] items-end gap-2">
+                {aylar.map((m, i) => (
+                  <div key={`${m.ay}-${i}`} className="flex flex-1 flex-col items-center gap-1.5">
+                    <div
+                      className="w-full rounded-t-md bg-primary"
+                      style={{ height: `${Math.max(2, (m.tl / maxAy) * 110)}px` }}
+                      title={`${m.ay}: ${fiyatText(m.tl)}`}
+                    />
+                    <span className="text-[10.5px] font-semibold text-ink-400">
+                      {m.ay}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-xs font-medium leading-relaxed text-ink-400">
+                Komisyon düşülmüş net tutar; alıcının onayladığı ay sayılır.
+              </p>
+            </section>
+
+            <section className="rounded-panel border border-border bg-card p-[22px]">
+              <h2 className="mb-3.5 text-[17px] font-extrabold text-ink-900">
+                Güven sinyallerin
+              </h2>
+              <dl className="flex flex-col gap-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-[13px] font-medium text-ink-500">
+                    Tamamlanan satış
+                  </dt>
+                  <dd className="text-[15px] font-extrabold text-ink-900">
+                    {metrik.tamamlananSatis}
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-[13px] font-medium text-ink-500">
+                    Zamanında kargo
+                  </dt>
+                  <dd className="text-[15px] font-extrabold text-ink-900">
+                    {/* Hiç gönderisi olmayan satıcıya "%0" göstermek onu
+                        sözünde durmamış gibi gösterirdi. */}
+                    {metrik.zamanindaKargo === null
+                      ? "Henüz gönderi yok"
+                      : `%${metrik.zamanindaKargo}`}
+                  </dd>
+                </div>
+                {/* İki ölçülen süre. Bunlar bir dönem profil kartında
+                    "Yanıt süresi · ~1 saat" / "Ort. kargolama · 1 gün" diye
+                    KODA GÖMÜLÜ sabitlerdi (bkz. lib/olcum.ts). */}
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-[13px] font-medium text-ink-500">
+                    Ort. kargolama
+                  </dt>
+                  <dd className="text-[15px] font-extrabold text-ink-900">
+                    {metrik.ortKargoSaat === null
+                      ? "Henüz gönderi yok"
+                      : sureMetni(metrik.ortKargoSaat)}
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-[13px] font-medium text-ink-500">
+                    Ort. yanıt süresi
+                  </dt>
+                  <dd className="text-[15px] font-extrabold text-ink-900">
+                    {metrik.ortYanitSaat === null
+                      ? "Henüz ölçülmedi"
+                      : sureMetni(metrik.ortYanitSaat)}
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-[13px] font-medium text-ink-500">
+                    Kusurundan düşen sipariş
+                  </dt>
+                  <dd className="text-[15px] font-extrabold text-ink-900">
+                    {metrik.iptalEdilenSatis}
+                  </dd>
+                </div>
+              </dl>
+              <p className="mt-3.5 text-xs font-medium leading-relaxed text-ink-400">
+                Bu sayılar alıcıların sunumunu değerlendirirken gördüğü
+                değerlerdir. Ölçüm yapılamayan bir değer “—” görünür;
+                uydurma sayı gösterilmez.
+              </p>
+            </section>
+          </aside>
         </div>
-
-        {/* ── SAĞ ── */}
-        <aside className="flex flex-col gap-3.5 lg:sticky lg:top-[150px]">
-          {/* Satıcı seviyesi */}
-          <div className="rounded-card border border-border bg-card p-[18px]">
-            <div className="flex items-baseline justify-between">
-              <span className="text-sm font-extrabold text-ink-900">
-                Satıcı Seviyesi
-              </span>
-              <span className="rounded-full bg-ink-900 px-[9px] py-1.5 text-[10.5px] font-bold text-accent">
-                Güvenilir Satıcı
-              </span>
-            </div>
-            <p className="mt-2.5 text-xs font-medium leading-relaxed text-ink-500">
-              Sonraki seviye: <strong className="text-ink-900">Usta Satıcı</strong>{" "}
-              — profilinde altın rozet + taleplerde öncelikli sıralama.
-            </p>
-            <div className="mt-3.5 flex flex-col gap-2.5">
-              {seviyeKriter.map((k) => (
-                <div key={k.ad}>
-                  <div className="mb-[5px] flex justify-between text-[11.5px] font-semibold">
-                    <span className="text-ink-500">{k.ad}</span>
-                    <span className="font-bold text-ink-900">{k.deger}</span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-[#efebf5]">
-                    <div
-                      className={`h-full rounded-full ${
-                        k.karsilandi ? "bg-accent" : "bg-primary"
-                      }`}
-                      style={{ width: `${k.genislik}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* İpuçları */}
-          <div className="rounded-card bg-ink-900 p-[18px] text-white">
-            <div className="text-[13.5px] font-extrabold">Dönüşümünü artır</div>
-            <div className="mt-3 flex flex-col gap-2.5">
-              {[
-                "Sunumuna video ekle — teklif oranın %40'tan %52'ye çıkıyor.",
-                "Talep açıldıktan sonraki ilk 6 saatte sunum gönder.",
-                "Talep alarmı kur — eşleşmeleri kaçırma.",
-              ].map((t, i) => (
-                <div key={i} className="flex items-start gap-2.5">
-                  <span className="mt-px flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full bg-accent text-[9.5px] font-extrabold text-ink-900">
-                    {i + 1}
-                  </span>
-                  <span className="text-[11.5px] font-medium leading-relaxed text-[#cfc5e8]">
-                    {t}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <Link
-              href="/talep-alarmlari"
-              className="mt-3.5 block rounded-[10px] bg-accent py-3 text-center text-[12.5px] font-bold text-ink-900 hover:bg-accent-hover"
-            >
-              🔔 Talep Alarmı Kur
-            </Link>
-          </div>
-
-          {/* Kısayollar */}
-          <div className="rounded-card border border-border bg-card p-4">
-            <div className="text-xs font-bold uppercase tracking-[1px] text-ink-400">
-              Kısayollar
-            </div>
-            <div className="mt-2.5 flex flex-col gap-2.5">
-              <Link
-                href="/kesfet"
-                className="text-[12.5px] font-semibold text-primary hover:text-primary-hover"
-              >
-                Yeni talepleri keşfet ›
-              </Link>
-              <Link
-                href="/profil?tab=sunumlar"
-                className="text-[12.5px] font-semibold text-primary hover:text-primary-hover"
-              >
-                Sunumlarım ›
-              </Link>
-              <Link
-                href="/cuzdan"
-                className="text-[12.5px] font-semibold text-primary hover:text-primary-hover"
-              >
-                Kazançlarım &amp; çekim ›
-              </Link>
-            </div>
-          </div>
-        </aside>
-      </div>
+      )}
     </main>
   );
 }

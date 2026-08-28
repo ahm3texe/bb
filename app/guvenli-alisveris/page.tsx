@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Güvenli Alışveriş Rehberi",
   description:
-    "BulBana Güvencesi ödemeni korur; bu rehber güvenceyi tamamlayan alışkanlıkları, alıcı-satıcı ipuçlarını ve kırmızı bayrakları anlatır.",
+    "Bulbana Güvencesi ödemeni korur; bu rehber güvenceyi tamamlayan alışkanlıkları, alıcı-satıcı ipuçlarını ve kırmızı bayrakları anlatır.",
 };
 
 const aliciIpuclari = [
@@ -40,8 +40,8 @@ const saticiIpuclari = [
     rest: " Sunumda belirttiğin her kusur seni korur; belirtmediğin her kusur itirazda aleyhine işler.",
   },
   {
-    lead: "3 gün kuralını ciddiye al.",
-    rest: " Süre dolarsa satış otomatik iptal olur ve ödeme alıcıya döner; yetişemeyeceksen alıcıyla sohbetten iptali konuş.",
+    lead: "Sunumda verdiğin kargo sözünü ciddiye al.",
+    rest: " Sayaç senin taahhüdünden işler (en fazla 3 gün). Süre dolarsa satış otomatik iptal olur ve ödeme alıcıya döner; yetişemeyeceksen alıcıyla sohbetten iptali konuş.",
   },
 ];
 
@@ -70,7 +70,7 @@ export default function GuvenliAlisverisPage() {
         Güvenli Alışveriş Rehberi
       </h1>
       <p className="mb-6 mt-2.5 text-pretty text-sm font-medium leading-[1.6] text-ink-500">
-        BulBana Güvencesi ödemeni korur — bu rehber ise güvenceyi tamamlayan
+        Bulbana Güvencesi ödemeni korur — bu rehber ise güvenceyi tamamlayan
         alışkanlıkları anlatır. Beş dakikada oku, her işlemde uygula.
       </p>
 
@@ -85,11 +85,13 @@ export default function GuvenliAlisverisPage() {
           </h2>
         </div>
         <p className="mt-3 text-pretty text-[13px] font-medium leading-[1.65] text-[#cfc5e8]">
-          IBAN&apos;a havale, kapıda ödeme, &quot;kaparo&quot; — hiçbiri BulBana
+          IBAN&apos;a havale, kapıda ödeme, &quot;kaparo&quot; — hiçbiri Bulbana
           Güvencesi kapsamında değildir. Ödeme yalnızca sipariş ekranından
-          yapılır; sen ürünü onaylayana kadar paran BulBana güvencesinde beklemede
-          tutulur. Platform dışı ödeme isteyen herkesi, konuşma ne kadar ikna
-          edici olursa olsun,{" "}
+          yapılır; sen ürünü onaylayana kadar paran Bulbana güvencesinde beklemede
+          tutulur. Kargo teslimi bildirildikten sonra yanıt vermek için 24
+          saatin var; bu sürede yanıt gelmezse alışveriş otomatik onaylanır.
+          Platform dışı ödeme isteyen herkesi, konuşma ne kadar ikna edici
+          olursa olsun,{" "}
           <strong className="text-accent">bildir ve işlemi durdur</strong>.
         </p>
       </section>
@@ -163,7 +165,8 @@ export default function GuvenliAlisverisPage() {
           <Link href="/destek" className="font-bold">
             Destek talebi aç
           </Link>{" "}
-          — Trust &amp; Safety ekibi 24 saat içinde inceler. Kurallar için{" "}
+          — destek ekibi kaydı inceler ve sonucu bildirimlerine yazar. Kurallar
+          için{" "}
           <Link href="/ilan-kurallari" className="font-bold">
             İlan Kuralları
           </Link>
