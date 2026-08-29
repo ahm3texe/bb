@@ -6,6 +6,7 @@ type Variant =
   | "secondary"
   | "sellerOutline"
   | "lime"
+  | "eggplant"
   | "danger"
   | "ghost";
 type Size = "sm" | "md" | "lg";
@@ -19,8 +20,10 @@ const variants: Record<Variant, string> = {
     "bg-card text-ink-900 border border-border-input hover:border-primary hover:text-primary",
   // Satıcı yönlü ikincil buton — yeşil (satıcı=yeşil eşlemesi).
   sellerOutline:
-    "bg-accent-soft text-accent-ink border border-[#d9ee9f] hover:border-accent-ink hover:bg-[#e3f7bd]",
-  lime: "bg-accent text-ink-900 hover:bg-accent-hover",
+    "bg-accent-soft text-accent-ink border border-accent hover:border-accent-ink hover:brightness-95",
+  lime: "bg-accent text-ink-900 hover:brightness-95",
+  // Footer ile aynı patlıcan moru — ağır/kapanış eylemleri için.
+  eggplant: "bg-footer text-white hover:bg-footer-line",
   danger:
     "bg-card text-danger border border-danger-line hover:bg-danger-soft",
   ghost: "bg-transparent text-ink-500 hover:text-ink-900",

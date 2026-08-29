@@ -3,49 +3,29 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
-type Bildirim = {
-  harf: string;
-  renk: string; // tailwind bg + text classes for the avatar dot
-  text: string;
-  zaman: string;
-  href: string;
-};
-
-const bildirimler: Bildirim[] = [
-  {
-    harf: "S",
-    renk: "bg-primary-soft text-primary-hover",
-    text: 'Dawn FM talebine 2 yeni sunum geldi',
-    zaman: "12 dk önce",
-    href: "/ilan/dawn-fm-imzali-cd",
-  },
-  {
-    harf: "T",
-    renk: "bg-accent-soft text-accent-ink",
-    text: "aysenur.a sunumundan teklif istedi — fiyat ver",
-    zaman: "1 saat önce",
-    href: "/mesajlar",
-  },
-  {
-    harf: "K",
-    renk: "bg-ink-900 text-accent",
-    text: "Commodore 64 — kargo için son 2 gün",
-    zaman: "3 saat önce",
-    href: "/siparislerim",
-  },
-];
-
-// Okunmamış bildirim sayısı — /bildirimler'deki yeni:true sayısıyla aynı.
-const OKUNMAMIS = 4;
+import { useBildirimler } from "@/lib/bildirim-akisi";
+import { gecenSure } from "@/lib/bildirimler";
+import { useAktifKullanici } from "@/lib/aktif-kullanici";
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  // Zil aktif hesabın bildirimlerini gösterir.
+  const aktif = useAktifKullanici();
+  const {
+    bildirimler: hepsi,
+    oku,
+    sil,
+  } = useBildirimler(aktif?.kullanici ?? "");
+  const OKUNMAMIS = hepsi.filter((b) => b.yeni).length;
+  const bildirimler = hepsi.slice(0, 3);
+
   useEffect(() => {
     if (!open) return;
     function onDoc(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
@@ -57,6 +37,37 @@ export function NotificationBell() {
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  /*
+   * ZİYARETÇİDE ZİL BİR BAĞLANTIDIR.
+   *
+   * Oturumsuz kullanıcıda zil yine açılıyor ve boş bir panel gösteriyordu:
+   * ne bildirim vardı ne de giriş yapması gerektiğini söyleyen bir şey.
+   * Artık doğrudan giriş ekranına götürüyor ve giriş sonrası bildirimlere
+   * düşürüyor.
+   */
+  if (!aktif)
+    return (
+      <Link
+        href={`/giris?devam=${encodeURIComponent("/bildirimler")}`}
+        aria-label="Bildirimler — giriş yap"
+        className="relative flex h-[44px] w-[44px] items-center justify-center rounded-full border border-border bg-card transition-colors hover:border-primary"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-[22px] w-[22px] text-ink-700"
+          aria-hidden
+        >
+          <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.7 21a2 2 0 01-3.4 0" />
+        </svg>
+      </Link>
+    );
 
   return (
     <div className="relative" ref={ref}>
@@ -80,9 +91,12 @@ export function NotificationBell() {
           <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.7 21a2 2 0 01-3.4 0" />
         </svg>
-        <span className="absolute -right-1 -top-1 flex h-[19px] min-w-[19px] items-center justify-center rounded-full bg-accent px-1 text-[10.5px] font-extrabold text-ink-900">
-          {OKUNMAMIS}
-        </span>
+        {/* Sıfır rozet bilgi taşımıyor; hiç basılmıyor. */}
+        {OKUNMAMIS > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-[19px] min-w-[19px] items-center justify-center rounded-full bg-accent px-1 text-[10.5px] font-extrabold text-ink-900">
+            {OKUNMAMIS}
+          </span>
+        )}
       </button>
 
       {open && (
@@ -95,15 +109,23 @@ export function NotificationBell() {
               {OKUNMAMIS} yeni
             </span>
           </div>
-          {bildirimler.map((b, i) => (
+          {bildirimler.map((b) => (
             <Link
-              key={i}
+              // Anahtar dizi sırası değil KİMLİK: silme sonrası sıra
+              // kayınca React yanlış satırı yeniden kullanırdı.
+              key={b.id}
               href={b.href}
-              onClick={() => setOpen(false)}
-              className="flex gap-2.5 border-b border-page px-4 py-3 hover:bg-subtle"
+              onClick={() => {
+                // Rozet ancak okundu bilgisi SUNUCUYA yazıldığı için
+                // düşüyor; bir dönem `yeni` alanını değiştiren hiçbir kod
+                // yoktu ve sayı hiç sıfırlanmıyordu.
+                void oku(b.id);
+                setOpen(false);
+              }}
+              className="flex items-start gap-2.5 border-b border-page px-4 py-3 hover:bg-subtle"
             >
               <span
-                className={`flex h-[30px] w-[30px] flex-none items-center justify-center rounded-full text-[11px] font-extrabold ${b.renk}`}
+                className={`flex h-[30px] w-[30px] flex-none items-center justify-center rounded-full text-[11px] font-extrabold ${b.avatar}`}
               >
                 {b.harf}
               </span>
@@ -112,9 +134,24 @@ export function NotificationBell() {
                   {b.text}
                 </span>
                 <span className="mt-[3px] block text-[10.5px] font-medium text-ink-300">
-                  {b.zaman}
+                  {gecenSure(b)}
                 </span>
               </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  // Satır bir bağlantı: tıklama yutulmazsa silerken
+                  // bildirimin hedefine de gidilirdi.
+                  e.preventDefault();
+                  e.stopPropagation();
+                  void sil(b.id);
+                }}
+                aria-label="Bildirimi sil"
+                title="Bildirimi sil"
+                className="-mr-1 flex h-6 w-6 flex-none cursor-pointer items-center justify-center rounded-full text-[14px] font-bold leading-none text-ink-300 transition-colors hover:bg-danger-soft hover:text-danger"
+              >
+                ×
+              </button>
             </Link>
           ))}
           <Link

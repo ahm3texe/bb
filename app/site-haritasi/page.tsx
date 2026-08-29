@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Site Haritası",
   description:
-    "BulBana'nın tüm ekranları, kullanıcı yolculuğu sırasına göre gruplanmış tıklanabilir bir hub.",
+    "Bulbana'nın tüm ekranları, kullanıcı yolculuğu sırasına göre gruplanmış tıklanabilir bir hub.",
 };
 
 type Kart = { href: string; ad: string; aciklama: string; ok?: boolean };
@@ -35,12 +35,7 @@ const gruplar: Grup[] = [
       {
         href: "/sifre-sifirlama",
         ad: "Şifre Sıfırlama",
-        aciklama: "E-posta → OTP → yeni şifre",
-      },
-      {
-        href: "/hos-geldin",
-        ad: "Hoş Geldin (Onboarding)",
-        aciklama: "Rol + ilgi alanı seçimi",
+        aciklama: "Kullanıcı adı → e-postaya kod → yeni şifre",
       },
     ],
   },
@@ -57,15 +52,9 @@ const gruplar: Grup[] = [
         ok: true,
       },
       {
-        href: "/ilan/dawn-fm-imzali-cd",
+        href: "/kesfet",
         ad: "İlan Sayfası",
-        aciklama: "Çift görünüm: satıcı + ilan sahibi, sunum modali",
-        ok: true,
-      },
-      {
-        href: "/sunum-detay",
-        ad: "Sunum Detay",
-        aciklama: "Galeri + video + satıcı güven kartı",
+        aciklama: "İlana git: çift görünüm (satıcı + ilan sahibi), sunum modali",
         ok: true,
       },
       {
@@ -77,24 +66,14 @@ const gruplar: Grup[] = [
       {
         href: "/mesajlar",
         ad: "Mesajlar / Pazarlık",
-        aciklama: "Teklif kartları, kabul/revize/reddet, kargo alanı",
+        aciklama:
+          "Teklif kartları, kabul/revize/reddet, sipariş takibi ve itiraz süreci",
         ok: true,
-      },
-      {
-        href: "/siparis",
-        ad: "Sipariş / Satış Takibi",
-        aciklama: "Çift görünüm: ödeme→onay / kargola→tahsilat",
-        ok: true,
-      },
-      {
-        href: "/itiraz",
-        ad: "İtiraz / İade",
-        aciklama: "Kanıt yükleme + süreç takibi",
       },
       {
         href: "/ilan-yonetimi",
         ad: "İlan Yönetimi",
-        aciklama: "Görüntülenme grafiği, huni, süre uzat/duraklat",
+        aciklama: "Gelen sunum, takip ve kalan süre; duraklat / yayına al / kaldır",
       },
     ],
   },
@@ -112,17 +91,17 @@ const gruplar: Grup[] = [
       },
       {
         href: "/talep-alarmlari",
-        ad: "Talep Alarmları",
+        ad: "Talep Alarmı",
         aciklama: "Kayıtlı arama + eşleşme bildirimi",
         ok: true,
       },
       {
         href: "/satici-performansi",
         ad: "Satıcı Performansı",
-        aciklama: "Sunum→satış hunisi, kazanç grafiği, seviye",
+        aciklama: "Sunum→satış hunisi, aylık net kazanç, güven sinyalleri",
       },
       {
-        href: "/satici-profili",
+        href: "/profil/plakdukkani34",
         ad: "Satıcı Profili (herkese açık)",
         aciklama: "Puan dağılımı, değerlendirmeler, açık talepler",
       },
@@ -139,14 +118,19 @@ const gruplar: Grup[] = [
         aciklama: "Taleplerim · Sunumlarım · Takip Ettiklerim · Değerlendirmeler",
       },
       {
-        href: "/siparislerim",
-        ad: "Siparişlerim",
-        aciklama: "Alımlarım + satışlarım sekmeleri",
-      },
-      {
         href: "/cuzdan",
         ad: "Cüzdan",
         aciklama: "Bakiye, komisyon dökümü, IBAN çekim",
+      },
+      {
+        href: "/aldiklarim",
+        ad: "Aldıklarım",
+        aciklama: "Tamamlanan alışverişler ve işlem dökümü",
+      },
+      {
+        href: "/sattiklarim",
+        ad: "Sattıklarım",
+        aciklama: "Tamamlanan satışlar, komisyon ve net kazanç",
       },
       {
         href: "/bildirimler",
@@ -158,16 +142,6 @@ const gruplar: Grup[] = [
         ad: "Ayarlar",
         aciklama: "Hesap, adresler, kartlar, bildirim tercihleri",
       },
-      {
-        href: "/kimlik-dogrulama",
-        ad: "Kimlik Doğrulama (KYC)",
-        aciklama: "Belge + selfie ile doğrulama rozeti",
-      },
-      {
-        href: "/davet-et",
-        ad: "Davet Et",
-        aciklama: "Referans programı: %5 komisyon hakkı",
-      },
     ],
   },
   {
@@ -178,7 +152,7 @@ const gruplar: Grup[] = [
       {
         href: "/nasil-calisir",
         ad: "Nasıl Çalışır?",
-        aciklama: "Ters pazar modeli + %7 komisyon",
+        aciklama: "Ters pazar modeli + %4 komisyon",
       },
       {
         href: "/yardim",

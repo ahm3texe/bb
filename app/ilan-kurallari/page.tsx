@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "İlan Kuralları & Yasaklı Ürünler",
   description:
-    "BulBana'da talep açarken ve sunum gönderirken uyman gereken kurallar, yasaklı ürünler ve kademeli yaptırımlar.",
+    "Bulbana'da talep açarken ve sunum gönderirken uyman gereken kurallar, yasaklı ürünler ve kademeli yaptırımlar.",
 };
 
 const yasakliUrunler = [
@@ -165,7 +165,7 @@ export default function IlanKurallariPage() {
         İlan Kuralları &amp; Yasaklı Ürünler
       </h1>
       <p className="mb-6 mt-2.5 text-pretty text-sm font-medium leading-[1.6] text-ink-500">
-        BulBana&apos;da güven, kuraldan önce gelir — bu kurallar hem alıcıyı hem
+        Bulbana&apos;da güven, kuraldan önce gelir — bu kurallar hem alıcıyı hem
         satıcıyı korur. Talep açarken ve sunum gönderirken aşağıdakilere uyman
         gerekir; aykırı içerikler moderasyon ekibince kaldırılır.
       </p>

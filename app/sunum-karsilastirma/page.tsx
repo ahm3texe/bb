@@ -1,12 +1,34 @@
 import type { Metadata } from "next";
 import { SunumKarsilastirmaClient } from "@/components/SunumKarsilastirmaClient";
+import { istekKullaniciAdi } from "@/lib/oturum-sunucu";
+import {
+  gelenSunumlarGetir,
+  tumTaleplerGetir,
+  anaTalepIdGetir,
+} from "@/lib/veri";
 
 export const metadata: Metadata = {
-  title: "Sunumları Karşılaştır",
+  title: "Sunum Karşılaştırma",
   description:
-    "Seçtiğin sunumları yan yana karşılaştır; fotoğraf, imza kanıtı, satıcı geçmişi ve yanıt sürelerini tek ekranda gör.",
+    "İlanına gelen sunumlardan üçünü seç, yan yana karşılaştır: fiyat, ilanınla eşleşme, ürün durumu, kargo ve satıcı geçmişi tek ekranda.",
 };
 
-export default function SunumKarsilastirmaPage() {
-  return <SunumKarsilastirmaClient />;
+// Gelen sunumlar sürekli değişiyor; sayfa her istekte taze okunur.
+export const dynamic = "force-dynamic";
+
+export default async function SunumKarsilastirmaPage() {
+  const ben = await istekKullaniciAdi();
+  const [gelenSunumlar, talepler, anaTalepId] = await Promise.all([
+    gelenSunumlarGetir(ben),
+    tumTaleplerGetir(),
+    anaTalepIdGetir(ben),
+  ]);
+
+  return (
+    <SunumKarsilastirmaClient
+      gelenSunumlar={gelenSunumlar}
+      talepler={talepler}
+      anaTalepId={anaTalepId}
+    />
+  );
 }

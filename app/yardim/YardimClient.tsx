@@ -7,24 +7,92 @@ function tr(s: string) {
   return s.toLocaleLowerCase("tr");
 }
 
+/* ── İkonlar ── */
+function KisiIkon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <circle cx="12" cy="8" r="3.3" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="M5.5 19c0-3.3 2.9-5.5 6.5-5.5s6.5 2.2 6.5 5.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function DukkanIkon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M4 10.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3.5 6.5 4.8 4.3A1 1 0 0 1 5.7 4h12.6a1 1 0 0 1 .9.5l1.3 2.2v1.1a2.4 2.4 0 0 1-4.8 0 2.4 2.4 0 0 1-4.8 0 2.4 2.4 0 0 1-4.8 0 2.4 2.4 0 0 1-4.8 0V6.5Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function SohbetIkon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H9.5L6 20.5V17.5H5A1.5 1.5 0 0 1 3.5 16V7A1.5 1.5 0 0 1 5 5.5Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /* Kategori kartındaki bağımsız açılır madde */
-function KategoriAccordion({ soru, cevap }: { soru: string; cevap: string }) {
+function KategoriAccordion({
+  soru,
+  cevap,
+  renk = "mor",
+}: {
+  soru: string;
+  cevap: string;
+  renk?: "mor" | "yesil";
+}) {
   const [acik, setAcik] = useState(false);
+  const yesil = renk === "yesil";
   return (
     <div>
       <button
         type="button"
         onClick={() => setAcik((v) => !v)}
         aria-expanded={acik}
-        className="flex w-full cursor-pointer items-center justify-between gap-2 text-left text-[12.5px] font-medium leading-snug text-primary"
+        className={`flex w-full cursor-pointer items-center justify-between gap-2 text-left text-[13.5px] font-medium leading-snug ${
+          yesil ? "text-accent-ink" : "text-primary"
+        }`}
       >
         <span>{soru}</span>
-        <span className="flex h-4 w-4 flex-none items-center justify-center rounded-full bg-primary-soft text-[11px] font-bold text-primary-hover">
+        <span
+          className={`flex h-4 w-4 flex-none items-center justify-center rounded-full text-[11px] font-bold ${
+            yesil
+              ? "bg-accent-soft text-accent-ink"
+              : "bg-primary-soft text-primary-hover"
+          }`}
+        >
           {acik ? "−" : "+"}
         </span>
       </button>
       {acik && (
-        <div className="mt-2 rounded-lg border-l-2 border-primary bg-subtle px-3 py-2.5 text-xs font-medium leading-relaxed text-ink-400">
+        <div
+          className={`mt-2 rounded-lg border-l-2 bg-subtle px-3 py-2.5 text-[13px] font-medium leading-relaxed text-ink-500 ${
+            yesil ? "border-accent" : "border-primary"
+          }`}
+        >
           {cevap}
         </div>
       )}
@@ -49,18 +117,19 @@ const makaleler: Makale[] = [
     baslik: "Ödemem satıcıya ne zaman aktarılır?",
     kategori: "Ödeme",
     cevap:
-      "Ödeme, alıcı teslimatı onaylayana kadar BulBana güvencesinde bekletilir; erken serbest bırakılmaz. Alıcı onay verdiği anda anlaşılan tutardan %7 komisyon düşülür ve kalan tutar satıcı cüzdanına aktarılır.",
+      "Ödeme, alıcı teslimatı onaylayana kadar Bulbana güvencesinde bekletilir; erken serbest bırakılmaz. Alıcı onay verdiği anda anlaşılan tutardan %4 komisyon düşülür ve kalan tutar satıcı cüzdanına aktarılır. Kargo firması teslimi bildirdikten sonra alıcının yanıt vermesi için 24 saati vardır; bu süre içinde yanıt gelmezse alışveriş otomatik onaylanır ve ödeme satıcıya aktarılır.",
   },
   {
     baslik: "Ürün anlatıldığı gibi çıkmazsa ne yapmalıyım?",
     kategori: "İtiraz",
-    href: "/itiraz",
+    cevap:
+      "İtiraz, siparişin kendi sohbetinden başlatılır: kargo teslimi bildirdiğinde Mesajlar ekranındaki sipariş panelinde \u201cürün anlatıldığı gibi mi?\u201d sorusu açılır; \u201chayır\u201d yanıtını ver. Ardından oradan destek kaydını oluştur. Ödemen inceleme sonuçlanana kadar Bulbana güvencesinde tutulur; destek ekibi kararını verdiğinde ürünü iade eder ve paran hesabına döner.",
   },
   {
-    baslik: "3 gün kargo kuralına uyulmazsa ne olur?",
+    baslik: "Kargo süresine uyulmazsa ne olur?",
     kategori: "Kargo",
     cevap:
-      "Satıcı, teklif kabulünden sonraki 72 saat (3 gün) içinde kargolayıp takip numarasını girmezse satış otomatik olarak iptal edilir. Bu durumda alıcının ödemesi eksiksiz iade edilir ve gecikme satıcının performans puanına yansır.",
+      "Süreyi satıcı sunumunda kendisi taahhüt eder: \u201cbugün kargoda\u201d dediyse 18 saat, standart seçenekte 3 gün (72 saat). Sayaç ödeme alındığı anda başlar. Satıcı vaat ettiği sürede kargolayıp takip numarasını girmezse satış otomatik olarak iptal edilir, alıcının ödemesi iade edilir ve gecikme satıcının performans kaydına yansır. Yani üst sınır 3 gündür; satıcı daha kısa söz verdiyse bağlayıcı olan onun sözüdür.",
   },
   {
     baslik: "Sunumumu kimler görebilir?",
@@ -77,12 +146,6 @@ const makaleler: Makale[] = [
     baslik: "Pazarlıkta ek ücret öder miyim?",
     kategori: "Teklif",
     href: "/nasil-calisir",
-  },
-  {
-    baslik: "Hesabımı nasıl doğrularım?",
-    kategori: "Hesap",
-    cevap:
-      "Kimlik Doğrulama sayfasından kimliğinin ön ve arka yüzü ile bir selfie yüklemen yeterli. Belgeler SSL ile şifrelenir, ekip ortalama 24 saat içinde inceler ve onaylandığında profiline “✓ Kimlik doğrulandı” rozeti eklenir.",
   },
 ];
 
@@ -108,89 +171,93 @@ export function YardimClient() {
             value={q}
             onChange={(e) => setQ(e.target.value.slice(0, 50))}
             placeholder="Konu ara: komisyon, kargo, itiraz..."
-            className="w-full border-none bg-transparent text-sm font-medium text-ink-900 outline-none"
+            className="w-full border-none bg-transparent text-[15px] font-medium text-ink-900 outline-none"
           />
         </div>
       </div>
 
       {/* ── Kategoriler ── */}
       <div className="mt-9 grid gap-4 md:grid-cols-3">
-        {/* Alıcılar */}
+        {/* Alıcılar (mor) */}
         <div className="rounded-card border border-border bg-card p-5">
-          <div className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-primary-soft text-[15px] font-extrabold text-primary-hover">
-            A
+          <div className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-primary-soft text-primary-hover">
+            <KisiIkon className="h-[18px] w-[18px]" />
           </div>
-          <div className="mt-3 text-[15px] font-extrabold text-ink-900">
+          <div className="mt-3 text-[16px] font-extrabold text-ink-900">
             Alıcılar
           </div>
           <div className="mt-2.5 flex flex-col gap-2">
             <Link
               href="/nasil-calisir"
-              className="text-[12.5px] font-medium leading-snug"
+              className="text-[13.5px] font-medium leading-snug text-primary"
             >
               Talep nasıl açılır?
             </Link>
             <Link
               href="/nasil-calisir"
-              className="text-[12.5px] font-medium leading-snug"
+              className="text-[13.5px] font-medium leading-snug text-primary"
             >
               Sunumları kim görür?
             </Link>
             <KategoriAccordion
+              renk="mor"
               soru="Alıcı kalitesi nasıl hesaplanır?"
               cevap="Alıcı kalitesi; tamamladığın alımlar, mesajlara yanıt hızın ve iptal oranın birlikte değerlendirilerek hesaplanır. Skorun yükseldikçe profilinde “güvenilir alıcı” rozeti belirir; satıcılar bu rozeti gördüğünde talebine daha çok ve daha iyi sunum gönderir."
             />
           </div>
         </div>
 
-        {/* Satıcılar */}
+        {/* Satıcılar (yeşil) */}
         <div className="rounded-card border border-border bg-card p-5">
-          <div className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-ink-900 text-[15px] font-extrabold text-accent">
-            S
+          <div className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-accent text-ink-900">
+            <DukkanIkon className="h-[18px] w-[18px]" />
           </div>
-          <div className="mt-3 text-[15px] font-extrabold text-ink-900">
+          <div className="mt-3 text-[16px] font-extrabold text-ink-900">
             Satıcılar
           </div>
           <div className="mt-2.5 flex flex-col gap-2">
             <KategoriAccordion
+              renk="yesil"
               soru="İyi sunum nasıl hazırlanır?"
               cevap="İyi bir sunum; ürünü net gösteren gerçek fotoğraflar, dürüst bir durum açıklaması ve alıcının bütçesine uygun bir fiyat beklentisi içerir. İmzalı ya da koleksiyon ürünlerinde sertifika veya kanıt fotoğrafı eklemek sunumunu diğerlerinin önüne taşır."
             />
             <Link
               href="/nasil-calisir"
-              className="text-[12.5px] font-medium leading-snug"
+              className="text-[13.5px] font-medium leading-snug text-accent-ink"
             >
               Teklif ve pazarlık kuralları
             </Link>
             <KategoriAccordion
-              soru="3 gün kargo kuralı nedir?"
-              cevap="Teklifin kabul edilip ödeme güvenceye alındıktan sonra satıcının 72 saat (3 gün) içinde ürünü kargoya verip takip numarasını girmesi gerekir. Süre aşılırsa satış otomatik iptal olur ve alıcının ödemesi eksiksiz iade edilir."
+              renk="yesil"
+              soru="Kargo süresi nasıl işler?"
+              cevap="Süreyi satıcı sunumunda taahhüt eder: en fazla 3 gün (72 saat), \u201cbugün kargoda\u201d seçildiyse 18 saat. Sayaç ödeme alındığında başlar. Satıcı söz verdiği sürede ürünü kargoya verip takip numarasını girmezse satış otomatik iptal olur ve alıcının ödemesi iade edilir."
             />
           </div>
         </div>
 
-        {/* Ödeme & Komisyon */}
+        {/* Ödeme & Komisyon (mor) */}
         <div className="rounded-card border border-border bg-card p-5">
-          <div className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-accent-soft text-[15px] font-extrabold text-accent-ink">
-            %
+          <div className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-primary-soft text-[16px] font-extrabold text-primary-hover">
+            ₺
           </div>
-          <div className="mt-3 text-[15px] font-extrabold text-ink-900">
+          <div className="mt-3 text-[16px] font-extrabold text-ink-900">
             Ödeme &amp; Komisyon
           </div>
           <div className="mt-2.5 flex flex-col gap-2">
             <Link
               href="/nasil-calisir#komisyon"
-              className="text-[12.5px] font-medium leading-snug"
+              className="text-[13.5px] font-medium leading-snug text-primary"
             >
-              %7 komisyon modeli
+              %4 komisyon modeli
             </Link>
             <KategoriAccordion
+              renk="mor"
               soru="Ödemem ne zaman aktarılır?"
-              cevap="Ödeme, alıcı ürünü teslim alıp onaylayana kadar BulBana güvencesinde tutulur. Alıcı teslimatı onayladığı anda anlaşılan tutardan %7 komisyon düşülür ve kalan tutar satıcı cüzdanına aktarılır."
+              cevap="Ödeme, alıcı ürünü teslim alıp onaylayana kadar Bulbana güvencesinde tutulur. Alıcı teslimatı onayladığı anda anlaşılan tutardan %4 komisyon düşülür ve kalan tutar satıcı cüzdanına aktarılır. Kargo firması teslimi bildirdiği andan itibaren alıcının 24 saati vardır: bu sürede ürünün anlatıldığı gibi olup olmadığını bildirir. Süre içinde hiç yanıt gelmezse alışveriş otomatik onaylanmış sayılır ve ödeme satıcıya geçer — böylece satıcı sessiz kalan bir alıcı yüzünden parasını süresiz bekleyemez."
             />
             <Link
-              href="/itiraz"
-              className="text-[12.5px] font-medium leading-snug"
+              href="/guvenli-alisveris"
+              className="text-[13.5px] font-medium leading-snug text-primary"
             >
               İtiraz ve iade süreci
             </Link>
@@ -207,7 +274,7 @@ export function YardimClient() {
           <div className="flex flex-col gap-2">
             {sonuc.map((m) => {
               const kategoriRozet = (
-                <span className="flex-none text-[11px] font-semibold text-ink-300">
+                <span className="flex-none text-[12.5px] font-semibold text-ink-500">
                   {m.kategori}
                 </span>
               );
@@ -219,10 +286,10 @@ export function YardimClient() {
                     href={m.href ?? "/yardim"}
                     className="flex items-center gap-3 rounded-control border border-border bg-card px-4 py-3.5 hover:border-primary"
                   >
-                    <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-lg bg-page text-xs font-bold text-ink-400">
-                      ?
+                    <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full bg-primary-soft text-primary-hover">
+                      <SohbetIkon className="h-[14px] w-[14px]" />
                     </span>
-                    <span className="flex-1 text-[13.5px] font-semibold leading-snug text-ink-900">
+                    <span className="flex-1 text-[14.5px] font-semibold leading-snug text-ink-900">
                       {m.baslik}
                     </span>
                     {kategoriRozet}
@@ -248,17 +315,11 @@ export function YardimClient() {
                     aria-expanded={acik}
                     className="flex w-full cursor-pointer items-center gap-3 px-4 py-3.5 text-left hover:opacity-80"
                   >
-                    <span
-                      className={`flex h-[26px] w-[26px] flex-none items-center justify-center rounded-lg text-sm font-bold ${
-                        acik
-                          ? "bg-primary-soft text-primary-hover"
-                          : "bg-page text-ink-400"
-                      }`}
-                    >
-                      {acik ? "−" : "+"}
+                    <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full bg-primary-soft text-primary-hover">
+                      <SohbetIkon className="h-[14px] w-[14px]" />
                     </span>
                     <span
-                      className={`flex-1 text-[13.5px] font-semibold leading-snug ${
+                      className={`flex-1 text-[14.5px] font-semibold leading-snug ${
                         acik ? "text-primary-hover" : "text-ink-900"
                       }`}
                     >
@@ -267,7 +328,7 @@ export function YardimClient() {
                     {kategoriRozet}
                   </button>
                   {acik && (
-                    <p className="px-4 pb-3.5 pl-[54px] text-[12.5px] font-medium leading-relaxed text-ink-400">
+                    <p className="px-4 pb-3.5 pl-[54px] text-[14px] font-medium leading-relaxed text-ink-700">
                       {m.cevap}
                     </p>
                   )}
@@ -276,7 +337,7 @@ export function YardimClient() {
             })}
           </div>
         ) : (
-          <div className="rounded-control border border-border bg-card p-6 text-center text-[13px] font-semibold text-ink-400">
+          <div className="rounded-control border border-border bg-card p-6 text-center text-[14px] font-medium text-ink-500">
             Aramana uyan konu bulunamadı — aşağıdan destek talebi
             oluşturabilirsin.
           </div>
@@ -289,14 +350,14 @@ export function YardimClient() {
           <div className="text-[17px] font-extrabold leading-snug">
             Aradığını bulamadın mı?
           </div>
-          <div className="mt-1.5 text-[12.5px] font-medium leading-relaxed text-[#cfc5e8]">
+          <div className="mt-1.5 text-[13.5px] font-medium leading-relaxed text-[#ddd5f0]">
             Destek ekibi hafta içi 09.00–18.00 arasında ortalama 2 saatte
             yanıtlar. destek@bulbana.com
           </div>
         </div>
         <Link
           href="/destek"
-          className="flex-none rounded-control bg-accent px-[22px] py-[15px] text-sm font-extrabold text-ink-900 hover:bg-accent-hover"
+          className="flex-none rounded-control bg-accent px-[22px] py-[15px] text-sm font-extrabold text-ink-900 hover:brightness-95"
         >
           Destek Talebi Oluştur
         </Link>

@@ -3,137 +3,22 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
-type Tip = "sunum" | "teklif" | "kargo" | "sistem";
-type Grup = "Bugün" | "Dün" | "Daha önce";
+import { useBildirimler } from "@/lib/bildirim-akisi";
+import type { BildirimTip, BildirimGrup } from "@/lib/bildirimler";
+import { bildirimGrubu, gecenSure } from "@/lib/bildirimler";
+import { useOturumSahibi } from "@/lib/aktif-kullanici";
 
-type Bildirim = {
-  id: number;
-  grup: Grup;
-  tip: Tip;
-  harf: string;
-  avatar: string; // tailwind bg + text classes for the round icon
-  text: string;
-  sub: string;
-  zaman: string;
-  href: string;
-  yeni: boolean;
-};
-
-const veri: Bildirim[] = [
-  {
-    id: 1,
-    grup: "Bugün",
-    tip: "sunum",
-    harf: "S",
-    avatar: "bg-primary-soft text-primary-hover",
-    text: 'Dawn FM talebine 2 yeni sunum geldi',
-    sub: 'İmzalı The Weeknd "Dawn FM" CD',
-    zaman: "12 dk önce",
-    href: "/ilan/dawn-fm-imzali-cd",
-    yeni: true,
-  },
-  {
-    id: 2,
-    grup: "Bugün",
-    tip: "teklif",
-    harf: "T",
-    avatar: "bg-accent-soft text-accent-ink",
-    text: "aysenur.a sunumundan teklif istedi — fiyatını ver",
-    sub: "Nokia 3310 — kutulu",
-    zaman: "1 saat önce",
-    href: "/mesajlar",
-    yeni: true,
-  },
-  {
-    id: 3,
-    grup: "Bugün",
-    tip: "kargo",
-    harf: "K",
-    avatar: "bg-ink-900 text-accent",
-    text: "Commodore 64 — kargoya vermen için son 2 gün",
-    sub: "3 gün kuralı hatırlatması",
-    zaman: "3 saat önce",
-    href: "/siparislerim",
-    yeni: true,
-  },
-  {
-    id: 4,
-    grup: "Dün",
-    tip: "kargo",
-    harf: "O",
-    avatar: "bg-primary-soft text-primary-hover",
-    text: "Sipariş #BB-78412 — kargo transfer merkezinde",
-    sub: "Aras Kargo · TR728439104",
-    zaman: "Dün 11:20",
-    href: "/siparis",
-    yeni: true,
-  },
-  {
-    id: 5,
-    grup: "Dün",
-    tip: "teklif",
-    harf: "T",
-    avatar: "bg-accent-soft text-accent-ink",
-    text: "plakdukkani34 ile 4.500 TL üzerinde anlaşıldı",
-    sub: "Ödeme adımına geçildi",
-    zaman: "Dün 10:40",
-    href: "/siparis",
-    yeni: false,
-  },
-  {
-    id: 6,
-    grup: "Dün",
-    tip: "sistem",
-    harf: "B",
-    avatar: "bg-[#efebf5] text-ink-500",
-    text: "Kraftwerk plak talebinin süresi 15 gün sonra doluyor",
-    sub: "Dilediğinde uzatabilirsin",
-    zaman: "Dün 09:05",
-    href: "/ilan-yonetimi",
-    yeni: false,
-  },
-  {
-    id: 7,
-    grup: "Daha önce",
-    tip: "sunum",
-    harf: "S",
-    avatar: "bg-primary-soft text-primary-hover",
-    text: "koleksiyoner.mert sunumunu güncelledi",
-    sub: "Yeni fotoğraf eklendi",
-    zaman: "Salı",
-    href: "/sunum-detay",
-    yeni: false,
-  },
-  {
-    id: 8,
-    grup: "Daha önce",
-    tip: "kargo",
-    harf: "O",
-    avatar: "bg-primary-soft text-primary-hover",
-    text: "Polaroid 600 — ödeme satıcıya aktarıldı",
-    sub: "İşlem tamamlandı, değerlendirmen yayında",
-    zaman: "Salı",
-    href: "/siparis",
-    yeni: false,
-  },
-  {
-    id: 9,
-    grup: "Daha önce",
-    tip: "sistem",
-    harf: "B",
-    avatar: "bg-[#efebf5] text-ink-500",
-    text: "Kimlik doğrulaman onaylandı",
-    sub: "Profilinde rozet olarak görünüyor",
-    zaman: "Geçen hafta",
-    href: "/profil",
-    yeni: false,
-  },
-];
+type Tip = BildirimTip;
+type Grup = BildirimGrup;
 
 const tipler: { id: "tumu" | Tip; ad: string }[] = [
   { id: "tumu", ad: "Tümü" },
   { id: "sunum", ad: "Sunumlar" },
   { id: "teklif", ad: "Teklifler" },
+  // "mesaj" türü sonradan eklendi (sohbete gelen mesaj bildirimi); filtre
+  // listesine yazılmazsa o bildirimler yalnızca "Tümü"nde görünür ve
+  // sekmelerin toplamı listeyi tutmazdı.
+  { id: "mesaj", ad: "Mesajlar" },
   { id: "kargo", ad: "Kargo & Sipariş" },
   { id: "sistem", ad: "Sistem" },
 ];
@@ -142,24 +27,35 @@ const gruplarSira: Grup[] = ["Bugün", "Dün", "Daha önce"];
 
 export function BildirimlerClient() {
   const [filtre, setFiltre] = useState<"tumu" | Tip>("tumu");
-  const [okunanlar, setOkunanlar] = useState<number[]>([]);
+  const [temizleSoru, setTemizleSoru] = useState(false);
 
-  const yeniIds = useMemo(() => veri.filter((b) => b.yeni).map((b) => b.id), []);
-  const okunmamisSayi = yeniIds.filter((id) => !okunanlar.includes(id)).length;
+  // Bildirimler aktif hesaba aittir; hesap değişince liste de değişir.
+  const aktif = useOturumSahibi();
+  const {
+    bildirimler: veri,
+    oku,
+    tumunuOku,
+    sil,
+    tumunuSil,
+  } = useBildirimler(aktif.kullanici);
+
+  // OKUNDU BİLGİSİ ARTIK SUNUCUDA. Burada bir `okunanlar` dizisi vardı:
+  // "okundu" yalnızca bu bileşenin belleğinde yaşıyordu, sayfa yeninilince
+  // hepsi geri geliyor, başlıktaki zil rozeti ise hiç sıfırlanmıyordu.
+  const okunmamisSayi = useMemo(
+    () => veri.filter((b) => b.yeni).length,
+    [veri],
+  );
 
   const filtreli = veri.filter((b) => filtre === "tumu" || b.tip === filtre);
 
   const gruplar = gruplarSira
-    .map((ad) => ({ ad, items: filtreli.filter((b) => b.grup === ad) }))
+    // Grup da damgadan hesaplanır: dünkü bildirim bugün "Dün" başlığına düşer.
+    .map((ad) => ({
+      ad,
+      items: filtreli.filter((b) => bildirimGrubu(b) === ad),
+    }))
     .filter((g) => g.items.length > 0);
-
-  function oku(id: number) {
-    setOkunanlar((prev) => (prev.includes(id) ? prev : [...prev, id]));
-  }
-
-  function tumunuOku() {
-    setOkunanlar(yeniIds);
-  }
 
   return (
     <main className="mx-auto max-w-[760px] px-6 pb-6 pt-8">
@@ -167,20 +63,57 @@ export function BildirimlerClient() {
         <h1 className="text-[28px] font-extrabold tracking-[-0.7px] text-ink-900">
           Bildirimler
         </h1>
-        {okunmamisSayi > 0 ? (
+        <div className="flex flex-wrap items-center gap-4">
+          {okunmamisSayi > 0 ? (
+            <button
+              type="button"
+              onClick={() => void tumunuOku()}
+              className="cursor-pointer py-1.5 text-[13px] font-bold text-primary hover:text-primary-hover"
+            >
+              Tümünü okundu say ({okunmamisSayi})
+            </button>
+          ) : (
+            <span className="text-[12.5px] font-semibold text-ink-300">
+              Tümü okundu ✓
+            </span>
+          )}
+          {veri.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setTemizleSoru(true)}
+              className="cursor-pointer py-1.5 text-[13px] font-bold text-danger hover:opacity-80"
+            >
+              Tümünü sil
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Toplu silme geri alınamaz; onay sorulur. */}
+      {temizleSoru && (
+        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-card border border-danger-line bg-danger-soft px-4 py-3">
+          <p className="min-w-[200px] flex-1 text-[13px] font-semibold leading-snug text-danger">
+            {veri.length} bildirimin tamamı silinecek. Bu işlem geri alınamaz.
+          </p>
           <button
             type="button"
-            onClick={tumunuOku}
-            className="cursor-pointer py-1.5 text-[13px] font-bold text-primary hover:text-primary-hover"
+            onClick={() => {
+              setTemizleSoru(false);
+              void tumunuSil();
+            }}
+            className="cursor-pointer rounded-control bg-danger px-4 py-2.5 text-[12.5px] font-extrabold text-white transition-opacity hover:opacity-90"
           >
-            Tümünü okundu say ({okunmamisSayi})
+            Evet, sil
           </button>
-        ) : (
-          <span className="text-[12.5px] font-semibold text-ink-300">
-            Tümü okundu ✓
-          </span>
-        )}
-      </div>
+          <button
+            type="button"
+            onClick={() => setTemizleSoru(false)}
+            className="cursor-pointer rounded-control border-[1.5px] border-border-input bg-card px-4 py-2.5 text-[12.5px] font-bold text-ink-500 transition-colors hover:border-primary hover:text-primary"
+          >
+            Vazgeç
+          </button>
+        </div>
+      )}
 
       {/* ── Tip filtreleri ── */}
       <div className="my-4 flex flex-wrap gap-1.5">
@@ -220,13 +153,16 @@ export function BildirimlerClient() {
             </div>
             <div className="divide-y divide-hairline overflow-hidden rounded-card border border-border bg-card">
               {g.items.map((b) => {
-                const okunmadi = b.yeni && !okunanlar.includes(b.id);
+                const okunmadi = b.yeni;
                 return (
+                  // Satır bir bağlantı; silme düğmesi onun İÇİNDE duruyor.
+                  // Bu yüzden düğme tıklamayı yutmak zorunda, yoksa silerken
+                  // bildirimin hedefine de gidilirdi.
                   <Link
                     key={b.id}
                     href={b.href}
-                    onClick={() => oku(b.id)}
-                    className={`flex items-start gap-3 px-[18px] py-[15px] transition-colors hover:bg-subtle ${
+                    onClick={() => void oku(b.id)}
+                    className={`group/bildirim relative flex items-start gap-3 px-[18px] py-[15px] transition-colors hover:bg-subtle ${
                       okunmadi ? "bg-[#faf8ff]" : "bg-card"
                     }`}
                   >
@@ -246,12 +182,28 @@ export function BildirimlerClient() {
                         {b.text}
                       </span>
                       <span className="mt-[3px] block text-[11.5px] font-medium leading-tight text-ink-400">
-                        {b.sub} · {b.zaman}
+                        {b.sub} · {gecenSure(b)}
                       </span>
                     </span>
                     {okunmadi && (
-                      <span className="mt-1.5 h-[9px] w-[9px] flex-none rounded-full bg-primary" />
+                      <span className="mt-1 h-[9px] w-[9px] flex-none rounded-full bg-primary" />
                     )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        // Satırın kendisi bir bağlantı: tıklamayı burada
+                        // durdurmazsak silerken bildirimin hedefine de
+                        // gidilirdi.
+                        e.preventDefault();
+                        e.stopPropagation();
+                        void sil(b.id);
+                      }}
+                      aria-label="Bildirimi sil"
+                      title="Bildirimi sil"
+                      className="-mr-1.5 -mt-1 flex h-7 w-7 flex-none cursor-pointer items-center justify-center rounded-full text-[15px] font-bold leading-none text-ink-300 transition-colors hover:bg-danger-soft hover:text-danger focus-visible:bg-danger-soft focus-visible:text-danger"
+                    >
+                      ×
+                    </button>
                   </Link>
                 );
               })}
