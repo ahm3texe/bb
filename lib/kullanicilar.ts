@@ -6,8 +6,18 @@
 import type { AliciMetrik } from "./alici-kalitesi";
 
 export type Yorum = {
+  /** Değerlendirme kaydının kimliği — liste anahtarı. */
+  id?: string;
   /** Yorumu yazan kullanıcı adı. */
   yazan: string;
+  /**
+   * DEĞERLENDİRİLEN kişinin o alışverişteki rolü.
+   *
+   * Kayıtta hep vardı ama profile taşınmıyordu: aynı listede "iyi satıcıydı"
+   * ile "iyi alıcıydı" yan yana duruyor, hangisinin hangisi olduğu yalnızca
+   * cümlenin içinden anlaşılıyordu.
+   */
+  rol?: "alici" | "satici";
   harf: string;
   urun: string;
   tarih: string;
@@ -25,9 +35,23 @@ export type Kullanici = {
   ad: string;
   konum: string;
   bio: string;
-  /** Yıldız ortalaması (0-5). */
+  /**
+   * Yıldız ortalaması (0-5) ve toplam değerlendirme sayısı — HER İKİ ROL
+   * birlikte. Rolün bilinmediği tek yerde, kişinin kendi hesap kartında
+   * kullanılır; başkasına bakılan her ekran rol ayrımlı alanları okur.
+   */
   puan: number;
   degerlendirme: number;
+  /**
+   * ALICI olarak aldığı yıldız ortalaması ve değerlendirme sayısı.
+   * Sayı 0 ise henüz alıcı olarak değerlendirilmemiştir — "0,0" yazmak
+   * kişiyi kötü puan almış gibi gösterirdi.
+   */
+  aliciPuan: number;
+  aliciDegerlendirme: number;
+  /** SATICI olarak aldığı yıldız ortalaması ve değerlendirme sayısı. */
+  saticiPuan: number;
+  saticiDegerlendirme: number;
   /** Satıcı tarafı metrikleri. */
   tamamlananSatis: number;
   /**
@@ -90,6 +114,10 @@ export const kullanicilar: Kullanici[] = [
     bio: "Fiziksel dükkanı olan plak/CD satıcısıyım. İmzalı ve koleksiyonluk baskılarda sertifika (COA) sağlarım; tüm sunumlarımda kanıt fotoğrafı bulunur. Aynı gün kargo.",
     puan: 0,
     degerlendirme: 0,
+    aliciPuan: 0,
+    aliciDegerlendirme: 0,
+    saticiPuan: 0,
+    saticiDegerlendirme: 0,
     tamamlananSatis: 0,
     zamanindaKargo: 0,
     // Tohum kayıtta ölçüm yok; gerçek değerler `kullaniciProfilGetir`
@@ -115,6 +143,10 @@ export const kullanicilar: Kullanici[] = [
     bio: "Konsol ve plak topluyorum. Aradığımı bulunca hızlı hareket ederim.",
     puan: 0,
     degerlendirme: 0,
+    aliciPuan: 0,
+    aliciDegerlendirme: 0,
+    saticiPuan: 0,
+    saticiDegerlendirme: 0,
     tamamlananSatis: 0,
     zamanindaKargo: 0,
     // Tohum kayıtta ölçüm yok; gerçek değerler `kullaniciProfilGetir`
@@ -140,6 +172,10 @@ export const kullanicilar: Kullanici[] = [
     bio: "Elektronik ve ev aletlerinde alım yapıyorum. Faturalı, kutulu ve defosuz ürünleri tercih ederim.",
     puan: 0,
     degerlendirme: 0,
+    aliciPuan: 0,
+    aliciDegerlendirme: 0,
+    saticiPuan: 0,
+    saticiDegerlendirme: 0,
     tamamlananSatis: 0,
     zamanindaKargo: 0,
     // Tohum kayıtta ölçüm yok; gerçek değerler `kullaniciProfilGetir`

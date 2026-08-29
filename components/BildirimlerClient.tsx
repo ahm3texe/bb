@@ -15,6 +15,10 @@ const tipler: { id: "tumu" | Tip; ad: string }[] = [
   { id: "tumu", ad: "Tümü" },
   { id: "sunum", ad: "Sunumlar" },
   { id: "teklif", ad: "Teklifler" },
+  // "mesaj" türü sonradan eklendi (sohbete gelen mesaj bildirimi); filtre
+  // listesine yazılmazsa o bildirimler yalnızca "Tümü"nde görünür ve
+  // sekmelerin toplamı listeyi tutmazdı.
+  { id: "mesaj", ad: "Mesajlar" },
   { id: "kargo", ad: "Kargo & Sipariş" },
   { id: "sistem", ad: "Sistem" },
 ];
@@ -47,7 +51,10 @@ export function BildirimlerClient() {
 
   const gruplar = gruplarSira
     // Grup da damgadan hesaplanır: dünkü bildirim bugün "Dün" başlığına düşer.
-    .map((ad) => ({ ad, items: filtreli.filter((b) => bildirimGrubu(b) === ad) }))
+    .map((ad) => ({
+      ad,
+      items: filtreli.filter((b) => bildirimGrubu(b) === ad),
+    }))
     .filter((g) => g.items.length > 0);
 
   return (

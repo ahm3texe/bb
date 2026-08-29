@@ -39,10 +39,6 @@ type Tab =
 const pill =
   "inline-flex flex-none items-center rounded-full px-[11px] py-[7px] text-[11.5px] font-bold leading-none";
 
-
-
-
-
 // Küçük, sade çizgi ikonlar (renkli/zıplayan değil — işi tatlandıran dokunuş).
 /**
  * Alt bölümlerin (Kaldırdıklarım, Taslaklar) başlığı ve dönüş bağlantısı.
@@ -114,8 +110,8 @@ function KaliciSil({ talep }: { talep: Talep }) {
   return (
     <div className="rounded-control border border-danger-line bg-danger-soft px-2.5 py-2 text-center">
       <p className="text-[11px] font-bold leading-snug text-danger">
-        Kayıt tamamen silinecek: gelen sunumlar ve sohbetler de gider. Bu
-        işlem geri alınamaz.
+        Kayıt tamamen silinecek: gelen sunumlar ve sohbetler de gider. Bu işlem
+        geri alınamaz.
       </p>
       {hata && (
         <p role="alert" className="mt-1 text-[11px] font-bold text-danger">
@@ -281,7 +277,8 @@ const tabRenkCls: Record<TabRenk, { aktif: string; pasif: string }> = {
   },
   yesil: {
     aktif: "border-accent-ink font-bold text-accent-ink",
-    pasif: "border-transparent font-semibold text-ink-400 hover:text-accent-ink",
+    pasif:
+      "border-transparent font-semibold text-ink-400 hover:text-accent-ink",
   },
   kirmizi: {
     aktif: "border-danger font-bold text-danger",
@@ -384,32 +381,32 @@ function YenidenYayinla({
   const [soru, setSoru] = useState(false);
 
   function yayinla() {
-          setIsliyor(true);
-          setHata("");
-          void fetch(`/api/talepler/${talepId}/yayin`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ islem: "yayinla" }),
-          })
-            .then(async (r) => {
-              if (!r.ok) {
-                const v = await r.json().catch(() => ({}));
-                throw new Error(v.hata ?? "İşlem tamamlanamadı.");
-              }
-              router.refresh();
-            })
-            .catch((e) =>
-              setHata(e instanceof Error ? e.message : "İşlem tamamlanamadı."),
-            )
-            .finally(() => setIsliyor(false));
+    setIsliyor(true);
+    setHata("");
+    void fetch(`/api/talepler/${talepId}/yayin`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ islem: "yayinla" }),
+    })
+      .then(async (r) => {
+        if (!r.ok) {
+          const v = await r.json().catch(() => ({}));
+          throw new Error(v.hata ?? "İşlem tamamlanamadı.");
+        }
+        router.refresh();
+      })
+      .catch((e) =>
+        setHata(e instanceof Error ? e.message : "İşlem tamamlanamadı."),
+      )
+      .finally(() => setIsliyor(false));
   }
 
   if (soru)
     return (
       <div className="rounded-control border border-primary/40 bg-primary-soft/50 p-3 text-center">
         <p className="text-[12.5px] font-bold leading-relaxed text-primary-hover">
-          Bu talep ile aradığın ürüne ulaştın. Yeni bir arayış olarak bu
-          talebi tekrar yayına almak istediğine emin misin?
+          Bu talep ile aradığın ürüne ulaştın. Yeni bir arayış olarak bu talebi
+          tekrar yayına almak istediğine emin misin?
         </p>
         <div className="mt-2.5 flex justify-center gap-2">
           <button
@@ -456,11 +453,34 @@ function YenidenYayinla({
             : "Süresi doldu"}
       </p>
       {hata && (
-        <p role="alert" className="mt-1 text-center text-[11.5px] font-bold text-acil">
+        <p
+          role="alert"
+          className="mt-1 text-center text-[11.5px] font-bold text-acil"
+        >
           {hata}
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * Satıcının SATICI olarak aldığı yıldız. Hiç değerlendirmesi yoksa "★ 0,0"
+ * yazmak kişiyi kötü puan almış gibi gösterirdi — o durumda "—" yazılır
+ * (metriklerdeki kuralın aynısı).
+ */
+function SaticiYildizi({ sunum }: { sunum: GelenSunum }) {
+  if (!sunum.degerlendirme)
+    return (
+      <span className="font-semibold text-ink-400">değerlendirme yok</span>
+    );
+  return (
+    <span className="font-bold text-star-ink">
+      ★ {sunum.puan}
+      <span className="ml-1 font-semibold text-ink-400">
+        ({sunum.degerlendirme})
+      </span>
+    </span>
   );
 }
 
@@ -589,64 +609,67 @@ export function ProfilClient({
 
         {/* ── Sağ: sekmeler + içerik ── */}
         <div className="min-w-0">
-      {/* Başlık + sağda hızlı erişim butonları */}
-      <div className="mb-1.5 flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-[24px] font-extrabold tracking-[-0.5px] text-ink-900">
-            Profilim
-          </h1>
-        </div>
-        <div className="ml-auto flex flex-none flex-col items-end gap-2">
-          <ButtonLink
-            href="/satici-performansi"
-            variant="primary"
-            size="sm"
-            className="min-h-[42px] w-[172px] text-[14px]"
+          {/* Başlık + sağda hızlı erişim butonları */}
+          <div className="mb-1.5 flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-[24px] font-extrabold tracking-[-0.5px] text-ink-900">
+                Profilim
+              </h1>
+            </div>
+            <div className="ml-auto flex flex-none flex-col items-end gap-2">
+              <ButtonLink
+                href="/satici-performansi"
+                variant="primary"
+                size="sm"
+                className="min-h-[42px] w-[172px] text-[14px]"
+              >
+                Performans Panelim
+              </ButtonLink>
+              <ButtonLink
+                href="/talep-alarmlari"
+                variant="lime"
+                size="sm"
+                className="min-h-[42px] w-[172px] text-[14px]"
+              >
+                Talep Alarmı Kur
+              </ButtonLink>
+            </div>
+          </div>
+          {/* ── Sekmeler ── */}
+          <div
+            role="tablist"
+            className="flex flex-wrap gap-1 border-b border-border"
           >
-            Performans Panelim
-          </ButtonLink>
-          <ButtonLink
-            href="/talep-alarmlari"
-            variant="lime"
-            size="sm"
-            className="min-h-[42px] w-[172px] text-[14px]"
-          >
-            Talep Alarmı Kur
-          </ButtonLink>
-        </div>
-      </div>
-      {/* ── Sekmeler ── */}
-      <div role="tablist" className="flex flex-wrap gap-1 border-b border-border">
-        {tabs.map((t) => {
-          const active = tab === t.value;
-          const renk = tabRenkCls[t.renk];
-          return (
-            <button
-              key={t.value}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setTab(t.value)}
-              className={`-mb-px flex cursor-pointer items-center gap-1.5 border-b-[2.5px] px-[11px] py-2.5 text-[15px] leading-none transition-colors ${
-                active ? renk.aktif : renk.pasif
-              }`}
-            >
-              <TabIcon tip={t.value} />
-              {t.value === "talepler"
-                ? `Taleplerim (${taleplerim.length})`
-                : t.value === "gelen"
-                  ? `Gelen Sunumlar (${gelenler.length})`
-                  : t.value === "sunumlar"
-                    ? `Sunumlarım (${sunumlarimListesi.length})`
-                    : t.value === "takip"
-                      ? `Favorilerim (${takipEttiklerim.length})`
-                      : t.label}
-            </button>
-          );
-        })}
-      </div>
+            {tabs.map((t) => {
+              const active = tab === t.value;
+              const renk = tabRenkCls[t.renk];
+              return (
+                <button
+                  key={t.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setTab(t.value)}
+                  className={`-mb-px flex cursor-pointer items-center gap-1.5 border-b-[2.5px] px-[11px] py-2.5 text-[15px] leading-none transition-colors ${
+                    active ? renk.aktif : renk.pasif
+                  }`}
+                >
+                  <TabIcon tip={t.value} />
+                  {t.value === "talepler"
+                    ? `Taleplerim (${taleplerim.length})`
+                    : t.value === "gelen"
+                      ? `Gelen Sunumlar (${gelenler.length})`
+                      : t.value === "sunumlar"
+                        ? `Sunumlarım (${sunumlarimListesi.length})`
+                        : t.value === "takip"
+                          ? `Favorilerim (${takipEttiklerim.length})`
+                          : t.label}
+                </button>
+              );
+            })}
+          </div>
 
-      {/*
+          {/*
         EYLEM ÇUBUĞU YALNIZCA "TALEPLERİM"DE.
         Üçü de taleplerle ilgili; Gelen Sunumlar ya da Favorilerim
         sekmesinde alakasız duruyorlardı.
@@ -655,54 +678,53 @@ export function ProfilClient({
         kullanıcı çıkmazda kalmaz: sekme çubuğu yerinde durur ve o
         bölümlerin başında "Taleplerim'e dön" bağlantısı vardır.
       */}
-      {tab === "talepler" && (
-      <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setTab("kaldirilan")}
-          className="min-h-[42px] text-[14px]"
-        >
-          Yayından Kalkanlar ({kaldirilanlar.length})
-        </Button>
-        {/* İkisi de HER ZAMAN durur — sayı sıfır olsa bile giriş noktası
+          {tab === "talepler" && (
+            <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setTab("kaldirilan")}
+                className="min-h-[42px] text-[14px]"
+              >
+                Yayından Kalkanlar ({kaldirilanlar.length})
+              </Button>
+              {/* İkisi de HER ZAMAN durur — sayı sıfır olsa bile giriş noktası
             sabit kalmalı; düğmenin kaybolması, kullanıcının aradığı yerin
             ekrandan yok olması demekti. */}
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setTab("taslaklar")}
-          className="min-h-[42px] text-[14px]"
-        >
-          Taslaklar ({taslak ? 1 : 0})
-        </Button>
-        <ButtonLink
-          href="/ilan-ac"
-          variant="primary"
-          size="sm"
-          className="min-h-[42px] w-[172px] text-[14px]"
-        >
-          + Yeni Talep Aç
-        </ButtonLink>
-      </div>
-      )}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setTab("taslaklar")}
+                className="min-h-[42px] text-[14px]"
+              >
+                Taslaklar ({taslak ? 1 : 0})
+              </Button>
+              <ButtonLink
+                href="/ilan-ac"
+                variant="primary"
+                size="sm"
+                className="min-h-[42px] w-[172px] text-[14px]"
+              >
+                + Yeni Talep Aç
+              </ButtonLink>
+            </div>
+          )}
 
-      {/* ── Taleplerim ── */}
-      {tab === "talepler" && (
-        <section className="mt-3">
-
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            {taleplerim.map((t) => (
-              // KART SATIRIN YÜKSEKLİĞİNİ ALIR. Kartın ALTINA eklenen
-              // satırlar ("Yayından kaldırıldı", "Yeniden yayınla") hücreyi
-              // uzatıyor ama kartın kendisi içeriği kadar kalıyordu: aynı
-              // ızgarada kimi kart uzun kimi kısa görünüyordu. `flex-1`
-              // kartı kalan boşluğa yayar, ek satırlar altta hizalanır.
-              <div key={t.id} className="flex h-full flex-col gap-2">
-                <div className="flex-1">
-                  <TalepCard talep={t} ilgili />
-                </div>
-                {/* "Yayından kaldırıldı — kayıt olarak duruyor" satırı
+          {/* ── Taleplerim ── */}
+          {tab === "talepler" && (
+            <section className="mt-3">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                {taleplerim.map((t) => (
+                  // KART SATIRIN YÜKSEKLİĞİNİ ALIR. Kartın ALTINA eklenen
+                  // satırlar ("Yayından kaldırıldı", "Yeniden yayınla") hücreyi
+                  // uzatıyor ama kartın kendisi içeriği kadar kalıyordu: aynı
+                  // ızgarada kimi kart uzun kimi kısa görünüyordu. `flex-1`
+                  // kartı kalan boşluğa yayar, ek satırlar altta hizalanır.
+                  <div key={t.id} className="flex h-full flex-col gap-2">
+                    <div className="flex-1">
+                      <TalepCard talep={t} ilgili />
+                    </div>
+                    {/* "Yayından kaldırıldı — kayıt olarak duruyor" satırı
                     buradaydı. Kaldırılan talepler artık bu ızgarada değil,
                     "Yayından Kaldırdıklarım" bölümünde; açık ilanların
                     arasında durmaları hangisinin yayında olduğunu
@@ -711,384 +733,417 @@ export function ProfilClient({
                     Süresi dolan ya da dondurulan talep listelerden kalkar
                     ama KAYIT olarak kaldırılmış değildir; sahibi buradan
                     tek dokunuşla geri yayına alır. */}
-                {yenidenYayinlanabilirMi(t) && !surenTalepler.includes(t.id) && (
-                  <YenidenYayinla
-                    talepId={t.id}
-                    durum={
-                      t.donduruldu
-                        ? "donduruldu"
-                        : t.kapandi
-                          ? "kapandi"
-                          : "suresi-doldu"
-                    }
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-
-      {/* ── Yayından Kalkanlar ── */}
-      {tab === "kaldirilan" && (
-        <section className="mt-3">
-          <BolumBasligi
-            baslik="Yayından kalkanlar"
-            sayi={`${kaldirilanlar.length} talep`}
-            onDon={() => setTab("talepler")}
-          />
-          {kaldirilanlar.length === 0 ? (
-            <p className="rounded-card border border-dashed border-border-input bg-subtle px-4 py-8 text-center text-[13.5px] font-medium leading-[1.6] text-ink-400">
-              Yayından kalkmış talebin yok. Bir talep siparişe dönüştüğünde
-              ya da sen kaldırdığında buraya taşınır; herkese açık
-              listelerden kalkar ama kaydı burada durur.
-            </p>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-                {kaldirilanlar.map((t) => (
-                  <div key={t.id} className="flex h-full flex-col gap-2">
-                    <div className="flex-1">
-                      <TalepCard talep={t} ilgili />
-                    </div>
-                    {/* GEREKÇE KARTIN ALTINDA. "Neden listede yok?" sorusu
-                        ekranda yanıtlanmalı; iki sebep birbirinden çok
-                        farklı sonuçlar doğuruyor (biri satışla bitti,
-                        diğeri kullanıcının kararı). */}
-                    <KalkmaSebebi talep={t} />
-                    <KaliciSil talep={t} />
+                    {yenidenYayinlanabilirMi(t) &&
+                      !surenTalepler.includes(t.id) && (
+                        <YenidenYayinla
+                          talepId={t.id}
+                          durum={
+                            t.donduruldu
+                              ? "donduruldu"
+                              : t.kapandi
+                                ? "kapandi"
+                                : "suresi-doldu"
+                          }
+                        />
+                      )}
                   </div>
                 ))}
               </div>
-              {/* Kaldırılan talep SİLİNMEZ ve geri de açılmaz: sohbet,
+            </section>
+          )}
+
+          {/* ── Yayından Kalkanlar ── */}
+          {tab === "kaldirilan" && (
+            <section className="mt-3">
+              <BolumBasligi
+                baslik="Yayından kalkanlar"
+                sayi={`${kaldirilanlar.length} talep`}
+                onDon={() => setTab("talepler")}
+              />
+              {kaldirilanlar.length === 0 ? (
+                <p className="rounded-card border border-dashed border-border-input bg-subtle px-4 py-8 text-center text-[13.5px] font-medium leading-[1.6] text-ink-400">
+                  Yayından kalkmış talebin yok. Bir talep siparişe dönüştüğünde
+                  ya da sen kaldırdığında buraya taşınır; herkese açık
+                  listelerden kalkar ama kaydı burada durur.
+                </p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                    {kaldirilanlar.map((t) => (
+                      <div key={t.id} className="flex h-full flex-col gap-2">
+                        <div className="flex-1">
+                          <TalepCard talep={t} ilgili />
+                        </div>
+                        {/* GEREKÇE KARTIN ALTINDA. "Neden listede yok?" sorusu
+                        ekranda yanıtlanmalı; iki sebep birbirinden çok
+                        farklı sonuçlar doğuruyor (biri satışla bitti,
+                        diğeri kullanıcının kararı). */}
+                        <KalkmaSebebi talep={t} />
+                        <KaliciSil talep={t} />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Kaldırılan talep SİLİNMEZ ve geri de açılmaz: sohbet,
                   sipariş ve sunum geçmişi iki tarafta da durmalı
                   (bkz. lib/depo.ts → talepYayindanKaldir,
                   lib/talep-durum.ts → yenidenYayinlanabilirMi). Kullanıcı
                   bunu bilmeli, yoksa "yeniden yayınla" düğmesini arar. */}
-              <p className="mt-3.5 text-[12px] font-medium leading-[1.6] text-ink-400">
-                Bu talepler herkese açık listelerden kalktı ve yeniden yayına
-                alınamaz; alışveriş ve sunum geçmişi iki tarafta da durduğu
-                için kayıt olarak saklanır. Aynı ürünü yeniden aramak
-                istersen yeni bir talep açman gerekir.
-              </p>
-            </>
-          )}
-        </section>
-      )}
-
-      {/* ── Taslaklar ── */}
-      {tab === "taslaklar" && (
-        <section className="mt-3">
-          <BolumBasligi
-            baslik="Taslaklarım"
-            sayi={`${taslak ? 1 : 0} taslak`}
-            onDon={() => setTab("talepler")}
-          />
-          {!taslak ? (
-            <div className="rounded-card border border-dashed border-border-input bg-subtle px-4 py-8 text-center">
-              <p className="text-[13.5px] font-semibold text-ink-700">
-                Kayıtlı taslağın yok.
-              </p>
-              <p className="mx-auto mt-1.5 max-w-[440px] text-[12.5px] font-medium leading-[1.6] text-ink-400">
-                İlan açarken formu yarım bırakman gerekirse “Taslak Kaydet”
-                diyebilirsin; kaydettiğin taslak burada görünür.
-              </p>
-              <ButtonLink
-                href="/ilan-ac"
-                variant="secondary"
-                size="sm"
-                className="mt-4"
-              >
-                İlan açmaya başla
-              </ButtonLink>
-            </div>
-          ) : (
-            (() => {
-              const ozet = taslakOzeti(taslak);
-              const zamanMetni = taslakZamanMetni(ozet.kaydedildi);
-              return (
-                <>
-                  <div className="flex flex-wrap items-center gap-3 rounded-card border border-border bg-card px-4 py-4">
-                    <div className="min-w-[200px] flex-1">
-                      <div className="text-[15px] font-bold text-ink-900">
-                        {ozet.baslik}
-                      </div>
-                      <div className="mt-[3px] text-[12.5px] font-medium text-ink-400">
-                        {ozet.kategori} · {ozet.fiyat}
-                        {/* Damgası olmayan eski taslaklarda tarih hiç
-                            yazılmaz; uydurma tarih göstermektense boş
-                            bırakmak doğrudur. */}
-                        {zamanMetni ? ` · ${zamanMetni}` : ""}
-                      </div>
-                    </div>
-                    <div className="flex flex-none flex-wrap gap-2">
-                      <ButtonLink
-                        href="/ilan-ac?taslak=yukle"
-                        variant="primary"
-                        size="sm"
-                      >
-                        Düzenlemeye devam et
-                      </ButtonLink>
-                      {taslakSilSoru ? (
-                        <>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={taslagiKaldir}
-                          >
-                            Evet, sil
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => setTaslakSilSoru(false)}
-                          >
-                            Vazgeç
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => setTaslakSilSoru(true)}
-                        >
-                          Sil
-                        </Button>
-                      )}
-                    </div>
-                  </div>
                   <p className="mt-3.5 text-[12px] font-medium leading-[1.6] text-ink-400">
-                    Taslak yalnızca bu tarayıcıda tutulur: başka cihazdan
-                    görünmez ve tarayıcı verisini silersen kaybolur. Fotoğraf
-                    ve videolar taslağa kaydedilmez, onları yeniden eklemen
-                    gerekir.
+                    Bu talepler herkese açık listelerden kalktı ve yeniden
+                    yayına alınamaz; alışveriş ve sunum geçmişi iki tarafta da
+                    durduğu için kayıt olarak saklanır. Aynı ürünü yeniden
+                    aramak istersen yeni bir talep açman gerekir.
                   </p>
                 </>
-              );
-            })()
+              )}
+            </section>
           )}
-        </section>
-      )}
 
-      {/* ── Gelen Sunumlar — kendi ilanıma satıcıların gönderdikleri ── */}
-      {tab === "gelen" && (
-        <section className="mt-3">
-          <div className="mb-2.5 flex flex-wrap items-center justify-end gap-2">
-            <ButtonLink
-              href="/sunum-karsilastirma"
-              variant="lime"
-              size="sm"
-              className="min-h-[42px] text-[14px]"
-            >
-              ⇄ Sunum Karşılaştırma
-            </ButtonLink>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {gelenler.map((s) => {
-              // Her sunum kendi talebiyle karşılaştırılır — birden fazla
-              // talebe sunum gelmişse hepsi aynı ilana göre ölçülemez.
-              const sunumunTalebi = getTalep(s.talepId);
-              const satirlar = kunyeSatirlari(s, sunumunTalebi);
-              const { uyan, toplam, farkli } = eslesmeOzeti(
-                satirlar,
-                sunumunTalebi,
-              );
-              return (
-                <Link
-                  key={s.id}
-                  href={`/sunum-detay?id=${encodeURIComponent(s.id)}`}
-                  className="group flex flex-col overflow-hidden rounded-card border border-border bg-card transition-colors hover:border-primary"
-                >
-                  <div className="ref-image relative flex aspect-[3/4] items-center justify-center">
-                    <span className="absolute left-2.5 top-2.5 rounded-lg bg-ink-900/[0.82] px-2 py-1 text-[10.5px] font-semibold text-white">
-                      {s.fotolar} foto{s.video ? " · video" : ""}
-                    </span>
-                    <span
-                      className={`absolute right-2.5 top-2.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${
-                        farkli.length === 0
-                          ? "bg-accent text-ink-900"
-                          : "bg-primary-soft text-primary-hover"
-                      }`}
-                    >
-                      {uyan}/{toplam} uyuyor
-                    </span>
-                    <span className="font-mono text-[10.5px] text-ink-400">
-                      sunum görseli
-                    </span>
-                  </div>
-                  <div className="flex flex-1 flex-col p-3.5">
-                    <div className="text-[19px] font-extrabold text-primary-hover">
-                      {fiyatText(s.fiyatNum)}
-                    </div>
-                    <div className="mt-1 text-[13px] font-semibold text-ink-900">
-                      {s.satici}{" "}
-                      <span className="font-bold text-star-ink">★ {s.puan}</span>
-                    </div>
-                    {/* Sabit yükseklikler: "Sunumu incele" her kartta aynı hizada. */}
-                    <p className="mt-1.5 line-clamp-2 h-[38px] text-[13.5px] font-medium leading-snug text-ink-700">
-                      {s.baslik}
-                    </p>
-                    <div className="mt-2 line-clamp-2 h-[34px] text-[12.5px] font-medium leading-snug text-ink-400">
-                      {s.durum} · {s.teslim} · {s.ne}
-                    </div>
-                    <div className="mt-1.5 line-clamp-1 h-[17px] text-[12.5px] font-semibold leading-[17px] text-danger">
-                      {farkli.length > 0
-                        ? `⚠ ${farkli.map((r) => r.k).join(", ")} farklı`
-                        : ""}
-                    </div>
-                    {/* Alıcının yanıt süresi: 2 gün içinde karar verilmezse
-                        sunum kendiliğinden düşer. */}
-                    {(() => {
-                      const kalan = sunumYanitKalanMs(s);
-                      if (!kalan) return null;
-                      const saat = Math.ceil(kalan / 3_600_000);
-                      return (
-                        <span className="mt-1.5 text-[12px] font-bold text-acil">
-                          Yanıt için {saat > 24 ? `${Math.ceil(saat / 24)} gün` : `${saat} saat`} kaldı
-                        </span>
-                      );
-                    })()}
-                    <span className="mt-3 text-[13px] font-bold text-primary group-hover:text-primary-hover">
-                      Sunumu incele ›
-                    </span>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* ── Sunumlarım ── */}
-      {tab === "sunumlar" && (
-        <section className="mt-3">
-          {/* Kart ölçüsü Taleplerim sekmesiyle birebir aynı. */}
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            {sunumlarimListesi.map((s) => (
-              <article
-                key={s.id}
-                className="relative flex flex-col overflow-hidden rounded-card border border-border bg-card transition-colors hover:border-primary"
-              >
-                <div className="ref-image relative flex aspect-[3/4] items-center justify-center">
-                  <span className="font-mono text-[10px] text-ink-400">
-                    sunum görseli
-                  </span>
-                  <span className={`absolute left-2.5 top-2.5 ${pill} ${s.stCls}`}>
-                    {s.st}
-                  </span>
-                </div>
-                <div className="flex flex-1 flex-col p-4">
-                  {/* Kartın tamamı ilanın inceleme sayfasına gider. */}
-                  <Link
-                    href={`/sunum-detay?id=${encodeURIComponent(s.id)}`}
-                    className="text-[13.5px] font-bold leading-snug text-ink-900 after:absolute after:inset-0 after:content-[''] hover:text-primary"
-                  >
-                    {getTalep(s.talepId)?.baslik ?? s.sunum.baslik}
-                  </Link>
-                  <div className="mt-1.5 text-[11.5px] font-medium text-ink-400">
-                    İlan sahibi:{" "}
-                    <span className="font-semibold text-ink-900">
-                      {s.sahibi}
-                    </span>{" "}
-                    · {s.tarih}
-                  </div>
-                  <div className="mt-0.5 text-[11.5px] font-medium text-ink-400">
-                    Alıcının fiyatı:{" "}
-                    <span className="font-bold text-ink-900">
-                      {fiyatText(getTalep(s.talepId)?.fiyatNum ?? 0)}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-[11.5px] font-medium leading-snug text-ink-400">
-                    {s.not}
+          {/* ── Taslaklar ── */}
+          {tab === "taslaklar" && (
+            <section className="mt-3">
+              <BolumBasligi
+                baslik="Taslaklarım"
+                sayi={`${taslak ? 1 : 0} taslak`}
+                onDon={() => setTab("talepler")}
+              />
+              {!taslak ? (
+                <div className="rounded-card border border-dashed border-border-input bg-subtle px-4 py-8 text-center">
+                  <p className="text-[13.5px] font-semibold text-ink-700">
+                    Kayıtlı taslağın yok.
                   </p>
-                  <div className="relative z-10 mt-auto flex flex-col gap-2 pt-3.5">
-                    {s.aksiyon ? (
-                      <ButtonLink
-                        href={s.aksiyon.href}
-                        variant={s.aksiyon.variant}
-                        size="sm"
-                        className="w-full"
-                      >
-                        {s.aksiyon.label}
-                      </ButtonLink>
-                    ) : (
-                      <span className="block rounded-xl bg-page py-2.5 text-center text-[12px] font-semibold text-ink-400">
-                        Yanıt bekleniyor
+                  <p className="mx-auto mt-1.5 max-w-[440px] text-[12.5px] font-medium leading-[1.6] text-ink-400">
+                    İlan açarken formu yarım bırakman gerekirse “Taslak Kaydet”
+                    diyebilirsin; kaydettiğin taslak burada görünür.
+                  </p>
+                  <ButtonLink
+                    href="/ilan-ac"
+                    variant="secondary"
+                    size="sm"
+                    className="mt-4"
+                  >
+                    İlan açmaya başla
+                  </ButtonLink>
+                </div>
+              ) : (
+                (() => {
+                  const ozet = taslakOzeti(taslak);
+                  const zamanMetni = taslakZamanMetni(ozet.kaydedildi);
+                  return (
+                    <>
+                      <div className="flex flex-wrap items-center gap-3 rounded-card border border-border bg-card px-4 py-4">
+                        <div className="min-w-[200px] flex-1">
+                          <div className="text-[15px] font-bold text-ink-900">
+                            {ozet.baslik}
+                          </div>
+                          <div className="mt-[3px] text-[12.5px] font-medium text-ink-400">
+                            {ozet.kategori} · {ozet.fiyat}
+                            {/* Damgası olmayan eski taslaklarda tarih hiç
+                            yazılmaz; uydurma tarih göstermektense boş
+                            bırakmak doğrudur. */}
+                            {zamanMetni ? ` · ${zamanMetni}` : ""}
+                          </div>
+                        </div>
+                        <div className="flex flex-none flex-wrap gap-2">
+                          <ButtonLink
+                            href="/ilan-ac?taslak=yukle"
+                            variant="primary"
+                            size="sm"
+                          >
+                            Düzenlemeye devam et
+                          </ButtonLink>
+                          {taslakSilSoru ? (
+                            <>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={taslagiKaldir}
+                              >
+                                Evet, sil
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setTaslakSilSoru(false)}
+                              >
+                                Vazgeç
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setTaslakSilSoru(true)}
+                            >
+                              Sil
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <p className="mt-3.5 text-[12px] font-medium leading-[1.6] text-ink-400">
+                        Taslak yalnızca bu tarayıcıda tutulur: başka cihazdan
+                        görünmez ve tarayıcı verisini silersen kaybolur.
+                        Fotoğraf ve videolar taslağa kaydedilmez, onları yeniden
+                        eklemen gerekir.
+                      </p>
+                    </>
+                  );
+                })()
+              )}
+            </section>
+          )}
+
+          {/* ── Gelen Sunumlar — kendi ilanıma satıcıların gönderdikleri ── */}
+          {tab === "gelen" && (
+            <section className="mt-3">
+              <div className="mb-2.5 flex flex-wrap items-center justify-end gap-2">
+                <ButtonLink
+                  href="/sunum-karsilastirma"
+                  variant="lime"
+                  size="sm"
+                  className="min-h-[42px] text-[14px]"
+                >
+                  ⇄ Sunum Karşılaştırma
+                </ButtonLink>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {gelenler.map((s) => {
+                  // Her sunum kendi talebiyle karşılaştırılır — birden fazla
+                  // talebe sunum gelmişse hepsi aynı ilana göre ölçülemez.
+                  const sunumunTalebi = getTalep(s.talepId);
+                  const satirlar = kunyeSatirlari(s, sunumunTalebi);
+                  const { uyan, toplam, farkli } = eslesmeOzeti(
+                    satirlar,
+                    sunumunTalebi,
+                  );
+                  return (
+                    <Link
+                      key={s.id}
+                      href={`/sunum-detay?id=${encodeURIComponent(s.id)}`}
+                      className="group flex flex-col overflow-hidden rounded-card border border-border bg-card transition-colors hover:border-primary"
+                    >
+                      <div className="ref-image relative flex aspect-[3/4] items-center justify-center">
+                        <span className="absolute left-2.5 top-2.5 rounded-lg bg-ink-900/[0.82] px-2 py-1 text-[10.5px] font-semibold text-white">
+                          {s.fotolar} foto{s.video ? " · video" : ""}
+                        </span>
+                        <span
+                          className={`absolute right-2.5 top-2.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                            farkli.length === 0
+                              ? "bg-accent text-ink-900"
+                              : "bg-primary-soft text-primary-hover"
+                          }`}
+                        >
+                          {uyan}/{toplam} uyuyor
+                        </span>
+                        <span className="font-mono text-[10.5px] text-ink-400">
+                          sunum görseli
+                        </span>
+                      </div>
+                      <div className="flex flex-1 flex-col p-3.5">
+                        <div className="text-[19px] font-extrabold text-primary-hover">
+                          {fiyatText(s.fiyatNum)}
+                        </div>
+                        <div className="mt-1 text-[13px] font-semibold text-ink-900">
+                          {s.satici} <SaticiYildizi sunum={s} />
+                        </div>
+                        {/* Sabit yükseklikler: "Sunumu incele" her kartta aynı hizada. */}
+                        <p className="mt-1.5 line-clamp-2 h-[38px] text-[13.5px] font-medium leading-snug text-ink-700">
+                          {s.baslik}
+                        </p>
+                        <div className="mt-2 line-clamp-2 h-[34px] text-[12.5px] font-medium leading-snug text-ink-400">
+                          {s.durum} · {s.teslim} · {s.ne}
+                        </div>
+                        <div className="mt-1.5 line-clamp-1 h-[17px] text-[12.5px] font-semibold leading-[17px] text-danger">
+                          {farkli.length > 0
+                            ? `⚠ ${farkli.map((r) => r.k).join(", ")} farklı`
+                            : ""}
+                        </div>
+                        {/* Alıcının yanıt süresi: 2 gün içinde karar verilmezse
+                        sunum kendiliğinden düşer. */}
+                        {(() => {
+                          const kalan = sunumYanitKalanMs(s);
+                          if (!kalan) return null;
+                          const saat = Math.ceil(kalan / 3_600_000);
+                          return (
+                            <span className="mt-1.5 text-[12px] font-bold text-acil">
+                              Yanıt için{" "}
+                              {saat > 24
+                                ? `${Math.ceil(saat / 24)} gün`
+                                : `${saat} saat`}{" "}
+                              kaldı
+                            </span>
+                          );
+                        })()}
+                        <span className="mt-3 text-[13px] font-bold text-primary group-hover:text-primary-hover">
+                          Sunumu incele ›
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* ── Sunumlarım ── */}
+          {tab === "sunumlar" && (
+            <section className="mt-3">
+              {/* Kart ölçüsü Taleplerim sekmesiyle birebir aynı. */}
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                {sunumlarimListesi.map((s) => (
+                  <article
+                    key={s.id}
+                    className="relative flex flex-col overflow-hidden rounded-card border border-border bg-card transition-colors hover:border-primary"
+                  >
+                    <div className="ref-image relative flex aspect-[3/4] items-center justify-center">
+                      <span className="font-mono text-[10px] text-ink-400">
+                        sunum görseli
                       </span>
-                    )}
-                    {/* Alıcı karar vermeden satıcı sunumunu geri çekebilir. */}
-                    {(s.sonuc ?? "beklemede") === "beklemede" && (
-                      <SunumGeriCek sunumId={s.id} />
-                    )}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── Favorilerim ── */}
-      {tab === "takip" && (
-        <section className="mt-3">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            {takipEttiklerim.map((t) => (
-              <TalepCard key={t.id} talep={t} favoride />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── Değerlendirmeler ── */}
-      {tab === "yorumlar" && (
-        <section className="mt-3">
-          <div className="mb-3.5 flex items-center gap-2 text-[13px] font-semibold text-ink-500">
-            <span className="text-[15px] font-extrabold text-star-ink">
-              ★ {puan.toLocaleString("tr-TR", { minimumFractionDigits: 1 })}
-            </span>
-            <span>
-              · {degerlendirmeSayisi} değerlendirme — alım ve satış
-              işlemlerinden
-            </span>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {yorumlarim.map((y) => (
-              <article
-                key={`${y.yazan}-${y.urun}`}
-                className="rounded-card border border-border bg-card px-[18px] py-4"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-primary-soft text-[11.5px] font-bold text-primary-hover">
-                    {y.harf}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={profilYolu(y.yazan, aktif.kullanici)}
-                        className="text-[13.5px] font-bold text-ink-900 hover:text-primary"
+                      <span
+                        className={`absolute left-2.5 top-2.5 ${pill} ${s.stCls}`}
                       >
-                        {y.yazan}
+                        {s.st}
+                      </span>
+                    </div>
+                    <div className="flex flex-1 flex-col p-4">
+                      {/* Kartın tamamı ilanın inceleme sayfasına gider. */}
+                      <Link
+                        href={`/sunum-detay?id=${encodeURIComponent(s.id)}`}
+                        className="text-[13.5px] font-bold leading-snug text-ink-900 after:absolute after:inset-0 after:content-[''] hover:text-primary"
+                      >
+                        {getTalep(s.talepId)?.baslik ?? s.sunum.baslik}
                       </Link>
+                      <div className="mt-1.5 text-[11.5px] font-medium text-ink-400">
+                        İlan sahibi:{" "}
+                        <span className="font-semibold text-ink-900">
+                          {s.sahibi}
+                        </span>{" "}
+                        · {s.tarih}
+                      </div>
+                      <div className="mt-0.5 text-[11.5px] font-medium text-ink-400">
+                        Alıcının fiyatı:{" "}
+                        <span className="font-bold text-ink-900">
+                          {fiyatText(getTalep(s.talepId)?.fiyatNum ?? 0)}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-[11.5px] font-medium leading-snug text-ink-400">
+                        {s.not}
+                      </p>
+                      <div className="relative z-10 mt-auto flex flex-col gap-2 pt-3.5">
+                        {s.aksiyon ? (
+                          <ButtonLink
+                            href={s.aksiyon.href}
+                            variant={s.aksiyon.variant}
+                            size="sm"
+                            className="w-full"
+                          >
+                            {s.aksiyon.label}
+                          </ButtonLink>
+                        ) : (
+                          <span className="block rounded-xl bg-page py-2.5 text-center text-[12px] font-semibold text-ink-400">
+                            Yanıt bekleniyor
+                          </span>
+                        )}
+                        {/* Alıcı karar vermeden satıcı sunumunu geri çekebilir. */}
+                        {(s.sonuc ?? "beklemede") === "beklemede" && (
+                          <SunumGeriCek sunumId={s.id} />
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-[3px] text-[11.5px] font-medium text-ink-400">
-                      {y.urun} · {y.tarih}
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── Favorilerim ── */}
+          {tab === "takip" && (
+            <section className="mt-3">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                {takipEttiklerim.map((t) => (
+                  <TalepCard key={t.id} talep={t} favoride />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── Değerlendirmeler ── */}
+          {tab === "yorumlar" && (
+            <section className="mt-3">
+              <div className="mb-3.5 flex items-center gap-2 text-[13px] font-semibold text-ink-500">
+                <span className="text-[15px] font-extrabold text-star-ink">
+                  ★ {puan.toLocaleString("tr-TR", { minimumFractionDigits: 1 })}
+                </span>
+                <span>
+                  · {degerlendirmeSayisi} değerlendirme — alım ve satış
+                  işlemlerinden
+                </span>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {yorumlarim.map((y) => (
+                  <article
+                    // Anahtar `yazan-urun` idi; aynı kişiden aynı başlıklı ikinci
+                    // alışveriş çakışıyordu.
+                    key={y.id ?? `${y.yazan}-${y.urun}`}
+                    className="rounded-card border border-border bg-card px-[18px] py-4"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-primary-soft text-[11.5px] font-bold text-primary-hover">
+                        {y.harf}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={profilYolu(y.yazan, aktif.kullanici)}
+                            className="text-[13.5px] font-bold text-ink-900 hover:text-primary"
+                          >
+                            {y.yazan}
+                          </Link>
+                        </div>
+                        <div className="mt-[3px] flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11.5px] font-medium text-ink-400">
+                          {/* Rozet YAZANIN rolünü söyler; kayıttaki rol
+                              değerlendirilenin rolü olduğu için tersi alınır. */}
+                          {y.rol && (
+                            <span
+                              /* Satıcının yazdığı değerlendirme lime yeşili,
+                                 alıcınınki mor (alıcı=mor / satıcı=yeşil).
+                                 Lime zeminde yazı patlıcan moru olur. */
+                              className={`rounded-full px-1.5 py-[2px] text-[10.5px] font-bold ${
+                                y.rol === "satici"
+                                  ? "bg-primary-soft text-primary-hover"
+                                  : "bg-accent text-ink-900"
+                              }`}
+                            >
+                              {y.rol === "satici" ? "Alıcı" : "Satıcı"} olarak
+                              değerlendirdi
+                            </span>
+                          )}
+                          <span>
+                            {y.urun} · {y.tarih}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="flex-none text-[13px] font-bold text-star-ink">
+                        {"★".repeat(y.puan)}
+                        {"☆".repeat(5 - y.puan)}
+                      </span>
                     </div>
-                  </div>
-                  <span className="flex-none text-[13px] font-bold text-star-ink">
-                    {"★".repeat(y.puan)}
-                    {"☆".repeat(5 - y.puan)}
-                  </span>
-                </div>
-                <p className="mt-3 text-[13.5px] font-medium leading-relaxed text-ink-700">
-                  {y.text}
-                </p>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
+                    {/* Yorum zorunlu değil; boşta sebepsiz boşluk kalıyordu. */}
+                    {y.text ? (
+                      <p className="mt-3 text-[13.5px] font-medium leading-relaxed text-ink-700">
+                        {y.text}
+                      </p>
+                    ) : (
+                      <p className="mt-3 text-[13px] font-medium italic text-ink-300">
+                        Yorum yazılmadı — yalnızca puan verildi.
+                      </p>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </div>
     </main>

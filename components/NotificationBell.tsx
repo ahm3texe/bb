@@ -13,14 +13,19 @@ export function NotificationBell() {
 
   // Zil aktif hesabın bildirimlerini gösterir.
   const aktif = useAktifKullanici();
-  const { bildirimler: hepsi, oku, sil } = useBildirimler(aktif?.kullanici ?? "");
+  const {
+    bildirimler: hepsi,
+    oku,
+    sil,
+  } = useBildirimler(aktif?.kullanici ?? "");
   const OKUNMAMIS = hepsi.filter((b) => b.yeni).length;
   const bildirimler = hepsi.slice(0, 3);
 
   useEffect(() => {
     if (!open) return;
     function onDoc(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
@@ -32,6 +37,37 @@ export function NotificationBell() {
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  /*
+   * ZİYARETÇİDE ZİL BİR BAĞLANTIDIR.
+   *
+   * Oturumsuz kullanıcıda zil yine açılıyor ve boş bir panel gösteriyordu:
+   * ne bildirim vardı ne de giriş yapması gerektiğini söyleyen bir şey.
+   * Artık doğrudan giriş ekranına götürüyor ve giriş sonrası bildirimlere
+   * düşürüyor.
+   */
+  if (!aktif)
+    return (
+      <Link
+        href={`/giris?devam=${encodeURIComponent("/bildirimler")}`}
+        aria-label="Bildirimler — giriş yap"
+        className="relative flex h-[44px] w-[44px] items-center justify-center rounded-full border border-border bg-card transition-colors hover:border-primary"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-[22px] w-[22px] text-ink-700"
+          aria-hidden
+        >
+          <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.7 21a2 2 0 01-3.4 0" />
+        </svg>
+      </Link>
+    );
 
   return (
     <div className="relative" ref={ref}>

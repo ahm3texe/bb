@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  Yalnızca büyüteç simgesi — tam kilitlenmiş logonun (public/logo.svg)
+  ikon parçası, aynı çizim ve renklerle. Koyu zeminli yerlerde (footer,
+  moderasyon paneli) tam logo okunmuyor: yazı ve kapsül patlıcan moru.
+  Oralarda beyaz kutunun içinde bu işaret kullanılır, marka adı zaten
+  yanında açık renkli metin olarak duruyor.
+-->
+<svg
+   width="312"
+   height="316"
+   viewBox="5 5 302 306"
+   role="img"
+   aria-label="bulbana"
+   version="1.1"
+   xmlns="http://www.w3.org/2000/svg">
+  <!-- Büyüteç sapı -->
+  <path d="M 42,276 L 132,186" fill="none" stroke="#361e5a" stroke-width="61" stroke-linecap="round" />
+  <path d="M 45,269 L 87,227" fill="none" stroke="#bbfc08" stroke-width="20" stroke-linecap="round" />
+  <!-- Büyüteç çerçevesi -->
+  <circle cx="190" cy="121" r="100" fill="#ffffff" stroke="#361e5a" stroke-width="21" />
+  <!-- Yüz -->
+  <circle cx="151" cy="117" r="12" fill="#361e5a" />
+  <path d="M 203,117 Q 221,103 239,117" fill="none" stroke="#361e5a" stroke-width="6" stroke-linecap="round" />
+  <path d="M 163,149 Q 190,177 220,149" fill="none" stroke="#361e5a" stroke-width="6" stroke-linecap="round" />
+</svg>

@@ -9,7 +9,7 @@ import type { Sohbet } from "@/lib/sohbetler";
 import { useOturumSahibi } from "@/lib/aktif-kullanici";
 import { ButtonLink } from "@/components/ui/Button";
 import { SiparisPaneli } from "@/components/SiparisPaneli";
-import { odemeSonTarih } from "@/lib/anlasma";
+import { odemeSonTarih, siparisSuruyor } from "@/lib/anlasma";
 import { useRouter } from "next/navigation";
 import type { Anlasma } from "@/lib/anlasma";
 
@@ -20,7 +20,14 @@ type Msg =
   | { k: "sys"; text: string; time: string }
   | { k: "sunum"; by: By; time: string }
   | { k: "text"; by: By; text: string; time: string }
-  | { k: "offer"; by: By; amount: string; note: string; st: OfferSt; time: string };
+  | {
+      k: "offer";
+      by: By;
+      amount: string;
+      note: string;
+      st: OfferSt;
+      time: string;
+    };
 
 const fmt = (n: number) => n.toLocaleString("tr-TR");
 
@@ -66,12 +73,35 @@ const saatBicim = (iso: string) =>
     minute: "2-digit",
   });
 const now = () =>
-  new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  new Date().toLocaleTimeString("tr-TR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-
-/** ?satici=... ile gelen kullanıcıyı doğrudan o sohbete düşür. */
-function konusmaIdBul(liste: Sohbet[], kullanici: string, satici?: string) {
+/**
+ * Açılacak sohbeti seçer.
+ *
+ * Önce `?sunum=` — sohbetin kimliği zaten sunum kimliğinden türetiliyor, o
+ * yüzden bu doğrudan ve şaşmaz bir adres. `?satici=` ise karşı tarafın ADINI
+ * arıyor ve bulamayınca listenin ilk sohbetine düşüyordu: satıcı kendi
+ * sunumundan "Sohbete Geç" dediğinde parametre kendi adı oluyor, eşleşme
+ * olmuyor ve alakasız bir alıcının konuşması açılıyordu.
+ */
+function konusmaIdBul(
+  liste: Sohbet[],
+  kullanici: string,
+  satici?: string,
+  sunumId?: string,
+  sohbetId?: string,
+) {
   if (!liste.length) return "";
+  // `?sohbet=` sohbeti kimliğiyle adresler — profildeki "Mesaj Gönder"
+  // bunu kullanır.
+  if (sohbetId && liste.some((k) => k.id === sohbetId)) return sohbetId;
+  if (sunumId) {
+    const hedef = liste.find((k) => k.id === `sunum-${sunumId}`);
+    if (hedef) return hedef.id;
+  }
   if (satici) {
     const hedef = liste.find((k) => karsiTarafFor(k, kullanici) === satici);
     if (hedef) return hedef.id;
@@ -81,10 +111,16 @@ function konusmaIdBul(liste: Sohbet[], kullanici: string, satici?: string) {
 
 export function MesajlarClient({
   satici,
+  sunumId,
+  sohbetId,
   konusmalar,
   talepler,
 }: {
   satici?: string;
+  /** `?sunum=` ile gelen sunum kimliği — sohbeti doğrudan adresler. */
+  sunumId?: string;
+  /** `?sohbet=` ile gelen sohbet kimliği. */
+  sohbetId?: string;
   /** Sunucudan gelen sohbetler — sunumlardan türetilir. */
   konusmalar: Sohbet[];
   /** Sohbetlerin konusu olan talepler — ilan bağlamı buradan çözülür. */
@@ -95,7 +131,7 @@ export function MesajlarClient({
   const aktif = useOturumSahibi();
   const router = useRouter();
   const [activeId, setActiveId] = useState(() =>
-    konusmaIdBul(konusmalar, aktif.kullanici, satici),
+    konusmaIdBul(konusmalar, aktif.kullanici, satici, sunumId, sohbetId),
   );
   const [msgs, setMsgs] = useState<Msg[]>([]);
   // Anlaşma sunucudan gelir: teklif kabul edildiği anda pazarlık kapanır,
@@ -162,30 +198,32 @@ export function MesajlarClient({
               },
             ]
           : [];
-        setMsgs(tekliflerTazele([
-          ...acilis,
-          ...(v.mesajlar ?? []).map((m) =>
-            m.tutar
-              ? {
-                  k: "offer" as const,
-                  by: (m.gonderen === aktifSohbet?.satici
-                    ? "seller"
-                    : "buyer") as By,
-                  amount: fmt(m.tutar),
-                  note: "Teklif",
-                  st: "pending" as OfferSt,
-                  time: saatBicim(m.zaman),
-                }
-              : {
-                  k: "text" as const,
-                  by: (m.gonderen === aktifSohbet?.satici
-                    ? "seller"
-                    : "buyer") as By,
-                  text: m.metin,
-                  time: saatBicim(m.zaman),
-                },
-          ),
-        ]));
+        setMsgs(
+          tekliflerTazele([
+            ...acilis,
+            ...(v.mesajlar ?? []).map((m) =>
+              m.tutar
+                ? {
+                    k: "offer" as const,
+                    by: (m.gonderen === aktifSohbet?.satici
+                      ? "seller"
+                      : "buyer") as By,
+                    amount: fmt(m.tutar),
+                    note: "Teklif",
+                    st: "pending" as OfferSt,
+                    time: saatBicim(m.zaman),
+                  }
+                : {
+                    k: "text" as const,
+                    by: (m.gonderen === aktifSohbet?.satici
+                      ? "seller"
+                      : "buyer") as By,
+                    text: m.metin,
+                    time: saatBicim(m.zaman),
+                  },
+            ),
+          ]),
+        );
       })
       .catch(() => {
         if (!iptal) setMsgs([]);
@@ -255,9 +293,7 @@ export function MesajlarClient({
     const kalan = new Date(odemeSonTarih(anlasma)).getTime() - Date.now();
     const zamanlayici = setTimeout(
       () => {
-        fetch(
-          `/api/anlasmalar?sunum=${encodeURIComponent(anlasma.sunumId)}`,
-        )
+        fetch(`/api/anlasmalar?sunum=${encodeURIComponent(anlasma.sunumId)}`)
           .then((r) => (r.ok ? r.json() : { anlasma: null }))
           .then((v: { anlasma?: Anlasma | null }) => {
             if (v.anlasma) return;
@@ -291,8 +327,7 @@ export function MesajlarClient({
   const pending = [...msgs]
     .reverse()
     .find((m) => m.k === "offer" && m.st === "pending") as
-    | Extract<Msg, { k: "offer" }>
-    | undefined;
+    Extract<Msg, { k: "offer" }> | undefined;
   /**
    * Sunumun akıbetini sunucuya yazar. Karar kalıcı olmazsa satıcı
    * reddedilen sunumdan sonra yeniden sunum yapamaz — bu yüzden
@@ -421,9 +456,7 @@ export function MesajlarClient({
       },
     ]);
     if (onay === "hayir")
-      router.push(
-        `/destek?konu=teslim&siparis=${encodeURIComponent(sunumId)}`,
-      );
+      router.push(`/destek?konu=teslim&siparis=${encodeURIComponent(sunumId)}`);
   }
 
   /** Kargo bilgisi — hata metni döner, form onu gösterir. */
@@ -520,24 +553,26 @@ export function MesajlarClient({
       return false;
     }
     const { mesaj } = (await r.json()) as { mesaj: SunucuMesaj };
-    setMsgs((prev) => tekliflerTazele([
-      ...prev,
-      mesaj.tutar
-        ? {
-            k: "offer",
-            by: VIEWER,
-            amount: fmt(mesaj.tutar),
-            note: "Teklif",
-            st: "pending",
-            time: saatBicim(mesaj.zaman),
-          }
-        : {
-            k: "text",
-            by: VIEWER,
-            text: mesaj.metin,
-            time: saatBicim(mesaj.zaman),
-          },
-    ]));
+    setMsgs((prev) =>
+      tekliflerTazele([
+        ...prev,
+        mesaj.tutar
+          ? {
+              k: "offer",
+              by: VIEWER,
+              amount: fmt(mesaj.tutar),
+              note: "Teklif",
+              st: "pending",
+              time: saatBicim(mesaj.zaman),
+            }
+          : {
+              k: "text",
+              by: VIEWER,
+              text: mesaj.metin,
+              time: saatBicim(mesaj.zaman),
+            },
+      ]),
+    );
     return true;
   }
 
@@ -583,8 +618,8 @@ export function MesajlarClient({
             Henüz mesajın yok
           </h1>
           <p className="mx-auto mt-2.5 max-w-md text-sm font-medium leading-relaxed text-ink-500">
-            Bir talebe sunum gönderdiğinde ya da kendi talebine sunum
-            geldiğinde pazarlık burada başlar.
+            Bir talebe sunum gönderdiğinde ya da kendi talebine sunum geldiğinde
+            pazarlık burada başlar.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-2.5">
             <ButtonLink href="/kesfet" variant="primary" size="lg">
@@ -618,8 +653,16 @@ export function MesajlarClient({
             const secili = c.id === activeId;
             // Özet metni sohbetin kendi verisinden gelir; sabit bir tutar
             // yazmak gerçek teklifle çelişiyordu.
+            //
+            // "Anlaşıldı ✓" YALNIZCA sipariş SÜRERKEN yazılır. Koşul
+            // "anlaşma var mı?" idi ve tamamlanmış alışverişte de doğruydu:
+            // sunucunun ürettiği "Alışveriş tamamlandı ✓" satırı, sohbete
+            // tıklanır tıklanmaz bir önceki aşamaya geri dönüyordu.
             const onizleme =
-              c.acik && c.id === activeId && deal === "accepted"
+              c.acik &&
+              c.id === activeId &&
+              anlasma !== null &&
+              siparisSuruyor(anlasma)
                 ? "Anlaşıldı ✓"
                 : c.son;
             return (
@@ -742,7 +785,9 @@ export function MesajlarClient({
                         <div className="flex items-center gap-2.5">
                           <div className="flex flex-1 gap-1.5">
                             {Array.from(
-                              { length: Math.min(3, aktifSohbet.sunumFoto ?? 0) },
+                              {
+                                length: Math.min(3, aktifSohbet.sunumFoto ?? 0),
+                              },
                               (_, n) => (
                                 <div
                                   key={n}
@@ -777,7 +822,10 @@ export function MesajlarClient({
                     const mine = m.by === VIEWER;
                     if (mine) {
                       return (
-                        <div key={i} className="max-w-[430px] self-end text-right">
+                        <div
+                          key={i}
+                          className="max-w-[430px] self-end text-right"
+                        >
                           <div className="rounded-[14px_4px_14px_14px] bg-primary px-3.5 py-[11px] text-left text-[14.5px] font-medium leading-relaxed text-white">
                             {m.text}
                           </div>
@@ -788,10 +836,19 @@ export function MesajlarClient({
                       );
                     }
                     return (
-                      <div key={i} className="flex max-w-[430px] gap-2 self-start">
-                        <div className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-full bg-ink-900 text-[10.5px] font-bold text-accent">
+                      <div
+                        key={i}
+                        className="flex max-w-[430px] gap-2 self-start"
+                      >
+                        {/* Avatar karşı tarafın profiline gider. */}
+                        <Link
+                          href={`/profil/${nameOf(m.by)}`}
+                          aria-label={`${nameOf(m.by)} profilini gör`}
+                          title={`${nameOf(m.by)} profilini gör`}
+                          className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-full bg-ink-900 text-[10.5px] font-bold text-accent transition-opacity hover:opacity-80"
+                        >
                           {avOf(m.by)}
-                        </div>
+                        </Link>
                         <div>
                           <div className="rounded-[4px_14px_14px_14px] border border-border bg-card px-3.5 py-[11px] text-[14.5px] font-medium leading-relaxed text-ink-900">
                             {m.text}
@@ -1037,9 +1094,14 @@ export function MesajlarClient({
           ) : (
             /* Placeholder konuşma */
             <div className="flex h-[calc(100vh-330px)] min-h-[220px] flex-col items-center justify-center gap-3 bg-subtle px-8 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-xl font-bold text-primary-hover">
+              <Link
+                href={`/profil/${karsiTarafFor(activeConv, aktif.kullanici)}`}
+                aria-label={`${karsiTarafFor(activeConv, aktif.kullanici)} profilini gör`}
+                title={`${karsiTarafFor(activeConv, aktif.kullanici)} profilini gör`}
+                className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-xl font-bold text-primary-hover transition-opacity hover:opacity-80"
+              >
                 {harfFor(karsiTarafFor(activeConv, aktif.kullanici))}
-              </div>
+              </Link>
               <div className="text-base font-bold text-ink-900">
                 {karsiTarafFor(activeConv, aktif.kullanici)} ile sohbet
               </div>
@@ -1090,7 +1152,6 @@ export function MesajlarClient({
               .
             </p>
           </div>
-
         </aside>
       </div>
     </main>

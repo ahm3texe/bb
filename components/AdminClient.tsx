@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useOturumSahibi } from "@/lib/aktif-kullanici";
 import { fiyatText } from "@/lib/data";
 import type { IadeAdim } from "@/lib/anlasma";
@@ -227,10 +228,7 @@ export function AdminClient() {
   }, [uygula, kuyrukYukle]);
 
   /** İtiraz sürecinde bir adımı işler. */
-  async function itirazAdimi(
-    sunumId: string,
-    govde: Record<string, unknown>,
-  ) {
+  async function itirazAdimi(sunumId: string, govde: Record<string, unknown>) {
     if (isleniyor) return;
     setIsleniyor(sunumId);
     setHata("");
@@ -321,7 +319,12 @@ export function AdminClient() {
   const destekBekleyen = itirazlar.filter((i) => ADIM_BILGI[i.adim].destekte);
 
   const menu: { id: Bolum; ad: string; harf: string; rozet: number }[] = [
-    { id: "itirazlar", ad: "İtirazlar", harf: "!", rozet: destekBekleyen.length },
+    {
+      id: "itirazlar",
+      ad: "İtirazlar",
+      harf: "!",
+      rozet: destekBekleyen.length,
+    },
     {
       id: "aktarimlar",
       ad: "IBAN Aktarımları",
@@ -353,12 +356,21 @@ export function AdminClient() {
       {/* ── Kenar çubuğu ── */}
       <aside className="sticky top-[150px] flex flex-col gap-1 rounded-panel bg-footer p-[14px] text-white">
         <div className="flex items-center gap-[9px] px-2 pb-4 pt-1">
-          <span className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg bg-white text-[15px] font-extrabold text-ink-900">
-            b
+          {/* "b" harfi yerine gerçek işaret; koyu zemin olduğu için beyaz
+              kutunun içinde (bkz. public/logo-isaret.svg). */}
+          <span className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg bg-white">
+            <Image
+              src="/logo-isaret.svg"
+              alt=""
+              width={312}
+              height={316}
+              className="block h-[22px] w-[22px]"
+            />
           </span>
           <div>
             <div className="text-base font-extrabold leading-none">
-              bul<span className="text-[#a78bfa]">bana</span>
+              {/* Logodaki gibi lime yeşili (bkz. components/Footer.tsx). */}
+              bul<span className="text-accent">bana</span>
             </div>
             <div className="mt-[3px] text-[8.5px] font-bold leading-none tracking-[1.2px] text-accent">
               MODERASYON
@@ -381,7 +393,9 @@ export function AdminClient() {
             >
               <span
                 className={`flex h-[22px] w-[22px] flex-none items-center justify-center rounded-md text-[11px] font-extrabold ${
-                  active ? "bg-accent text-ink-900" : "bg-[#362258] text-[#b4a8d6]"
+                  active
+                    ? "bg-accent text-ink-900"
+                    : "bg-[#362258] text-[#b4a8d6]"
                 }`}
               >
                 {m.harf}
@@ -493,9 +507,7 @@ function ItirazListesi({
   if (!kayitlar.length)
     return (
       <div className={kartCls}>
-        <p className="text-[13px] font-medium text-ink-400">
-          Açık itiraz yok.
-        </p>
+        <p className="text-[13px] font-medium text-ink-400">Açık itiraz yok.</p>
       </div>
     );
 
@@ -544,8 +556,7 @@ function ItirazListesi({
 
             {i.iadeKargo && (
               <p className="mt-2 text-[11.5px] font-medium text-ink-400">
-                İade kargosu: {i.iadeKargo.firma} · Takip{" "}
-                {i.iadeKargo.takipNo}
+                İade kargosu: {i.iadeKargo.firma} · Takip {i.iadeKargo.takipNo}
               </p>
             )}
 
@@ -872,9 +883,9 @@ function EpostaKuyrugu({ kayitlar }: { kayitlar: EpostaIsi[] }) {
       </div>
 
       <p className="text-[12px] font-medium leading-[1.5] text-ink-400">
-        Gerçek gönderim servisi bağlanana kadar postalar burada birikir
-        (bkz. lib/eposta.ts). Kuyruk 500 kayıtta en eskiden başlayarak
-        kırpılır — bu sessiz bir veri kaybıdır, sayıyı takip edin.
+        Gerçek gönderim servisi bağlanana kadar postalar burada birikir (bkz.
+        lib/eposta.ts). Kuyruk 500 kayıtta en eskiden başlayarak kırpılır — bu
+        sessiz bir veri kaybıdır, sayıyı takip edin.
       </p>
 
       {kayitlar.slice(0, 50).map((k) => (
@@ -955,7 +966,9 @@ function AktarimListesi({
                 </div>
                 <div className="mt-0.5 text-[11.5px] font-medium text-ink-300">
                   Talep: {zamanMetni(a.zaman)}
-                  {a.sonucZamani ? ` · Sonuç: ${zamanMetni(a.sonucZamani)}` : ""}
+                  {a.sonucZamani
+                    ? ` · Sonuç: ${zamanMetni(a.sonucZamani)}`
+                    : ""}
                 </div>
                 {a.not && (
                   <div className="mt-1 text-[11.5px] font-semibold text-danger">

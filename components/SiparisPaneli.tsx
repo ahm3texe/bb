@@ -84,9 +84,12 @@ function SiparisKoduKutusu({
 function DegerlendirmeKutusu({
   sunumId,
   karsiTaraf,
+  /** Karşı tarafın BU alışverişteki rolü — yorum profilde o tarafta listelenir. */
+  karsiTarafRol,
 }: {
   sunumId: string;
   karsiTaraf: string;
+  karsiTarafRol: "alici" | "satici";
 }) {
   const [puan, setPuan] = useState(0);
   const [uzeri, setUzeri] = useState(0);
@@ -149,7 +152,13 @@ function DegerlendirmeKutusu({
         {karsiTaraf} kullanıcısını değerlendir
       </div>
       <p className="mt-0.5 text-[12.5px] font-medium text-ink-500">
-        Puanın ve yorumun profilinde herkese açık görünür.
+        {/* Yorum ZORUNLU DEĞİL. Bir dönem zorunluydu: çıplak yıldız, kişinin
+            alıcı olarak mı satıcı olarak mı beğenildiğini söylemiyordu. O
+            eksiklik artık kaynağında çözülü — değerlendirme profilde rolüne
+            göre ayrı listeleniyor — bu yüzden zorunluluk kaldırıldı. */}
+        Puanın ve yorumun profilinde herkese açık görünür; {karsiTaraf} bunu{" "}
+        {karsiTarafRol === "satici" ? "satıcı" : "alıcı"} tarafındaki
+        değerlendirmelerinde görür.
       </p>
 
       <div className="mt-2.5 flex items-center gap-1">
@@ -259,12 +268,15 @@ function SorunluPanel({
         <DegerlendirmeKutusu
           sunumId={anlasma.sunumId}
           karsiTaraf={alici ? anlasma.satici : anlasma.alici}
+          karsiTarafRol={alici ? "satici" : "alici"}
         />
       </div>
     );
 
   const baslik: Partial<Record<IadeAdim, string>> = {
-    inceleme: acildi ? `Destek kaydı açıldı — ${kayit!.no}` : "Üründe sorun bildirildi",
+    inceleme: acildi
+      ? `Destek kaydı açıldı — ${kayit!.no}`
+      : "Üründe sorun bildirildi",
     "iade-kargosu-bekleniyor": "İtirazda alıcı haklı bulundu",
     "iade-kargoda": "İade kargoda",
     "satici-onayi-bekleniyor": "İade ürünü satıcıya ulaştı",
@@ -617,8 +629,8 @@ export function SiparisPaneli({
           </div>
         </div>
         <p className="mt-2 text-[12.5px] font-medium leading-snug text-primary-hover/70">
-          Süre dolarsa anlaşma iptal edilir ve talep diğer satıcılara
-          yeniden açılır.
+          Süre dolarsa anlaşma iptal edilir ve talep diğer satıcılara yeniden
+          açılır.
         </p>
       </div>
     );
@@ -629,7 +641,8 @@ export function SiparisPaneli({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[14.5px] font-extrabold leading-snug text-ink-900">
-              Ödeme alındı ✓ — {alici ? "kargo bekleniyor" : "kargoya verme süren işliyor"}
+              Ödeme alındı ✓ —{" "}
+              {alici ? "kargo bekleniyor" : "kargoya verme süren işliyor"}
             </div>
             <div className="mt-1 text-[13px] font-medium leading-snug text-ink-500">
               {alici
@@ -668,6 +681,7 @@ export function SiparisPaneli({
         <DegerlendirmeKutusu
           sunumId={anlasma.sunumId}
           karsiTaraf={alici ? anlasma.satici : anlasma.alici}
+          karsiTarafRol={alici ? "satici" : "alici"}
         />
       </div>
     );

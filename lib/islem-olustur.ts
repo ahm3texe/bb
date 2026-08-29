@@ -24,8 +24,15 @@ export function islemOlustur(
 
   const talepBilgi: IslemTalep = {
     fiyat: talep?.fiyatNum ?? anlasma.tutar,
-    durum: talep ? (talepDurumlari(talep).join(" / ") || "Hepsi") : "—",
-    defo: talep?.defoKabul ? "Defolu olabilir" : "Defosuz olmalı",
+    durum: talep ? talepDurumlari(talep).join(" / ") || "Hepsi" : "—",
+    // Yanıtsız talep "Defosuz olmalı" diye kaydediliyordu; işlem kaydı
+    // kalıcıdır, uydurulan şart yıllar sonra da orada durur.
+    defo:
+      talep?.defoKabul === undefined
+        ? "—"
+        : talep.defoKabul
+          ? "Defolu olabilir"
+          : "Defosuz olmalı",
     marka: talep?.marka ?? "—",
     model: talep?.model ?? "—",
     yil: talep?.yil ?? "—",

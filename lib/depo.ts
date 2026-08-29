@@ -4,6 +4,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { Talep } from "./data";
+import { fiyatText } from "./data";
 import { sunumAcikMi, MAX_ACIK_SUNUM } from "./gelen-sunumlar";
 import {
   kargoSaatiCoz,
@@ -18,6 +19,7 @@ import {
 } from "./anlasma";
 import { sunumSuresiDolduMu } from "./gelen-sunumlar";
 import { destekYetkisi } from "./roller";
+import { harfFor } from "./sohbetler";
 import { gorselleriSil } from "./dosya-temizlik";
 import { kullanimDisiYollar } from "./gorsel";
 import { islemOlustur } from "./islem-olustur";
@@ -180,7 +182,10 @@ export async function talepEkle(talep: Talep): Promise<Talep> {
     const hepsi = await oku<Talep>(TALEP_DOSYA);
     const kayit: Talep = {
       ...talep,
-      id: slugUret(talep.baslik, hepsi.map((t) => t.id)),
+      id: slugUret(
+        talep.baslik,
+        hepsi.map((t) => t.id),
+      ),
     };
     await yaz(TALEP_DOSYA, [kayit, ...hepsi]);
     return kayit;
@@ -228,9 +233,12 @@ async function kullanilmayanGorseller(yollar: string[]): Promise<string[]> {
   ]);
 
   const kullanimda = new Set<string>();
-  for (const t of talepler) for (const g of t.gorseller ?? []) kullanimda.add(g);
-  for (const s of sunumlar) for (const g of s.gorseller ?? []) kullanimda.add(g);
-  for (const d of destekKayitlari) for (const e of d.ekler ?? []) kullanimda.add(e);
+  for (const t of talepler)
+    for (const g of t.gorseller ?? []) kullanimda.add(g);
+  for (const s of sunumlar)
+    for (const g of s.gorseller ?? []) kullanimda.add(g);
+  for (const d of destekKayitlari)
+    for (const e of d.ekler ?? []) kullanimda.add(e);
 
   return kullanimDisiYollar(yollar, kullanimda);
 }
@@ -392,10 +400,13 @@ export async function sunumlarOku(): Promise<GelenSunum[]> {
   // Yanıtsız kalan sunumlar okuma anında düşürülür (bkz. lib/gelen-sunumlar).
   // Okuma da aynı kuyruk adımında yapılır: temizlikten sonra kilidi bırakıp
   // okumak, araya giren bir yazmanın yarısını görme ihtimali bırakıyordu.
-  return sirala(async () => {
-    await yanitsizSunumlariDusur();
-    return oku<GelenSunum>(SUNUM_DOSYA);
+  const { dusenler, liste } = await sirala(async () => {
+    const dusenler = await yanitsizSunumlariDusur();
+    return { dusenler, liste: await oku<GelenSunum>(SUNUM_DOSYA) };
   });
+  // Bildirim kilit bırakıldıktan SONRA: `bildirimEkle` de kuyruğa girer.
+  await sunumSuresiBildirimleri(dusenler);
+  return liste;
 }
 
 /**
@@ -407,7 +418,7 @@ export async function acikSunumBul(
   talepId: string,
   satici: string,
 ): Promise<GelenSunum | undefined> {
-  await sirala(yanitsizSunumlariDusur);
+  await sunumSuresiBildirimleri(await sirala(yanitsizSunumlariDusur));
   const hepsi = await oku<GelenSunum>(SUNUM_DOSYA);
   return hepsi.find(
     (s) => s.talepId === talepId && s.satici === satici && sunumAcikMi(s),
@@ -428,8 +439,8 @@ export async function sunumEkle(
   | "talep-alinmiyor"
   | "sunum-siniri"
 > {
-  await sirala(suresiDolanlariDusur);
-  await sirala(yanitsizSunumlariDusur);
+  await odemeSuresiBildirimleri(await sirala(suresiDolanlariDusur));
+  await sunumSuresiBildirimleri(await sirala(yanitsizSunumlariDusur));
   return sirala(async () => {
     // Önce talebin kendisi. Bu kontrol kişisel kuraldan önce gelir ki
     // kullanıcı doğru gerekçeyi görsün.
@@ -506,7 +517,8 @@ export async function talepGuncelle(
     if (hepsi[i].kapandi || hepsi[i].silindi) return "duzenlenemez" as const;
 
     const anlasmalar = await oku<Anlasma>(ANLASMA_DOSYA);
-    if (anlasmalar.some((a) => a.talepId === id)) return "duzenlenemez" as const;
+    if (anlasmalar.some((a) => a.talepId === id))
+      return "duzenlenemez" as const;
 
     // Görsel listesi değiştiyse, listeden DÜŞEN dosyalar diskten de gitmeli.
     // Bu adım eksikti: düzenlemede `gorseller` alanı doğrudan eziliyordu ve
@@ -514,7 +526,12 @@ export async function talepGuncelle(
     const eskiGorseller = hepsi[i].gorseller ?? [];
     const yeniGorseller = veri.gorseller;
 
-    hepsi[i] = { ...hepsi[i], ...veri, id: hepsi[i].id, sahibi: hepsi[i].sahibi };
+    hepsi[i] = {
+      ...hepsi[i],
+      ...veri,
+      id: hepsi[i].id,
+      sahibi: hepsi[i].sahibi,
+    };
     await yaz(TALEP_DOSYA, hepsi);
 
     if (yeniGorseller) {
@@ -540,12 +557,7 @@ export async function talepYayinDurumu(
   isteyen: string,
   islem: "dondur" | "yayinla",
 ): Promise<
-  | Talep
-  | "bulunamadi"
-  | "yetkisiz"
-  | "kapali"
-  | "zaten-yayinda"
-  | "silinmis"
+  Talep | "bulunamadi" | "yetkisiz" | "kapali" | "zaten-yayinda" | "silinmis"
 > {
   return sirala(async () => {
     const hepsi = await oku<Talep>(TALEP_DOSYA);
@@ -679,9 +691,7 @@ export async function sunumSonucla(
   sunumId: string,
   isteyen: string,
   sonuc: "red",
-): Promise<
-  "guncellendi" | "bulunamadi" | "yetkisiz" | "zaten-sonuclandi"
-> {
+): Promise<"guncellendi" | "bulunamadi" | "yetkisiz" | "zaten-sonuclandi"> {
   return sirala(async () => {
     const sunumlar = await oku<GelenSunum>(SUNUM_DOSYA);
     const i = sunumlar.findIndex((s) => s.id === sunumId);
@@ -756,10 +766,20 @@ export async function mesajEkle(mesaj: Mesaj): Promise<Mesaj> {
  * Kuyruk içinden çağrılır; sunum okumalarının başında çalışır ki hem
  * satıcı hem alıcı aynı gerçeği görsün.
  */
-async function yanitsizSunumlariDusur(): Promise<void> {
+/**
+ * Alıcının yanıtsız bıraktığı sunumları düşürür ve DÜŞENLERİ DÖNDÜRÜR.
+ *
+ * Dönüş değeri bildirimler için: satıcının sunumu sessizce "süresi doldu"
+ * oluyordu, haber ancak Profilim'e girip bakarsa alınıyordu. Bildirim
+ * burada gönderilemez — bu iş yazma kuyruğunun içinde çalışıyor,
+ * `bildirimEkle` de kuyruğa girdiği için kilitlenirdi (aynı desen:
+ * `otomatikOnaylar`). Çağıran taraf kuyruk dışında `sunumSuresiBildirimleri`
+ * ile halleder.
+ */
+async function yanitsizSunumlariDusur(): Promise<GelenSunum[]> {
   const hepsi = await oku<GelenSunum>(SUNUM_DOSYA);
   const dolanlar = hepsi.filter((s) => sunumSuresiDolduMu(s));
-  if (!dolanlar.length) return;
+  if (!dolanlar.length) return [];
 
   await yaz(
     SUNUM_DOSYA,
@@ -773,6 +793,26 @@ async function yanitsizSunumlariDusur(): Promise<void> {
   // Düşen sunumlar talebin sunum sayacından da çıkar.
   for (const talepId of new Set(dolanlar.map((d) => d.talepId))) {
     await sunumSayisiTazele(talepId);
+  }
+  return dolanlar;
+}
+
+/** Süresi dolan sunumlar için satıcıya bildirim. Kuyruk DIŞINDA çağrılır. */
+async function sunumSuresiBildirimleri(dusenler: GelenSunum[]): Promise<void> {
+  for (const s of dusenler) {
+    await bildirimEkle({
+      id: kimlik(),
+      kime: s.satici,
+      grup: "Bugün",
+      tip: "sistem",
+      harf: "BB",
+      avatar: "bg-subtle text-ink-500",
+      text: "Sunumun yanıtsız kaldı ve süresi doldu.",
+      sub: "Alıcı süresinde karar vermedi; talep hâlâ açıksa yeniden sunum yapabilirsin.",
+      zaman: "az önce",
+      href: "/profil?tab=sunumlar",
+      yeni: true,
+    }).catch(() => undefined);
   }
 }
 
@@ -985,9 +1025,7 @@ async function otomatikOnaylar(): Promise<Anlasma[]> {
 
   await yaz(
     ANLASMA_DOSYA,
-    hepsi.map(
-      (a) => onaylananlar.find((o) => o.sunumId === a.sunumId) ?? a,
-    ),
+    hepsi.map((a) => onaylananlar.find((o) => o.sunumId === a.sunumId) ?? a),
   );
   return onaylananlar;
 }
@@ -1032,6 +1070,91 @@ async function otomatikOnaySonrasi(onaylananlar: Anlasma[]): Promise<void> {
   }
 }
 
+/**
+ * Ödeme süresi dolduğu için düşen anlaşmaları iki tarafa da bildirir.
+ *
+ * Bu bildirim HİÇ YOKTU: anlaşma sessizce siliniyor, sunum "iptal" oluyor
+ * ve talep yeniden yayına açılıyordu. Satıcı sohbette "Anlaşıldı ✓" görüp
+ * ödeme bekliyor, bir süre sonra kayıt ortadan kayboluyor ve nedenini
+ * söyleyen hiçbir şey olmuyordu. Kargo gecikmesi yolu (`gecikmeBildirimleri`)
+ * aynı desende zaten bildiriyordu; iki yol artık aynı davranıyor.
+ */
+async function odemeSuresiBildirimleri(iptaller: Anlasma[]): Promise<void> {
+  for (const a of iptaller) {
+    for (const kime of [a.alici, a.satici]) {
+      await bildirimEkle({
+        id: kimlik(),
+        kime,
+        grup: "Bugün",
+        tip: "sistem",
+        harf: "BB",
+        avatar: "bg-danger-soft text-danger",
+        text: "Anlaşma düştü: ödeme süresi doldu.",
+        sub:
+          kime === a.alici
+            ? "Kabul edilen teklifin ödemesi süresinde yapılmadı; talebin yeniden yayında."
+            : "Alıcı süresinde ödemedi; sunumun düştü. Talep hâlâ açıksa yeniden sunum yapabilirsin.",
+        zaman: "az önce",
+        href: "/mesajlar",
+        yeni: true,
+      }).catch(() => undefined);
+    }
+  }
+}
+
+/**
+ * Sohbete gelen mesajı karşı tarafa bildirir.
+ *
+ * BU BİLDİRİM HİÇ YOKTU: Ayarlar'da "Mesajlar" satırı duruyor, tercih
+ * sunucuya kaydediliyor ama mesaj geldiğinde ne bildirim yazılıyor ne de o
+ * tercih okunuyordu. Zil hiç çalmıyordu.
+ *
+ * Teklif taşıyan mesaj ayrı tür: para konuşan bir mesaj akışın parçasıdır,
+ * kapatılamaz (bkz. KAPATILAMAZ).
+ *
+ * SEL BASKINI KORUMASI: her bildirim e-posta kuyruğuna da giriyor. Aynı
+ * sohbet için OKUNMAMIŞ bir mesaj bildirimi dururken ikincisi yazılmaz —
+ * arka arkaya on mesaj atan kullanıcı karşı tarafa on e-posta göndermez.
+ * Teklif bildirimi bu kısıttan muaftır; tutar değişimi kaçırılmamalı.
+ */
+export async function mesajBildirimiGonder(opts: {
+  kime: string;
+  gonderen: string;
+  sohbetId: string;
+  metin: string;
+  tutar?: number;
+}): Promise<void> {
+  const href = `/mesajlar?sohbet=${encodeURIComponent(opts.sohbetId)}`;
+  const teklif = typeof opts.tutar === "number";
+
+  if (!teklif) {
+    const hepsi = await oku<Bildirim>(BILDIRIM_DOSYA);
+    const bekleyen = hepsi.some(
+      (b) =>
+        b.kime === opts.kime && b.tip === "mesaj" && b.yeni && b.href === href,
+    );
+    if (bekleyen) return;
+  }
+
+  await bildirimEkle({
+    id: kimlik(),
+    kime: opts.kime,
+    grup: "Bugün",
+    tip: teklif ? "teklif" : "mesaj",
+    harf: harfFor(opts.gonderen),
+    avatar: teklif
+      ? "bg-primary-soft text-primary-hover"
+      : "bg-subtle text-ink-700",
+    text: teklif
+      ? `${opts.gonderen} teklif verdi: ${fiyatText(opts.tutar!)}`
+      : `${opts.gonderen} sana mesaj gönderdi.`,
+    sub: opts.metin.slice(0, 120) || "Sohbetten yanıtla.",
+    zaman: "az önce",
+    href,
+    yeni: true,
+  }).catch(() => undefined);
+}
+
 /** Kargo süresi kaçırıldığı için düşen siparişleri iki tarafa da bildirir. */
 async function gecikmeBildirimleri(iptaller: Anlasma[]): Promise<void> {
   for (const a of iptaller) {
@@ -1061,10 +1184,10 @@ async function gecikmeBildirimleri(iptaller: Anlasma[]): Promise<void> {
  * kaydeder. Firma için canlı sorgulama tanımlı değilse hiçbir şey yapmaz —
  * o firmalarda teslim bilgisi webhook'tan gelir.
  */
-async function teslimleriTazele(): Promise<void> {
+async function teslimleriTazele(): Promise<Anlasma[]> {
   const hepsi = await oku<Anlasma>(ANLASMA_DOSYA);
   const yoldakiler = hepsi.filter((a) => a.kargoZamani && !a.teslimZamani);
-  if (!yoldakiler.length) return;
+  if (!yoldakiler.length) return [];
 
   const durumlar = await Promise.all(
     yoldakiler.map((a) =>
@@ -1074,17 +1197,44 @@ async function teslimleriTazele(): Promise<void> {
   const teslimEdilenler = yoldakiler.filter(
     (_, i) => durumlar[i] === "teslim-edildi",
   );
-  if (!teslimEdilenler.length) return;
+  if (!teslimEdilenler.length) return [];
 
   const simdi = new Date().toISOString();
-  await yaz(
-    ANLASMA_DOSYA,
-    hepsi.map((a) =>
-      teslimEdilenler.some((t) => t.sunumId === a.sunumId)
-        ? { ...a, teslimZamani: simdi }
-        : a,
-    ),
+  const guncel = hepsi.map((a) =>
+    teslimEdilenler.some((t) => t.sunumId === a.sunumId)
+      ? { ...a, teslimZamani: simdi }
+      : a,
   );
+  await yaz(ANLASMA_DOSYA, guncel);
+  // Bildirim kuyruk dışında gönderilir; damgalı hâlleri döndürüyoruz.
+  return guncel.filter((a) =>
+    teslimEdilenler.some((t) => t.sunumId === a.sunumId),
+  );
+}
+
+/**
+ * "Kargon teslim edildi" bildirimi — TESLİMİN İKİ YOLU İÇİN DE.
+ *
+ * Bu metin yalnızca webhook ucunda yazılıydı; teslim bilgisi firmadan
+ * SORGULAMAYLA geldiğinde alıcıya hiçbir şey söylenmiyordu. Oysa damga
+ * 24 saatlik otomatik onay sayacını başlatıyor: alıcı haberi olmadan
+ * süreye giriyor, süre dolunca para satıcıya aktarılıyordu. Metin ortak
+ * bir yerde durursa iki yol da aynı şeyi söyler.
+ */
+export async function teslimBildirimiGonder(a: Anlasma): Promise<void> {
+  await bildirimEkle({
+    id: kimlik(),
+    kime: a.alici,
+    grup: "Bugün",
+    tip: "kargo",
+    harf: harfFor(a.satici),
+    avatar: "bg-accent-soft text-accent-ink",
+    text: "Kargon teslim edildi.",
+    sub: "Ürün anlatıldığı gibi mi? Sohbetten yanıtla.",
+    zaman: "Az önce",
+    href: "/mesajlar",
+    yeni: true,
+  }).catch(() => undefined);
 }
 
 /**
@@ -1104,9 +1254,7 @@ export async function iadeAdimiIsle(
     | { adim: "ikinci-karar"; karar: "iade" | "ret" }
     | { adim: "teslim" }
     | { adim: "odeme" },
-): Promise<
-  Anlasma | "bulunamadi" | "yetkisiz" | "sira-disi" | "itiraz-yok"
-> {
+): Promise<Anlasma | "bulunamadi" | "yetkisiz" | "sira-disi" | "itiraz-yok"> {
   return sirala(async () => {
     const hepsi = await oku<Anlasma>(ANLASMA_DOSYA);
     const i = hepsi.findIndex((a) => a.sunumId === sunumId);
@@ -1194,9 +1342,11 @@ async function anlasmalariTazele(): Promise<void> {
   const gecikenler = await sirala(kargoGecikenleriDusur);
   // Teslim bilgisi ÖNCE tazelenir: 24 saatlik onay sayacı `teslimZamani`'den
   // işlediği için, sayacın başlaması bu adıma bağlı.
-  await sirala(teslimleriTazele);
+  const teslimEdilenler = await sirala(teslimleriTazele);
   const otomatikler = await sirala(otomatikOnaylar);
   const iadeGecikenler = await sirala(iadeKargosuGecikenler);
+  if (odenmeyenler.length) await odemeSuresiBildirimleri(odenmeyenler);
+  for (const a of teslimEdilenler) await teslimBildirimiGonder(a);
   if (gecikenler.length) await gecikmeBildirimleri(gecikenler);
   if (otomatikler.length) await otomatikOnaySonrasi(otomatikler);
   if (iadeGecikenler.length) await iadeGecikmeSonrasi(iadeGecikenler);
@@ -1356,8 +1506,10 @@ export async function odemeIsaretle(
   Anlasma | "bulunamadi" | "yetkisiz" | "zaten-odendi" | "sure-doldu"
 > {
   // Süresi dolmuş kayıtlar önce düşsün; ödeme yolu da temizlik yapan
-  // noktalardan biri (kuyruk dışında çağrılır, kilitlenmesin).
-  await sirala(suresiDolanlariDusur);
+  // noktalardan biri (kuyruk dışında çağrılır, kilitlenmesin). Burada
+  // düşen bir anlaşma varsa taraflar da haberdar edilir — temizliğin
+  // hangi kapıdan geçtiği kullanıcıyı ilgilendirmiyor.
+  await odemeSuresiBildirimleri(await sirala(suresiDolanlariDusur));
   return sirala(async () => {
     const hepsi = await oku<Anlasma>(ANLASMA_DOSYA);
     const i = hepsi.findIndex((a) => a.sunumId === sunumId);
@@ -1509,7 +1661,8 @@ export async function gonderiHazirla(
       };
     } else {
       if (a.alici !== isteyen) return "yetkisiz" as const;
-      if (iadeAdimi(a) !== "iade-kargosu-bekleniyor") return "sira-disi" as const;
+      if (iadeAdimi(a) !== "iade-kargosu-bekleniyor")
+        return "sira-disi" as const;
       if (a.iade?.gonderi) return "zaten-var" as const;
       hepsi[i] = {
         ...a,
@@ -1587,11 +1740,7 @@ export async function onayKaydet(
   isteyen: string,
   onay: "evet" | "hayir",
 ): Promise<
-  | Anlasma
-  | "bulunamadi"
-  | "yetkisiz"
-  | "teslim-edilmedi"
-  | "zaten-yanitlandi"
+  Anlasma | "bulunamadi" | "yetkisiz" | "teslim-edilmedi" | "zaten-yanitlandi"
 > {
   return sirala(async () => {
     const hepsi = await oku<Anlasma>(ANLASMA_DOSYA);
@@ -1745,8 +1894,18 @@ export async function bildirimEkle(bildirim: Bildirim): Promise<Bildirim> {
   // ayara bakılmaz.
   const tercih = await tercihlerOku(bildirim.kime);
   if (!KAPATILAMAZ.has(bildirim.tip)) {
+    /*
+     * Her tür KENDİ tercihine bakar. Eskiden "sunum" dışındaki her şey
+     * `tercih.kampanya`ya düşüyordu; `tercih.mesaj` diye kaydedilen ayarı
+     * ise hiçbir kod okumuyordu — Ayarlar'daki "Mesajlar" satırı ne açınca
+     * ne kapatınca bir şey değiştiriyordu.
+     */
     const acik =
-      bildirim.tip === "sunum" ? tercih.sunum : tercih.kampanya;
+      bildirim.tip === "sunum"
+        ? tercih.sunum
+        : bildirim.tip === "mesaj"
+          ? tercih.mesaj
+          : tercih.kampanya;
     if (!acik) return bildirim;
   }
 
@@ -1924,7 +2083,9 @@ export async function destekKayitlariOku(
  * eşzamanlı iki kaydın aynı numarayı almasına yol açabilirdi. Çağıran taraf
  * dönen kaydı kullanmalı.
  */
-export async function destekKaydiEkle(kayit: DestekKaydi): Promise<DestekKaydi> {
+export async function destekKaydiEkle(
+  kayit: DestekKaydi,
+): Promise<DestekKaydi> {
   return sirala(async () => {
     const hepsi = await oku<DestekKaydi>(DESTEK_DOSYA);
     const kesin: DestekKaydi = {
@@ -2217,9 +2378,7 @@ export async function alarmlarOku(kullanici: string): Promise<Alarm[]> {
   return hepsi.filter((a) => a.kullanici === kullanici);
 }
 
-export async function alarmEkle(
-  alarm: Alarm,
-): Promise<Alarm | "sinir-doldu"> {
+export async function alarmEkle(alarm: Alarm): Promise<Alarm | "sinir-doldu"> {
   return sirala(async () => {
     const hepsi = await oku<Alarm>(ALARM_DOSYA);
     // Sınır burada uygulanır ki hiçbir çağrı yolu atlayamasın — kart ve
@@ -2260,7 +2419,9 @@ export async function alarmGuncelle(
 // Talebe bağlı tam adres. Talep kaydından ayrı tutulur ki herkese açık
 // uçlardan sızmasın (bkz. lib/teslimat.ts).
 
-export async function teslimatOku(talepId: string): Promise<TeslimatAdresi | undefined> {
+export async function teslimatOku(
+  talepId: string,
+): Promise<TeslimatAdresi | undefined> {
   const hepsi = await oku<TeslimatAdresi>(TESLIMAT_DOSYA);
   return hepsi.find((t) => t.talepId === talepId);
 }
@@ -2366,7 +2527,8 @@ export async function okunduOku(
 ): Promise<Record<string, string>> {
   const hepsi = await oku<Okundu>(OKUNDU_DOSYA);
   const harita: Record<string, string> = {};
-  for (const o of hepsi) if (o.kullanici === kullanici) harita[o.sohbetId] = o.zaman;
+  for (const o of hepsi)
+    if (o.kullanici === kullanici) harita[o.sohbetId] = o.zaman;
   return harita;
 }
 
@@ -2808,14 +2970,11 @@ export type Kimlik = {
 };
 
 /** Hesabın giriş kaydı — yoksa `undefined`. */
-export async function kimlikOku(kullanici: string): Promise<Kimlik | undefined> {
+export async function kimlikOku(
+  kullanici: string,
+): Promise<Kimlik | undefined> {
   const hepsi = await oku<Kimlik>(KIMLIK_DOSYA);
   return hepsi.find((k) => k.kullanici === kullanici);
-}
-
-/** Sistemde tanımlı en az bir parola var mı? Kurulum kontrolü için. */
-export async function kimlikSayisi(): Promise<number> {
-  return (await oku<Kimlik>(KIMLIK_DOSYA)).length;
 }
 
 /** Hesabın parolasını belirler ya da değiştirir. */

@@ -11,7 +11,14 @@ export type GelenSunum = Sunum & {
   talepId: string;
   satici: string;
   harf: string;
+  /**
+   * Satıcının SATICI olarak aldığı yıldız ortalaması (biçimli metin) ve
+   * değerlendirme sayısı. İkisi de okuma anında tazelenir
+   * (bkz. lib/veri.ts → saticiMetrikleriniTazele): değer kayda donuyordu ve
+   * kişinin alıcılığına verilen yıldızlarla karışıyordu.
+   */
   puan: string;
+  degerlendirme?: number;
   /**
    * Hesap türü. Bilinmiyorsa YAZILMAZ: uç her sunuma sabit "Bireysel"
    * basıyordu ve alıcı bunu satıcı hakkında gerçek bilgi sanıyordu.
@@ -122,4 +129,3 @@ export function sunumAcikMi(
 // içe aktarmıyordu ama bileşenlerdeki aynı adlı yerel değişkenlerle
 // karışıp aramalarda sahte eşleşme üretiyordu. Sunumların kaynağı depodur
 // (bkz. lib/veri.ts → gelenSunumlarGetir).
-

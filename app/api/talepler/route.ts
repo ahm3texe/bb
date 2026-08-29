@@ -6,12 +6,7 @@ import { hizSinirla, SAAT } from "@/lib/hiz-siniri";
 import { acikTalepler } from "@/lib/talep-durum";
 import { gorselleriSuz } from "@/lib/gorsel";
 import { paraTutari, MAX_FIYAT } from "@/lib/para";
-import {
-  tekSatir,
-  cokSatir,
-  BASLIK_SINIR,
-  BASLIK_EN_AZ,
-} from "@/lib/metin";
+import { tekSatir, cokSatir, BASLIK_SINIR, BASLIK_EN_AZ } from "@/lib/metin";
 import type { Talep } from "@/lib/data";
 
 // Depo dosya sistemine yazdığı için bu uç her zaman dinamik çalışmalı.
@@ -30,8 +25,6 @@ export async function GET() {
   return NextResponse.json({ talepler });
 }
 
-
-
 export async function POST(istek: Request) {
   // Aynı hesap saatte en fazla 20 talep açabilir.
   const kullanici = await istekKullaniciAdi();
@@ -48,7 +41,10 @@ export async function POST(istek: Request) {
   try {
     govde = await istek.json();
   } catch {
-    return NextResponse.json({ hata: "Geçersiz istek gövdesi." }, { status: 400 });
+    return NextResponse.json(
+      { hata: "Geçersiz istek gövdesi." },
+      { status: 400 },
+    );
   }
 
   const baslik = tekSatir(govde.baslik, BASLIK_SINIR);
@@ -64,7 +60,8 @@ export async function POST(istek: Request) {
   const hatalar: string[] = [];
   if (baslik.length < BASLIK_EN_AZ)
     hatalar.push(`Başlık en az ${BASLIK_EN_AZ} karakter olmalı.`);
-  if (aciklama.length < 30) hatalar.push("Talep notu en az 30 karakter olmalı.");
+  if (aciklama.length < 30)
+    hatalar.push("Talep notu en az 30 karakter olmalı.");
   if (!kategori) hatalar.push("Kategori seçilmeli.");
   if (fiyatNum === null)
     hatalar.push(
@@ -72,6 +69,15 @@ export async function POST(istek: Request) {
     );
   if (gorseller.length === 0)
     hatalar.push("En az bir fotoğraf veya video eklenmeli.");
+  /*
+   * Defo yanıtı ZORUNLU (bkz. components/IlanAcForm.tsx → defoOk).
+   * Alan boş bırakılabildiği sürece `defoKabul` `undefined` kalıyor ve
+   * ekranların çoğu onu "Defosuz olmalı" diye okuyordu: alıcının hiç
+   * vermediği yanıt satıcıya kesin bir şart olarak gösteriliyordu.
+   * İstemcideki kontrole güvenilmez, kural burada da uygulanır.
+   */
+  if (typeof govde.defoKabul !== "boolean")
+    hatalar.push("Üründe defo kabul edip etmediğin belirtilmeli.");
 
   if (hatalar.length) {
     return NextResponse.json({ hata: hatalar[0], hatalar }, { status: 400 });
@@ -113,7 +119,8 @@ export async function POST(istek: Request) {
     acil: govde.acil === true || undefined,
     pazarlik: govde.pazarlik === true || undefined,
     muadilKabul: govde.muadilKabul === true || undefined,
-    defoKabul: typeof govde.defoKabul === "boolean" ? govde.defoKabul : undefined,
+    // Yukarıda doğrulandı: bu noktada boolean olduğu kesin.
+    defoKabul: govde.defoKabul as boolean,
     gorseller,
   };
 

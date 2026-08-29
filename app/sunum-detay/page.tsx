@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SunumDetayClient } from "@/components/SunumDetayClient";
-import { sunumGetir, talepGetir, kullaniciGetir } from "@/lib/veri";
+import { sunumGetir, talepGetir, kullaniciProfilGetir } from "@/lib/veri";
 import { istekKullaniciAdi } from "@/lib/oturum-sunucu";
 
 // Oturuma bağlı: sayfa giriş yapmış hesabın verisini gösteriyor ve kimlik
@@ -39,7 +39,10 @@ export default async function SunumDetayPage({
   if (!sunum) notFound();
 
   const talep = await talepGetir(sunum.talepId);
-  const alici = talep ? await kullaniciGetir(talep.sahibi) : undefined;
+  // `kullaniciGetir` SABİT kaydı döndürüyor: puan, alım sayısı, hepsi 0.
+  // Kartın "12 talep tamamladı" diye sabit yazmasının sebebi de buydu —
+  // gerçek değer bu sayfaya hiç gelmiyordu.
+  const alici = talep ? await kullaniciProfilGetir(talep.sahibi) : undefined;
   // Sunumu satıcısı açtığında sayfa "kendi sunumum" kipinde açılır:
   // fiyat "Sunum fiyatın" olur, alıcıya dönük aksiyonlar gizlenir.
   const sahip = (await istekKullaniciAdi()) === sunum.satici;
@@ -48,11 +51,17 @@ export default async function SunumDetayPage({
     <SunumDetayClient
       sahip={sahip}
       sunum={sunum}
+      sunumId={sunum.id}
       talep={talep}
       talepId={sunum.talepId}
       satici={sunum.satici}
       saticiHarf={sunum.harf}
       saticiPuan={sunum.puan}
+      saticiDegerlendirme={sunum.degerlendirme ?? 0}
+      // Kart "214 satış" / "12 talep tamamladı" diye SABİT sayı yazıyordu.
+      // İkisinin de gerçeği elde: satıcınınki sunum kaydında okuma anında
+      // tazeleniyor, alıcınınki profil metriklerinden geliyor.
+      saticiSatis={sunum.satis}
       fotoAdlari={Array.from(
         { length: Math.max(0, sunum.fotolar) },
         (_, i) => `foto ${i + 1}`,
@@ -61,10 +70,14 @@ export default async function SunumDetayPage({
       gonderildi={sunum.olusturuldu}
       talepSahibi={talep?.sahibi ?? ""}
       talepSahibiHarf={alici?.harf ?? ""}
-      talepSahibiPuan={alici?.puan.toLocaleString("tr-TR", {
+      // ALICI puanı — kişi burada talep sahibi. Genel ortalama satıcılığına
+      // verilen yıldızları da içeriyordu.
+      talepSahibiPuan={alici?.aliciPuan.toLocaleString("tr-TR", {
         minimumFractionDigits: 1,
         maximumFractionDigits: 1,
       })}
+      talepSahibiDegerlendirme={alici?.aliciDegerlendirme ?? 0}
+      talepSahibiAlim={alici?.aliciMetrik.tamamlananAlim ?? 0}
     />
   );
 }

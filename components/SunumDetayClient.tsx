@@ -27,8 +27,38 @@ import {
 //
 // Sunum artık ZORUNLU prop; id'siz istek sayfada 404 (bkz. page.tsx).
 
+/**
+ * Kimlik kartının dış kabuğu: ad varsa profile giden bağlantı, yoksa
+ * (talebi silinmiş sunum) düz kutu.
+ */
+function KartSarmal({
+  kullanici,
+  aktifKullanici,
+  etiket,
+  children,
+}: {
+  kullanici: string;
+  aktifKullanici: string;
+  etiket: string;
+  children: React.ReactNode;
+}) {
+  const cls =
+    "group flex items-center gap-3.5 rounded-[14px] outline-none focus-visible:ring-2 focus-visible:ring-primary";
+  if (!kullanici) return <div className={cls}>{children}</div>;
+  return (
+    <Link
+      href={profilYolu(kullanici, aktifKullanici)}
+      className={cls}
+      aria-label={`${etiket} ${kullanici} profiline git`}
+    >
+      {children}
+    </Link>
+  );
+}
+
 export function SunumDetayClient({
   sunum,
+  sunumId = "",
   talep,
   talepId,
   // Uydurma varsayılanlar KALDIRILDI: burada "plakdukkani34" / "4.8" gibi
@@ -37,6 +67,8 @@ export function SunumDetayClient({
   satici = "",
   saticiHarf = "",
   saticiPuan = "",
+  saticiDegerlendirme = 0,
+  saticiSatis = 0,
   fotoAdlari = [],
   gonderildi,
   /** Sunum bana aitse: sağ panelde talep sahibinin bilgileri gösterilir. */
@@ -44,14 +76,22 @@ export function SunumDetayClient({
   talepSahibi = "",
   talepSahibiHarf = "",
   talepSahibiPuan = "",
+  talepSahibiDegerlendirme = 0,
+  talepSahibiAlim = 0,
 }: {
   sunum: Sunum;
+  /** Sunum kaydının kimliği — sohbet bağlantısı bunun üzerinden kurulur. */
+  sunumId?: string;
   /** Sunumun ait olduğu talep — sunucudan gelir. */
   talep?: Talep;
   talepId?: string;
   satici?: string;
   saticiHarf?: string;
   saticiPuan?: string;
+  /** Kaç değerlendirme — 0 ise yıldız yerine durum yazılır. */
+  saticiDegerlendirme?: number;
+  /** Satıcının tamamlanmış satış sayısı (ölçülür, kayda donmaz). */
+  saticiSatis?: number;
   fotoAdlari?: string[];
   /** Sunumun gönderilme anı (ISO) — "3 gün önce gönderdi" bundan türer. */
   gonderildi?: string;
@@ -59,6 +99,9 @@ export function SunumDetayClient({
   talepSahibi?: string;
   talepSahibiHarf?: string;
   talepSahibiPuan?: string;
+  talepSahibiDegerlendirme?: number;
+  /** Talep sahibinin tamamlanmış alım sayısı. */
+  talepSahibiAlim?: number;
 }) {
   // Kendi adına tıklayan kullanıcı "Profilim"e gitsin.
   const aktif = useOturumSahibi();
@@ -107,8 +150,19 @@ export function SunumDetayClient({
     }
   }
 
+  // Kimlik kartında gösterilen kullanıcı: kendi sunumumda talep sahibi,
+  // alıcı tarafında satıcı.
+  const kartKullanici = sahip ? talepSahibi : satici;
+  const kartDegerlendirme = sahip
+    ? talepSahibiDegerlendirme
+    : saticiDegerlendirme;
+  const kartPuan = sahip ? talepSahibiPuan : saticiPuan;
+
   // Talep sunucudan prop olarak gelir; yoksa künye karşılaştırmasız çalışır.
-  const satirlar = kunyeSatirlari(sunum, talep, { kendiSunumum: sahip, fiyatGizli: true });
+  const satirlar = kunyeSatirlari(sunum, talep, {
+    kendiSunumum: sahip,
+    fiyatGizli: true,
+  });
 
   // Katman açıkken Esc ile kapanır.
   useEffect(() => {
@@ -288,7 +342,9 @@ export function SunumDetayClient({
                   )}{" "}
                   {/* "1 gün önce" YAZIYORDU — kodda sabit. Sunumun
                       gönderilme damgası kayıtta duruyor. */}
-                  {gonderildi ? ` · ${gecenSureIso(gonderildi)} önce gönderdi` : ""}{" "}
+                  {gonderildi
+                    ? ` · ${gecenSureIso(gonderildi)} önce gönderdi`
+                    : ""}{" "}
                   · {sunum.fotolar} fotoğraf
                   {videolar.length > 0 ? ` · ${videolar.length} video` : ""}
                 </div>
@@ -431,7 +487,6 @@ export function SunumDetayClient({
               <SunumNotu metin={sunum.aciklama ?? ""} baslik="Satıcının notu" />
             </div>
           </section>
-
         </div>
 
         {/* ── Karar paneli ── */}
@@ -442,7 +497,19 @@ export function SunumDetayClient({
               (küçük etiket + büyük rakam). İki ekran arasında gezinen kullanıcı
               aynı kartı okuduğunu hissetsin. */}
           <div className="rounded-[24px] border border-primary/25 bg-gradient-to-b from-primary-soft/40 to-card p-6 shadow-[var(--shadow-pop)]">
-            <div className="flex items-center gap-3.5">
+            {/* Kart başlığı bütünüyle bağlantı: ilan detayındaki talep sahibi
+                kartında olduğu gibi avatar da, ad da profile gider. Kendi
+                sunumuna bakan satıcı da böylece talep sahibinin profiline
+                geçebiliyor. */}
+            {/* Talebi silinmiş sunumda ad boş kalabiliyor; o durumda kart
+                bağlantı DEĞİL düz kutudur. Bir dönem `href="#"` + engellenen
+                tıklama vardı: etkisizdi ama yine de bağlantı gibi
+                görünüyordu. */}
+            <KartSarmal
+              kullanici={kartKullanici}
+              aktifKullanici={aktif.kullanici}
+              etiket={sahip ? "Talep sahibi" : "Satıcı"}
+            >
               <span className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-primary-soft text-[18px] font-extrabold text-primary">
                 {sahip ? talepSahibiHarf : saticiHarf}
               </span>
@@ -451,27 +518,37 @@ export function SunumDetayClient({
                   {sahip ? "Talep sahibi" : "Satıcı"}
                 </p>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
-                  {sahip ? (
-                    <h3 className="text-[19px] font-extrabold leading-tight text-ink-900">
-                      {talepSahibi}
-                    </h3>
-                  ) : (
-                    <Link
-                      href={profilYolu(satici, aktif.kullanici)}
-                      className="text-[19px] font-extrabold leading-tight text-ink-900 hover:text-primary"
-                    >
-                      {satici}
-                    </Link>
-                  )}
-                  <span className="flex items-center gap-1.5">
-                    <Yildizlar puan={puanSayi(sahip ? talepSahibiPuan : saticiPuan)} />
-                    <span className="text-[14px] font-extrabold leading-none text-ink-900">
-                      {sahip ? talepSahibiPuan : saticiPuan}
+                  <h3 className="text-[19px] font-extrabold leading-tight text-ink-900 group-hover:text-primary">
+                    {kartKullanici}
+                  </h3>
+                  {/* Puan ROLE GÖRE: alıcı tarafında satıcılık puanı, kendi
+                      sunumumda talep sahibinin ALICILIK puanı. Hiç
+                      değerlendirme yoksa "0,0" yerine durum yazılır. */}
+                  {kartDegerlendirme > 0 ? (
+                    <span className="flex items-center gap-1.5">
+                      <Yildizlar puan={puanSayi(kartPuan)} />
+                      <span className="text-[14px] font-extrabold leading-none text-ink-900">
+                        {kartPuan}
+                      </span>
+                      <span className="text-[12.5px] font-semibold text-ink-400">
+                        ({kartDegerlendirme})
+                      </span>
                     </span>
-                  </span>
+                  ) : (
+                    <span className="text-[12.5px] font-semibold text-ink-400">
+                      {sahip ? "Alıcı" : "Satıcı"} olarak henüz
+                      değerlendirilmemiş
+                    </span>
+                  )}
                 </div>
+                {/* "12 talep tamamladı" / "214 satış" KODDA YAZILIYDI:
+                    her satıcıya 214 satış, her alıcıya 12 talep. Alıcı tam
+                    da bu sayılara bakarak satıcı seçiyor. İkisi de artık
+                    ölçülen değerden geliyor. */}
                 <div className="mt-1 text-[13px] font-medium text-ink-400">
-                  {sahip ? "12 talep tamamladı" : "214 satış"}
+                  {sahip
+                    ? `${talepSahibiAlim} alım tamamladı`
+                    : `${saticiSatis} satış tamamladı`}
                 </div>
                 {/* Konum, ilan detayındaki talep sahibi kartındaki gibi ismin
                     hemen altında: kendi sunumumda alıcının teslimat yeri,
@@ -482,7 +559,7 @@ export function SunumDetayClient({
                     : [sunum.ilce, sunum.il].filter(Boolean).join(", ")}
                 </div>
               </div>
-            </div>
+            </KartSarmal>
 
             {/* "Hızlı kargo" rozeti KALDIRILDI: kodda yazılı sabitti,
                 satıcının gerçek kargolama hızıyla ilgisi yoktu. */}
@@ -521,8 +598,12 @@ export function SunumDetayClient({
                 alıcının ilan fiyatı), farkı ayrıca kırmızıyla söylemek
                 pazarlığın normal bir adımını hata gibi gösteriyordu. */}
 
+            {/* Sohbet, sunumun KENDİ sohbetidir. Bağlantı `?satici=` ile
+                kuruluyordu; satıcı kendi sunumuna bakarken bu kendi adı
+                oluyor, mesajlar ekranı eşleşme bulamayıp listenin İLK
+                sohbetini açıyordu — alakasız bir alıcının konuşması. */}
             <ButtonLink
-              href={`/mesajlar?satici=${encodeURIComponent(satici)}`}
+              href={`/mesajlar?sunum=${encodeURIComponent(sunumId)}`}
               variant="primary"
               size="lg"
               className="mt-5 w-full"
@@ -561,7 +642,10 @@ export function SunumDetayClient({
                 </span>
               )}
               {raporHatasi && (
-                <span role="alert" className="text-[13px] font-bold text-danger">
+                <span
+                  role="alert"
+                  className="text-[13px] font-bold text-danger"
+                >
                   {raporHatasi}
                 </span>
               )}
@@ -586,8 +670,8 @@ export function SunumDetayClient({
                 </div>
                 <p className="mt-1.5 text-[13px] font-medium leading-relaxed text-accent-ink">
                   İmzalı ürünlerde sertifika numarasını ve imza fotoğrafını
-                  mutlaka karşılaştır; şüphen varsa sohbete geçmeden önce
-                  sunumu bildir.
+                  mutlaka karşılaştır; şüphen varsa sohbete geçmeden önce sunumu
+                  bildir.
                 </p>
               </div>
             )}

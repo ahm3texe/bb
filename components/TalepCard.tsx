@@ -1,5 +1,7 @@
 "use client";
 
+import { useGirisKapisi } from "@/lib/aktif-kullanici";
+
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -28,6 +30,8 @@ export function TalepCard({
   const [uyari, setUyari] = useState(false);
   const [idx, setIdx] = useState(0);
   const [favori, setFavori] = useState(favoride);
+  // Vitrin oturumsuz gezilebilir; favori hesap gerektirir.
+  const { girisGerek } = useGirisKapisi();
   const cokluGorsel = gorseller.length > 1;
 
   /**
@@ -41,6 +45,9 @@ export function TalepCard({
    * Önce ekranda çevrilir (hızlı geri bildirim), sunucu reddederse geri alınır.
    */
   const favoriDegistir = async () => {
+    // Ziyaretçide uç 401 döner ve kalp sessizce geri dönerdi — kullanıcı
+    // neden olmadığını anlamıyordu. Artık giriş ekranına gidiyor.
+    if (girisGerek()) return;
     const yeni = !favori;
     setFavori(yeni);
     const r = await fetch("/api/favoriler", {

@@ -92,9 +92,6 @@ const AGIRLIK = {
  */
 export const YILDIZ_ESIK = { yuksek: 4, orta: 2 } as const;
 
-/** 0-100 bileşik puan hâlâ hesaplanır; kartta destekleyici detay olarak durur. */
-export const ESIK = { yuksek: 75, orta: 50 } as const;
-
 /**
  * Az sayıda veriyle uç puan çıkmasın diye Bayes yumuşatma sabitleri.
  *

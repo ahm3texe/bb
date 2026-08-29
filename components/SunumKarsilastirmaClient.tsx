@@ -8,6 +8,7 @@ import { fiyatText } from "@/lib/data";
 import type { Talep } from "@/lib/data";
 import { Chip } from "@/components/ui/Chip";
 import { Baloncuk } from "@/components/ui/Baloncuk";
+import { ButtonLink } from "@/components/ui/Button";
 import {
   eslesmeOzeti,
   kriterCumlesi,
@@ -79,6 +80,26 @@ function Bos() {
   return <span className="text-[15.5px] font-bold text-ink-300">—</span>;
 }
 
+/**
+ * Satıcının SATICI olarak aldığı yıldız. Hiç değerlendirmesi yoksa "★ 0,0"
+ * yazmak kişiyi kötü puan almış gibi gösterirdi — o durumda "—" yazılır
+ * (metriklerdeki kuralın aynısı).
+ */
+function SaticiYildizi({ sunum }: { sunum: GelenSunum }) {
+  if (!sunum.degerlendirme)
+    return (
+      <span className="font-semibold text-ink-400">değerlendirme yok</span>
+    );
+  return (
+    <span className="font-bold text-star-ink">
+      ★ {sunum.puan}
+      <span className="ml-1 font-semibold text-ink-400">
+        ({sunum.degerlendirme})
+      </span>
+    </span>
+  );
+}
+
 export function SunumKarsilastirmaClient({
   gelenSunumlar,
   talepler,
@@ -137,17 +158,25 @@ export function SunumKarsilastirmaClient({
     .map((s) => s.yanitSaat)
     .filter((v): v is number => typeof v === "number");
   const enHizliYanit = yanitSureleri.length ? Math.min(...yanitSureleri) : null;
-  const enCokSatis = Math.max(...doluOlanlar.map((s) => s.satis));
+  // Rozet YALNIZCA gerçek bir üstünlükte: iki satıcının da 0 satışı varsa
+  // "en çok satış" vurgusu ikisine birden düşüyordu — beraberlik, üstelik
+  // sıfırda. Aynısı kriter uyumu için de geçerli.
+  const enCokSatis = Math.max(0, ...doluOlanlar.map((s) => s.satis));
   const kargoOranlari = doluOlanlar
     .map((s) => s.zamanindaKargo)
     .filter((v): v is number => typeof v === "number");
   const enIyiKargo = kargoOranlari.length ? Math.max(...kargoOranlari) : null;
   const eslesmeler = doluOlanlar.map(
-    (s) => eslesmeOzeti(kunyeSatirlari(s, getTalep(s.talepId)), getTalep(s.talepId)).uyan,
+    (s) =>
+      eslesmeOzeti(kunyeSatirlari(s, getTalep(s.talepId)), getTalep(s.talepId))
+        .uyan,
   );
   const enCokUyan = eslesmeler.length ? Math.max(...eslesmeler) : 0;
 
-  const hucreler = <T,>(f: (s: GelenSunum) => T, best?: (s: GelenSunum) => boolean) =>
+  const hucreler = <T,>(
+    f: (s: GelenSunum) => T,
+    best?: (s: GelenSunum) => boolean,
+  ) =>
     sunumlar.map((s) => ({
       node: s ? <Deger>{f(s) as ReactNode}</Deger> : <Bos />,
       best: s && karsilastirilabilir && best ? best(s) : false,
@@ -185,9 +214,8 @@ export function SunumKarsilastirmaClient({
                     </>
                   ) : (
                     <>
-                      Karşılaştırmak istediğin talebe gelen sunumlardan
-                      biriyle başla — sonraki pencereler aynı talebe
-                      kilitlenir.
+                      Karşılaştırmak istediğin talebe gelen sunumlardan biriyle
+                      başla — sonraki pencereler aynı talebe kilitlenir.
                     </>
                   )}
                 </p>
@@ -224,8 +252,7 @@ export function SunumKarsilastirmaClient({
                     <span className="ref-image flex aspect-[3/4] w-[54px] flex-none items-center justify-center rounded-lg" />
                     <span className="min-w-0 flex-1">
                       <span className="block text-[16px] font-bold text-ink-900">
-                        {s.satici}{" "}
-                        <span className="font-bold text-star-ink">★ {s.puan}</span>
+                        {s.satici} <SaticiYildizi sunum={s} />
                       </span>
                       <Baloncuk icerik={s.baslik} baslik="Sunum başlığı">
                         <span className="mt-0.5 block truncate text-[14px] font-medium text-ink-500">
@@ -291,251 +318,294 @@ export function SunumKarsilastirmaClient({
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-[18px] border border-border bg-card">
-        <div className="min-w-[900px]">
-          {/* ── Pencereler: boşken tıkla-seç, doluyken satıcı künyesi ── */}
-          <div className={`${gridCols} border-b border-hairline`}>
-            <div className="flex items-center justify-center px-4 py-5 text-center text-[13px] font-extrabold uppercase leading-snug tracking-[1px] text-ink-500">
-              Sunum Karşılaştırma Tablosu
-            </div>
+      {/* Karşılaştıracak ikinci sunum yoksa boş iskelet gösterilmez.
+          Tek sunumlu talepte ekran üç boş pencere ve baştan sona "—" dolu
+          bir tablo çiziyordu: kullanıcı doldurulamayacak bir form görüyordu.
+          Tek sunum varsa doğrudan ona götürülür. */}
+      {gelenSunumlar.length < 2 ? (
+        <div className="rounded-[18px] border border-border bg-card p-8 text-center">
+          <p className="text-[16px] font-extrabold text-ink-900">
+            Karşılaştırma için en az iki sunum gerekir.
+          </p>
+          <p className="mx-auto mt-2 max-w-[520px] text-[14px] font-medium leading-relaxed text-ink-500">
+            {gelenSunumlar.length === 1
+              ? "Şu an değerlendirebileceğin tek bir sunum var; doğrudan açıp inceleyebilirsin."
+              : "Taleplerine henüz sunum gelmedi. Sunum geldikçe bu ekranda yan yana karşılaştırabilirsin."}
+          </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2.5">
+            {gelenSunumlar.length === 1 && (
+              <ButtonLink
+                href={`/sunum-detay?id=${encodeURIComponent(gelenSunumlar[0].id)}`}
+                variant="primary"
+                size="lg"
+              >
+                Sunumu incele
+              </ButtonLink>
+            )}
+            <ButtonLink
+              href={capaTalepId ? `/ilan/${capaTalepId}` : "/kesfet"}
+              variant="ghost"
+              size="lg"
+            >
+              Talebe dön
+            </ButtonLink>
+          </div>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-[18px] border border-border bg-card">
+          <div className="min-w-[900px]">
+            {/* ── Pencereler: boşken tıkla-seç, doluyken satıcı künyesi ── */}
+            <div className={`${gridCols} border-b border-hairline`}>
+              <div className="flex items-center justify-center px-4 py-5 text-center text-[13px] font-extrabold uppercase leading-snug tracking-[1px] text-ink-500">
+                Sunum Karşılaştırma Tablosu
+              </div>
 
-            {sunumlar.map((s, i) => (
-              <div key={i} className="border-l border-hairline p-4">
-                {!s ? (
-                  <button
-                    type="button"
-                    onClick={() => setAcikSlot(i)}
-                    className="flex h-full min-h-[124px] w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-card border-[2px] border-dashed border-border-input bg-subtle px-3 py-6 transition-colors hover:border-primary hover:bg-primary-soft"
-                  >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-[20px] font-bold leading-none text-white">
-                      +
-                    </span>
-                    <span className="text-[15px] font-bold text-ink-900">
-                      Sunum seç
-                    </span>
-                    <span className="text-[13px] font-medium text-ink-400">
-                      {i + 1}. pencere
-                    </span>
-                  </button>
-                ) : (
-                  <div className="min-h-[124px]">
-                    <div className="flex items-start gap-2.5">
-                      <span className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-ink-900 text-[13px] font-bold text-accent">
-                        {s.harf}
+              {sunumlar.map((s, i) => (
+                <div key={i} className="border-l border-hairline p-4">
+                  {!s ? (
+                    <button
+                      type="button"
+                      onClick={() => setAcikSlot(i)}
+                      className="flex h-full min-h-[124px] w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-card border-[2px] border-dashed border-border-input bg-subtle px-3 py-6 transition-colors hover:border-primary hover:bg-primary-soft"
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-[20px] font-bold leading-none text-white">
+                        +
                       </span>
-                      <div className="min-w-0 flex-1">
-                        <Link
-                          href={profilYolu(s.satici, aktif.kullanici)}
-                          className="block text-[16px] font-bold text-ink-900 hover:text-primary"
-                        >
-                          {s.satici}
-                        </Link>
-                        <div className="mt-[3px] text-[13.5px] font-medium text-ink-400">
-                          <span className="font-bold text-star-ink">★ {s.puan}</span>
-                          {s.saticiTipi ? ` · ${s.saticiTipi}` : ""}
+                      <span className="text-[15px] font-bold text-ink-900">
+                        Sunum seç
+                      </span>
+                      <span className="text-[13px] font-medium text-ink-400">
+                        {i + 1}. pencere
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="min-h-[124px]">
+                      <div className="flex items-start gap-2.5">
+                        <span className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-ink-900 text-[13px] font-bold text-accent">
+                          {s.harf}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <Link
+                            href={profilYolu(s.satici, aktif.kullanici)}
+                            className="block text-[16px] font-bold text-ink-900 hover:text-primary"
+                          >
+                            {s.satici}
+                          </Link>
+                          <div className="mt-[3px] text-[13.5px] font-medium text-ink-400">
+                            <SaticiYildizi sunum={s} />
+                            {s.saticiTipi ? ` · ${s.saticiTipi}` : ""}
+                          </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => kaldir(i)}
+                          aria-label={`${s.satici} sunumunu penceresinden kaldır`}
+                          className="flex h-7 w-7 flex-none cursor-pointer items-center justify-center rounded-full bg-page text-[13px] font-bold text-ink-400 hover:text-danger"
+                        >
+                          ✕
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => kaldir(i)}
-                        aria-label={`${s.satici} sunumunu penceresinden kaldır`}
-                        className="flex h-7 w-7 flex-none cursor-pointer items-center justify-center rounded-full bg-page text-[13px] font-bold text-ink-400 hover:text-danger"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                      <Chip variant="violet">{s.ne}</Chip>
-                      {/* Bağlantı id TAŞIMALI: id'siz hâli bir dönem
+                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                        <Chip variant="violet">{s.ne}</Chip>
+                        {/* Bağlantı id TAŞIMALI: id'siz hâli bir dönem
                           kodda yazılı örnek sunumu açıyordu, yani gerçek
                           sunumları karşılaştıran alıcı kurgu bir ekrana
                           düşüyordu. */}
-                      <Link
-                        href={`/sunum-detay?id=${encodeURIComponent(s.id)}`}
-                        className="text-[13.5px] font-semibold"
-                      >
-                        Sunumu aç ›
-                      </Link>
+                        <Link
+                          href={`/sunum-detay?id=${encodeURIComponent(s.id)}`}
+                          className="text-[13.5px] font-semibold"
+                        >
+                          Sunumu aç ›
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* ── Karşılaştırma satırları ── */}
-          <DataRow
-            label="Fiyat teklifi"
-            cells={sunumlar.map((s) => ({
-              best: Boolean(
-                s && karsilastirilabilir && s.fiyatNum === enDusukFiyat,
-              ),
-              node: s ? (
-                <span className="inline-flex items-center gap-2">
-                  <span className="text-[19px] font-extrabold text-primary-hover">
-                    {fiyatText(s.fiyatNum)}
-                  </span>
-                  {karsilastirilabilir && s.fiyatNum === enDusukFiyat && (
-                    <Chip variant="lime">En uygun</Chip>
                   )}
-                </span>
-              ) : (
-                <Bos />
-              ),
-            }))}
-          />
+                </div>
+              ))}
+            </div>
 
-          <DataRow
-            label="Kriter uyumu"
-            cells={sunumlar.map((s) => {
-              if (!s) return { node: <Bos /> };
-              const { uyan, toplam, farkli } = eslesmeOzeti(
-                kunyeSatirlari(s, getTalep(s.talepId)),
-                getTalep(s.talepId),
-              );
-              return {
-                best: karsilastirilabilir && uyan === enCokUyan,
-                node: (
-                  <span>
-                    <span className="text-[15.5px] font-bold text-ink-900">
-                      {kriterCumlesi(uyan, toplam)}
+            {/* ── Karşılaştırma satırları ── */}
+            <DataRow
+              label="Fiyat teklifi"
+              cells={sunumlar.map((s) => ({
+                best: Boolean(
+                  s && karsilastirilabilir && s.fiyatNum === enDusukFiyat,
+                ),
+                node: s ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="text-[19px] font-extrabold text-primary-hover">
+                      {fiyatText(s.fiyatNum)}
                     </span>
-                    {farkli.length > 0 && (
-                      <span className="mt-1 block text-[13.5px] font-semibold leading-snug text-danger">
-                        ⚠ {farkli.map((r) => r.k).join(", ")} farklı
-                      </span>
+                    {karsilastirilabilir && s.fiyatNum === enDusukFiyat && (
+                      <Chip variant="lime">En uygun</Chip>
                     )}
                   </span>
+                ) : (
+                  <Bos />
                 ),
-              };
-            })}
-          />
+              }))}
+            />
 
-          <DataRow
-            label="Ürün durumu"
-            cells={hucreler((s) => s.durum ?? "—")}
-          />
+            <DataRow
+              label="Kriter uyumu"
+              cells={sunumlar.map((s) => {
+                if (!s) return { node: <Bos /> };
+                const { uyan, toplam, farkli } = eslesmeOzeti(
+                  kunyeSatirlari(s, getTalep(s.talepId)),
+                  getTalep(s.talepId),
+                );
+                return {
+                  best:
+                    karsilastirilabilir && enCokUyan > 0 && uyan === enCokUyan,
+                  node: (
+                    <span>
+                      <span className="text-[15.5px] font-bold text-ink-900">
+                        {kriterCumlesi(uyan, toplam)}
+                      </span>
+                      {farkli.length > 0 && (
+                        <span className="mt-1 block text-[13.5px] font-semibold leading-snug text-danger">
+                          ⚠ {farkli.map((r) => r.k).join(", ")} farklı
+                        </span>
+                      )}
+                    </span>
+                  ),
+                };
+              })}
+            />
 
-          <DataRow
-            label="Ürün defosu"
-            cells={sunumlar.map((s) => ({
-              node: s ? (
-                s.defoVar ? (
-                  <span className="text-[15.5px] font-bold text-danger">
-                    Defolu{s.defoNot ? ` — ${s.defoNot}` : ""}
-                  </span>
+            <DataRow
+              label="Ürün durumu"
+              cells={hucreler((s) => s.durum ?? "—")}
+            />
+
+            <DataRow
+              label="Ürün defosu"
+              cells={sunumlar.map((s) => ({
+                node: s ? (
+                  s.defoVar ? (
+                    <span className="text-[15.5px] font-bold text-danger">
+                      Defolu{s.defoNot ? ` — ${s.defoNot}` : ""}
+                    </span>
+                  ) : (
+                    <Deger>Defosuz</Deger>
+                  )
                 ) : (
-                  <Deger>Defosuz</Deger>
-                )
-              ) : (
-                <Bos />
-              ),
-            }))}
-          />
+                  <Bos />
+                ),
+              }))}
+            />
 
-          <DataRow
-            label="Beraberinde"
-            cells={hucreler(
-              (s) =>
-                [
-                  s.kutu ? "Kutusu" : null,
-                  s.fatura ? "Faturası" : null,
-                  s.aksesuar ? "Aksesuarları" : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ") || "—",
-            )}
-          />
+            <DataRow
+              label="Beraberinde"
+              cells={hucreler(
+                (s) =>
+                  [
+                    s.kutu ? "Kutusu" : null,
+                    s.fatura ? "Faturası" : null,
+                    s.aksesuar ? "Aksesuarları" : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "—",
+              )}
+            />
 
-          <DataRow
-            label="Fotoğraf & video"
-            cells={hucreler(
-              (s) => `${s.fotolar} fotoğraf${s.video ? " · 1 video" : ""}`,
-            )}
-          />
+            <DataRow
+              label="Fotoğraf & video"
+              cells={hucreler(
+                (s) => `${s.fotolar} fotoğraf${s.video ? " · 1 video" : ""}`,
+              )}
+            />
 
-          <DataRow label="Kargoya verme" cells={hucreler((s) => s.teslim ?? "—")} />
-          {/* Gönderi yeri — sunum detayındaki künyeyle aynı sırada. */}
-          <DataRow
-            label="Konum"
-            cells={hucreler(
-              (s) => [s.ilce, s.il].filter(Boolean).join(", ") || "—",
-            )}
-          />
-          <DataRow
-            label="Kargo firması"
-            cells={hucreler((s) => kargoFirmasi(s) || "—")}
-          />
+            <DataRow
+              label="Kargoya verme"
+              cells={hucreler((s) => s.teslim ?? "—")}
+            />
+            {/* Gönderi yeri — sunum detayındaki künyeyle aynı sırada. */}
+            <DataRow
+              label="Konum"
+              cells={hucreler(
+                (s) => [s.ilce, s.il].filter(Boolean).join(", ") || "—",
+              )}
+            />
+            <DataRow
+              label="Kargo firması"
+              cells={hucreler((s) => kargoFirmasi(s) || "—")}
+            />
 
-          <DataRow
-            label="Satıcının notu"
-            cells={sunumlar.map((s) => ({
-              node: s ? <SaticiNotu metin={s.aciklama ?? ""} /> : <Bos />,
-            }))}
-          />
+            <DataRow
+              label="Satıcının notu"
+              cells={sunumlar.map((s) => ({
+                node: s ? <SaticiNotu metin={s.aciklama ?? ""} /> : <Bos />,
+              }))}
+            />
 
-          <DataRow
-            label="Tamamlanan satış"
-            cells={hucreler(
-              (s) => s.satis.toLocaleString("tr-TR"),
-              (s) => s.satis === enCokSatis,
-            )}
-          />
-          <DataRow
-            label="Ort. yanıt süresi"
-            cells={hucreler(
-              (s) =>
-                typeof s.yanitSaat === "number" ? `~${s.yanitSaat} saat` : "—",
-              (s) =>
-                enHizliYanit !== null && s.yanitSaat === enHizliYanit,
-            )}
-          />
-          <DataRow
-            label="Zamanında kargo"
-            cells={hucreler(
-              (s) =>
-                typeof s.zamanindaKargo === "number"
-                  ? `%${s.zamanindaKargo}`
-                  : "—",
-              (s) => enIyiKargo !== null && s.zamanindaKargo === enIyiKargo,
-            )}
-          />
-          <DataRow
-            label="Konum"
-            cells={hucreler((s) => [s.ilce, s.il].filter(Boolean).join(", "))}
-          />
+            <DataRow
+              label="Tamamlanan satış"
+              cells={hucreler(
+                (s) => s.satis.toLocaleString("tr-TR"),
+                (s) => enCokSatis > 0 && s.satis === enCokSatis,
+              )}
+            />
+            <DataRow
+              label="Ort. yanıt süresi"
+              cells={hucreler(
+                (s) =>
+                  typeof s.yanitSaat === "number"
+                    ? `~${s.yanitSaat} saat`
+                    : "—",
+                (s) => enHizliYanit !== null && s.yanitSaat === enHizliYanit,
+              )}
+            />
+            <DataRow
+              label="Zamanında kargo"
+              cells={hucreler(
+                (s) =>
+                  typeof s.zamanindaKargo === "number"
+                    ? `%${s.zamanindaKargo}`
+                    : "—",
+                (s) => enIyiKargo !== null && s.zamanindaKargo === enIyiKargo,
+              )}
+            />
+            <DataRow
+              label="Konum"
+              cells={hucreler((s) => [s.ilce, s.il].filter(Boolean).join(", "))}
+            />
 
-          {/* ── Aksiyon ── */}
-          <div className={`${gridCols} bg-subtle`}>
-            <div className="p-4" />
-            {sunumlar.map((s, i) => (
-              <div key={i} className="border-l border-hairline p-4">
-                {!s ? (
-                  <button
-                    type="button"
-                    onClick={() => setAcikSlot(i)}
-                    className="w-full cursor-pointer rounded-[11px] border-[1.5px] border-border-input bg-card px-3 py-3.5 text-center text-[14.5px] font-bold text-ink-500 hover:border-primary hover:text-primary"
-                  >
-                    Sunum seç
-                  </button>
-                ) : (
-                  <Link
-                    href={`/mesajlar?satici=${encodeURIComponent(s.satici)}`}
-                    className="block w-full rounded-[11px] bg-primary px-3 py-3.5 text-center text-[14.5px] font-bold text-white transition-colors hover:bg-primary-hover"
-                  >
-                    Sohbete Geç
-                  </Link>
-                )}
-              </div>
-            ))}
+            {/* ── Aksiyon ── */}
+            <div className={`${gridCols} bg-subtle`}>
+              <div className="p-4" />
+              {sunumlar.map((s, i) => (
+                <div key={i} className="border-l border-hairline p-4">
+                  {!s ? (
+                    <button
+                      type="button"
+                      onClick={() => setAcikSlot(i)}
+                      className="w-full cursor-pointer rounded-[11px] border-[1.5px] border-border-input bg-card px-3 py-3.5 text-center text-[14.5px] font-bold text-ink-500 hover:border-primary hover:text-primary"
+                    >
+                      Sunum seç
+                    </button>
+                  ) : (
+                    <Link
+                      // Ad üzerinden değil, sunumun KENDİ sohbetiyle: aynı
+                      // satıcının iki talebe sunumu varsa ad eşleşmesi yanlış
+                      // sohbeti açıyordu.
+                      href={`/mesajlar?sunum=${encodeURIComponent(s.id)}`}
+                      className="block w-full rounded-[11px] bg-primary px-3 py-3.5 text-center text-[14.5px] font-bold text-white transition-colors hover:bg-primary-hover"
+                    >
+                      Sohbete Geç
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <p className="mt-3.5 px-0.5 text-[13.5px] font-medium leading-relaxed text-ink-400">
-        Satıcı metrikleri Bulbana geçmişinden gelir; henüz ölçülmeyen bir
-        değer “—” görünür.
-        Sohbete geçmek ücretsizdir; fiyat pazarlığı sohbette yapılır.
+        Satıcı metrikleri Bulbana geçmişinden gelir; henüz ölçülmeyen bir değer
+        “—” görünür. Sohbete geçmek ücretsizdir; fiyat pazarlığı sohbette
+        yapılır.
       </p>
     </main>
   );

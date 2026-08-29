@@ -3,8 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fiyatText } from "@/lib/data";
 import { getIslemSlug, komisyon } from "@/lib/islemler";
-import { tumIslemlerGetir } from "@/lib/veri";
-import { getKullanici } from "@/lib/kullanicilar";
+import { kullaniciProfilGetir, tumIslemlerGetir } from "@/lib/veri";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -45,8 +44,18 @@ export default async function IslemPage({ params }: Params) {
   const { talep, sunum } = islem;
   const alim = tur === "alim";
   // Karşı taraf bakış açısına göre değişir: alımda satıcı, satışta alıcı.
-  const karsiTaraf = getKullanici(alim ? islem.satici : islem.alici);
+  //
+  // Kayıt SABİT listeden okunuyordu (`getKullanici`) ve o listede puan hep
+  // 0'dır: ekranda herkes "★ 0,0" görünüyordu. Hesaplanan profil okunuyor
+  // ve yıldız, karşı tarafın BU işlemdeki rolünden alınıyor.
+  const karsiTaraf = await kullaniciProfilGetir(
+    alim ? islem.satici : islem.alici,
+  );
   if (!karsiTaraf) notFound();
+  const karsiPuan = alim ? karsiTaraf.saticiPuan : karsiTaraf.aliciPuan;
+  const karsiAdet = alim
+    ? karsiTaraf.saticiDegerlendirme
+    : karsiTaraf.aliciDegerlendirme;
   const kesinti = komisyon(islem);
   const netTutar = alim ? -islem.fiyat : islem.fiyat - kesinti;
   const odeme = alim
@@ -211,7 +220,8 @@ export default async function IslemPage({ params }: Params) {
                 </span>
               ) : fark < 0 ? (
                 <span className="text-danger">
-                  Sunum, talep fiyatının {fiyatText(Math.abs(fark))} üstünde kapandı.
+                  Sunum, talep fiyatının {fiyatText(Math.abs(fark))} üstünde
+                  kapandı.
                 </span>
               ) : (
                 <span className="text-ink-500">
@@ -277,10 +287,22 @@ export default async function IslemPage({ params }: Params) {
                 {karsiTaraf.kullanici}
               </div>
               <div className="mt-[3px] text-[12px] font-bold text-star-ink">
-                ★ {karsiTaraf.puan.toLocaleString("tr-TR", { minimumFractionDigits: 1 })}
-                <span className="ml-1 font-medium text-ink-400">
-                  · {karsiTaraf.degerlendirme} değerlendirme
-                </span>
+                {karsiAdet > 0 ? (
+                  <>
+                    ★{" "}
+                    {karsiPuan.toLocaleString("tr-TR", {
+                      minimumFractionDigits: 1,
+                    })}
+                    <span className="ml-1 font-medium text-ink-400">
+                      · {karsiAdet} değerlendirme ({alim ? "satıcı" : "alıcı"}{" "}
+                      olarak)
+                    </span>
+                  </>
+                ) : (
+                  <span className="font-semibold text-ink-400">
+                    {alim ? "Satıcı" : "Alıcı"} olarak henüz değerlendirilmemiş
+                  </span>
+                )}
               </div>
             </div>
           </div>

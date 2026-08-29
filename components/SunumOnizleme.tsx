@@ -83,18 +83,6 @@ export type KunyeSatiri = {
  */
 export const KRITER_TOPLAM = 5;
 
-/** Alıcının ilanda somut olarak belirttiği kriter sayısı (bilgi amaçlı). */
-export function belirtilenKriterSayisi(talep?: Talep): number {
-  if (!talep) return 0;
-  let n = 0;
-  if (talep.yil) n += 1;
-  if (talep.durum) n += 1;
-  if (talep.defoKabul !== undefined) n += 1;
-  if (talep.model) n += 1;
-  if (talep.renk) n += 1;
-  return n;
-}
-
 /**
  * Alıcının kabul ettiği durum bir ALT SINIRDIR: satıcının ürünü en az o
  * kalitede olmalıdır. Sıralama `URUN_DURUMLARI` dizisinden gelir
@@ -173,38 +161,39 @@ export function kunyeSatirlari(
   // Satıcı kendi sunumuna bakarken beklentiler alıcının ağzından değil,
   // "Alıcı … istedi" diliyle yazılır — kendine sunum yapmıyor.
   const satici = secenek?.kendiSunumum === true;
-  const yilSozu = (talep?.kategori ?? "") === "Giyim & Aksesuar"
-    ? "beden"
-    : "model";
+  const yilSozu =
+    (talep?.kategori ?? "") === "Giyim & Aksesuar" ? "beden" : "model";
   // Satıcı kendi önizlemesinde alıcı diliyle yazılmış ("Bütçen…", "Sen …
   // istedin") notları görmemeli; taksonomi satırları yine talepten gelir.
   const kars = secenek?.karsilastirma === false ? undefined : talep;
   const ham: (KunyeSatiri | null)[] = [
-    secenek?.fiyatGizli ? null : {
-      // Satıcı kendi sunumuna bakıyorsa "teklifin", alıcı bakıyorsa "teklifi".
-      k: secenek?.kendiSunumum ? "Fiyat teklifin" : "Fiyat teklifi",
-      v: s.fiyatNum > 0 ? fiyatText(s.fiyatNum) : "",
-      mor: true,
-      sayilmaz: true,
-      // Fiyat farkı uyarısı künyede değil, sohbet butonunun üstünde durur.
-      notGizli: true,
-      ...(kars
-        ? s.fiyatNum === kars.fiyatNum
-          ? {
-              eslesme: "uyuyor" as const,
-              beklenti: "Alıcının bütçesiyle aynı.",
-            }
-          : s.fiyatNum < kars.fiyatNum
-            ? {
-                eslesme: "uyuyor" as const,
-                beklenti: `${fiyatText(kars.fiyatNum - s.fiyatNum)} ucuz teklif.`,
-              }
-            : {
-                eslesme: "farkli" as const,
-                beklenti: `${fiyatText(s.fiyatNum - kars.fiyatNum)} pahalı teklif.`,
-              }
-        : {}),
-    },
+    secenek?.fiyatGizli
+      ? null
+      : {
+          // Satıcı kendi sunumuna bakıyorsa "teklifin", alıcı bakıyorsa "teklifi".
+          k: secenek?.kendiSunumum ? "Fiyat teklifin" : "Fiyat teklifi",
+          v: s.fiyatNum > 0 ? fiyatText(s.fiyatNum) : "",
+          mor: true,
+          sayilmaz: true,
+          // Fiyat farkı uyarısı künyede değil, sohbet butonunun üstünde durur.
+          notGizli: true,
+          ...(kars
+            ? s.fiyatNum === kars.fiyatNum
+              ? {
+                  eslesme: "uyuyor" as const,
+                  beklenti: "Alıcının bütçesiyle aynı.",
+                }
+              : s.fiyatNum < kars.fiyatNum
+                ? {
+                    eslesme: "uyuyor" as const,
+                    beklenti: `${fiyatText(kars.fiyatNum - s.fiyatNum)} ucuz teklif.`,
+                  }
+                : {
+                    eslesme: "farkli" as const,
+                    beklenti: `${fiyatText(s.fiyatNum - kars.fiyatNum)} pahalı teklif.`,
+                  }
+            : {}),
+        },
     // Ürün kimliği: taksonomi talepten, marka/model sunumdan gelir.
     talep?.kategori ? { k: "Kategori", v: talep.kategori } : null,
     {
@@ -234,7 +223,9 @@ export function kunyeSatirlari(
           ? metinEsit(kars.model, model)
             ? {
                 eslesme: "uyuyor" as const,
-                beklenti: satici ? "Alıcının istediği model" : "İstediğin model",
+                beklenti: satici
+                  ? "Alıcının istediği model"
+                  : "İstediğin model",
               }
             : {
                 eslesme: "farkli" as const,
@@ -274,7 +265,9 @@ export function kunyeSatirlari(
             ? metinEsit(kars.renk, s.renk)
               ? {
                   eslesme: "uyuyor" as const,
-                  beklenti: satici ? "Alıcının istediği renk" : "İstediğin renk",
+                  beklenti: satici
+                    ? "Alıcının istediği renk"
+                    : "İstediğin renk",
                 }
               : {
                   eslesme: "farkli" as const,
@@ -655,7 +648,9 @@ export function SunumNotu({
           </p>
         </div>
       )}
-      {yan && <div className="lg:w-[240px] lg:flex-none lg:self-center">{yan}</div>}
+      {yan && (
+        <div className="lg:w-[240px] lg:flex-none lg:self-center">{yan}</div>
+      )}
     </div>
   );
 }

@@ -1,14 +1,18 @@
 // ── Alarm tetikleme ───────────────────────────────────────────────────
 // Yeni talep yayınlandığında bütün aktif alarmlar taranır; eşleşen her
-// alarm sahibine seçtiği kanaldan haber gider:
-//   • "Uygulama" → zil/bildirimler sayfasına düşen bildirim
-//   • "E-posta"  → hesabındaki adrese posta (bkz. lib/eposta.ts)
+// alarm sahibine İKİ KANALDAN da haber gider:
+//   • Uygulama → zil/bildirimler sayfasına düşen bildirim
+//   • E-posta  → hesabın DOĞRULANMIŞ adresine posta (bkz. lib/eposta.ts)
+//
+// Kanal seçimi kaldırıldı (bkz. app/api/alarmlar); kayıttaki `kanallar`
+// alanı eski alarmlardan kalma ve artık okunmuyor.
 
 import {
   tumAlarmlarOku,
   alarmEslesmeYaz,
   bildirimEkle,
   taleplerOku,
+  hesapEpostasiOku,
   kimlik,
   type Alarm,
 } from "./depo";
@@ -42,8 +46,15 @@ export async function alarmlariTetikle(talep: Talep): Promise<number> {
         zaman: "az önce",
         href,
       });
-      if (alarm.kanallar?.uygulama !== false) await uygulamaBildirimi(alarm, talep, href);
-      if (alarm.kanallar?.eposta) await alarmEpostasi(alarm, talep, href);
+      /*
+       * KANAL SEÇİMİ OKUNMUYOR: her alarm hem uygulamadan hem e-postadan
+       * haber verir (bkz. app/api/alarmlar → kanallar). Kayıttaki
+       * `kanallar` alanı eski alarmlarda `eposta:false` kalmıştı; kanal
+       * seçimi formdan kaldırıldığı için kullanıcının bunu düzeltmesinin
+       * yolu da yoktu — eski alarmlar sessizce e-postasız çalışıyordu.
+       */
+      await uygulamaBildirimi(alarm, talep, href);
+      await alarmEpostasi(alarm, talep, href);
       sayac += 1;
     } catch {
       // Tek bir alarmın hatası diğerlerini durdurmasın.
@@ -68,9 +79,25 @@ async function uygulamaBildirimi(alarm: Alarm, talep: Talep, href: string) {
   });
 }
 
+/**
+ * Alarmın e-posta adresi — HESAPTAN, tetikleme anında.
+ *
+ * Adres alarm kaydına kopyalanıyordu: alarmı kurduktan SONRA e-postasını
+ * doğrulayan kullanıcıya hiç posta gitmiyordu, çünkü kayıtta boş dize
+ * donmuş kalıyordu. Projedeki kural burada da geçerli: türetilebilen değer
+ * kayda saklanmaz, okuma anında hesaplanır.
+ */
+async function alarmAdresi(alarm: Alarm): Promise<string> {
+  const kayit = await hesapEpostasiOku(alarm.kullanici);
+  return kayit?.dogrulandi && kayit.adres.includes("@") ? kayit.adres : "";
+}
+
 async function alarmEpostasi(alarm: Alarm, talep: Talep, href: string) {
+  // Adres KAYITTAN DEĞİL hesaptan, tetikleme anında okunur.
+  const adres = await alarmAdresi(alarm);
+  if (!adres) return;
   await epostaGonder({
-    kime: alarm.eposta ?? "",
+    kime: adres,
     konu: `Alarmına uyan yeni talep: ${talep.baslik}`,
     govde: [
       `"${alarm.ad}" alarmın için yeni bir talep yayınlandı.`,
@@ -84,7 +111,6 @@ async function alarmEpostasi(alarm: Alarm, talep: Talep, href: string) {
     ].join("\n"),
   });
 }
-
 
 /** Yeni kurulan alarmın ilk taramasında ayrı ayrı bildirilecek talep sayısı. */
 const ILK_TARAMA_BILDIRIM = 10;
@@ -125,7 +151,7 @@ export async function mevcutTalepleriTara(alarm: Alarm): Promise<number> {
     talepler.length,
   );
 
-  if (alarm.kanallar?.uygulama !== false) {
+  {
     for (const talep of ilkler)
       await uygulamaBildirimi(alarm, talep, `/ilan/${talep.id}`);
     if (kalan > 0)
@@ -137,16 +163,20 @@ export async function mevcutTalepleriTara(alarm: Alarm): Promise<number> {
         harf: "🔔",
         avatar: "bg-accent text-ink-900",
         text: `Alarmına uyan ${kalan} talep daha yayında`,
-        sub: `${alarm.ad} · hepsini keşfet sayfasında gör`,
+        // Bağlantı Keşfet'e gidiyordu: kullanıcı oraya düşüp filtreleri
+        // elle kurmak zorunda kalıyordu. Artık alarmın kendi sayfası var
+        // ve yalnızca ona uyan talepleri listeliyor.
+        sub: `${alarm.ad} · hepsini alarmın sayfasında gör`,
         zaman: "az önce",
-        href: "/kesfet",
+        href: `/talep-alarmlari/${alarm.id}`,
         yeni: true,
       });
   }
 
-  if (alarm.kanallar?.eposta)
+  const adres = await alarmAdresi(alarm);
+  if (adres)
     await epostaGonder({
-      kime: alarm.eposta ?? "",
+      kime: adres,
       konu: `"${alarm.ad}" alarmına uyan ${talepler.length} talep zaten yayında`,
       govde: [
         `Alarmını kurdun ve kriterlerine uyan ${talepler.length} talep şu an yayında:`,

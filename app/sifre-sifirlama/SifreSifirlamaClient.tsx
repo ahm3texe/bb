@@ -2,24 +2,23 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 const inputCls =
   "w-full box-border rounded-control border-[1.5px] border-border-input px-3.5 py-3 text-[13.5px] font-semibold text-ink-900 outline-none focus:border-primary";
 
 function BrandLogo() {
   return (
-    <Link href="/" className="mb-[26px] flex items-center gap-2.5 no-underline">
-      <span className="flex h-[42px] w-10 items-center justify-center rounded-[10px] bg-primary text-[20px] font-extrabold text-white">
-        b
-      </span>
-      <span>
-        <span className="block text-2xl font-extrabold leading-none tracking-[-0.5px] text-ink-900">
-          bul<span className="text-primary">bana</span>
-        </span>
-        <span className="mt-[3px] block text-[9.5px] font-semibold tracking-[0.8px] text-ink-400">
-          SEN İSTE, SATICI BULSUN
-        </span>
-      </span>
+    <Link href="/" className="mb-[26px] flex items-center no-underline">
+      {/* "b" harfli geçici kutu yerine gerçek marka kilidi. */}
+      <Image
+        src="/logo.svg"
+        alt="bulbana — sen iste, satıcı bulsun"
+        width={1200}
+        height={320}
+        className="block h-14 w-auto"
+        priority
+      />
     </Link>
   );
 }
@@ -140,7 +139,10 @@ export function SifreSifirlamaClient() {
               Prototip: e-posta gönderimi henüz bağlı değil. Kod gelen kutuna
               düşmez; e-posta kuyruğuna yazılır ve destek ekibi oradan iletir.
             </p>
-            <label className="mb-1.5 block text-[12.5px] font-bold text-ink-900" htmlFor="ss-kullanici">
+            <label
+              className="mb-1.5 block text-[12.5px] font-bold text-ink-900"
+              htmlFor="ss-kullanici"
+            >
               Kullanıcı adı
             </label>
             <input
@@ -173,7 +175,10 @@ export function SifreSifirlamaClient() {
               </p>
             )}
 
-            <label className="mb-1.5 block text-[12.5px] font-bold text-ink-900" htmlFor="ss-kod">
+            <label
+              className="mb-1.5 block text-[12.5px] font-bold text-ink-900"
+              htmlFor="ss-kod"
+            >
               Sıfırlama kodu
             </label>
             <input
@@ -184,7 +189,10 @@ export function SifreSifirlamaClient() {
               className={`${inputCls} font-mono`}
             />
 
-            <label className="mb-1.5 mt-3.5 block text-[12.5px] font-bold text-ink-900" htmlFor="ss-p1">
+            <label
+              className="mb-1.5 mt-3.5 block text-[12.5px] font-bold text-ink-900"
+              htmlFor="ss-p1"
+            >
               Yeni parola
             </label>
             <input
@@ -197,7 +205,10 @@ export function SifreSifirlamaClient() {
               className={inputCls}
             />
 
-            <label className="mb-1.5 mt-3.5 block text-[12.5px] font-bold text-ink-900" htmlFor="ss-p2">
+            <label
+              className="mb-1.5 mt-3.5 block text-[12.5px] font-bold text-ink-900"
+              htmlFor="ss-p2"
+            >
               Yeni parola (tekrar)
             </label>
             <input

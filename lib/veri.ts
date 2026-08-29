@@ -28,8 +28,10 @@ import {
   hesapEpostasiOku,
   hesapTelefonuOku,
   profilOku,
+  alarmlarOku,
 } from "./depo";
 import { anlasmaDurumu, kargoSonTarih } from "./anlasma";
+import type { Alarm } from "./depo";
 import type { Anlasma } from "./anlasma";
 import { acikTalepler, gecenGun } from "./talep-durum";
 
@@ -46,10 +48,27 @@ import type { Kullanici } from "./kullanicilar";
 import type { GelenSunum } from "./gelen-sunumlar";
 import { sunumAcikMi } from "./gelen-sunumlar";
 import type { Sunumum } from "./sunumlarim";
-import { degerlendirmelerFor } from "./depo";
-import { puanOrtalamasi } from "./degerlendirme";
+import { degerlendirmelerFor, degerlendirmelerOku } from "./depo";
+import { degerlendirilenRol, puanOrtalamasi, rolAyir } from "./degerlendirme";
 import type { Sohbet } from "./sohbetler";
 import { gecenSureIso } from "./bildirimler";
+
+// ── Talep alarmları ───────────────────────────────────────────────────
+
+/**
+ * Hesabın tek bir alarmı — sayfa `lib/depo`'yu doğrudan çağırmasın diye.
+ *
+ * Kural BACKEND.md'de yazılı: hiçbir `page.tsx` depoyu doğrudan okumaz,
+ * okuma katmanı burasıdır. Alarm sayfası bir süre kuralı deldi; Supabase
+ * geçişinde değişecek yerleri iki dosyada tutan şey tam da bu sınır.
+ * Başkasının alarmı `undefined` döner (liste zaten hesaba göre süzülür).
+ */
+export async function alarmGetir(
+  kullanici: string,
+  id: string,
+): Promise<Alarm | undefined> {
+  return (await alarmlarOku(kullanici)).find((a) => a.id === id);
+}
 
 // ── Talepler ──────────────────────────────────────────────────────────
 
@@ -68,7 +87,10 @@ export async function taleplerGetir(): Promise<Talep[]> {
  * boyunca tıklanabilir kalır; başkaları "artık mevcut değil" görür.
  */
 export async function ilgiliTalepIdleri(kullanici: string): Promise<string[]> {
-  const [talepler, sunumlar] = await Promise.all([taleplerOku(), sunumlarOku()]);
+  const [talepler, sunumlar] = await Promise.all([
+    taleplerOku(),
+    sunumlarOku(),
+  ]);
   return [
     ...talepler.filter((t) => t.sahibi === kullanici).map((t) => t.id),
     ...sunumlar.filter((s) => s.satici === kullanici).map((s) => s.talepId),
@@ -116,11 +138,13 @@ export async function kategoriSayilariGetir(): Promise<Record<string, number>> {
   return say;
 }
 
-export async function kullaniciGetir(
-  ad: string,
-): Promise<Kullanici | undefined> {
-  return getKullanici(ad);
-}
+/*
+ * `kullaniciGetir` KALDIRILDI: sabit kaydı olduğu gibi döndürüyordu, yani
+ * puanı, alım/satış sayısı ve değerlendirmesi her zaman 0 olan bir kullanıcı.
+ * Tek çağıranı sunum detay sayfasıydı ve sayfa bu yüzden gerçek sayıyı hiç
+ * göremiyor, kartına "12 talep tamamladı" diye sabit yazıyordu. Hesaplanan
+ * kayıt için `kullaniciProfilGetir` var.
+ */
 
 /**
  * Profil için kullanıcı kaydı — yıldız ortalaması, değerlendirme sayısı ve
@@ -162,6 +186,16 @@ export async function kullaniciMetrikleriGetir(kullanici: string): Promise<{
   /** Ödemeden kargoya verene kadar geçen ortalama süre (saat); yoksa null. */
   ortKargoSaat: number | null;
   /**
+   * SATICI olarak aldığı yıldız ortalaması ve değerlendirme sayısı.
+   *
+   * Sunum kartlarındaki yıldız buradan tazelenir. Değer kayda yazılıp
+   * donuyordu; dahası kişinin ALICI olarak aldığı yorumlar da içine
+   * karışıyordu — satıcı seçen alıcı, aslında o kişinin alıcılığına
+   * verilmiş yıldızlara bakıyordu (bkz. lib/degerlendirme.ts → rolAyir).
+   */
+  saticiPuan: number;
+  saticiDegerlendirme: number;
+  /**
    * Kullanıcının kusurlu bulunduğu iptaller — GEREKÇESİYLE.
    *
    * Sayı zaten gösteriliyordu ("2 iptal") ama nedeni hiçbir yerde
@@ -169,15 +203,23 @@ export async function kullaniciMetrikleriGetir(kullanici: string): Promise<{
    */
   kusurlar: { sebep: IptalSebep; zaman: string }[];
 }> {
-  const [islemler, sunumlar, talepler, anlasmalar, iptaller, mesajlar] =
-    await Promise.all([
-      islemlerOku(),
-      sunumlarOku(),
-      taleplerOku(),
-      anlasmalarOku(),
-      iptallerOku(),
-      mesajlarOku(),
-    ]);
+  const [
+    islemler,
+    sunumlar,
+    talepler,
+    anlasmalar,
+    iptaller,
+    mesajlar,
+    degerlendirmeler,
+  ] = await Promise.all([
+    islemlerOku(),
+    sunumlarOku(),
+    taleplerOku(),
+    anlasmalarOku(),
+    iptallerOku(),
+    mesajlarOku(),
+    degerlendirmelerFor(kullanici),
+  ]);
 
   const tamamlananAlim = islemler.filter((i) => i.alici === kullanici).length;
   const tamamlananSatis = islemler.filter((i) => i.satici === kullanici).length;
@@ -202,7 +244,9 @@ export async function kullaniciMetrikleriGetir(kullanici: string): Promise<{
   );
   const zamaninda = gonderileri.filter((a) => {
     const son = kargoSonTarih(a);
-    return !!son && new Date(a.kargoZamani!).getTime() <= new Date(son).getTime();
+    return (
+      !!son && new Date(a.kargoZamani!).getTime() <= new Date(son).getTime()
+    );
   }).length;
   const zamanindaKargo = gonderileri.length
     ? Math.round((zamaninda / gonderileri.length) * 100)
@@ -217,11 +261,17 @@ export async function kullaniciMetrikleriGetir(kullanici: string): Promise<{
     (i) => i.kusur === "satici" && i.satici === kullanici,
   ).length;
 
+  // Yıldız ortalaması ROLE GÖRE: satıcılığına verilen yıldızlar satıcı
+  // tarafında, alıcılığına verilenler alıcı tarafında sayılır.
+  const saticiYorumlari = rolAyir(degerlendirmeler).satici;
+
   return {
     tamamlananAlim,
     tamamlananSatis,
     iptalEdilenAlim,
     iptalEdilenSatis,
+    saticiPuan: Number(puanOrtalamasi(saticiYorumlari).toFixed(1)),
+    saticiDegerlendirme: saticiYorumlari.length,
     sunumYanitOrani,
     zamanindaKargo,
     // Ölçüm yoksa null döner ve arayüz "—" gösterir; uydurma sayı yok.
@@ -240,15 +290,17 @@ export async function kullaniciProfilGetir(
   const k = getKullanici(ad);
   if (!k) return undefined;
 
-  const [degerlendirmeler, talepler, metrik, kayitliProfil] = await Promise.all([
-    degerlendirmelerFor(ad),
-    taleplerOku(),
-    kullaniciMetrikleriGetir(ad),
-    // Kullanıcının Ayarlar'dan yazdığı bilgiler. Bunlar bir dönem yalnızca
-    // tarayıcıda duruyordu; herkese açık profil sabit kayıttan okuduğu için
-    // kişinin yazdığı biyografi YALNIZCA KENDİSİNE görünüyordu.
-    profilOku(ad),
-  ]);
+  const [degerlendirmeler, talepler, metrik, kayitliProfil] = await Promise.all(
+    [
+      degerlendirmelerFor(ad),
+      taleplerOku(),
+      kullaniciMetrikleriGetir(ad),
+      // Kullanıcının Ayarlar'dan yazdığı bilgiler. Bunlar bir dönem yalnızca
+      // tarayıcıda duruyordu; herkese açık profil sabit kayıttan okuduğu için
+      // kişinin yazdığı biyografi YALNIZCA KENDİSİNE görünüyordu.
+      profilOku(ad),
+    ],
+  );
 
   // Davranış sayıları değerlendirmeden BAĞIMSIZ: hiç puan almamış bir
   // kullanıcının da tamamlanmış alımı/satışı olabilir. Eskiden burada erken
@@ -261,6 +313,12 @@ export async function kullaniciProfilGetir(
       : k.ad,
     bio: kayitliProfil?.bio || k.bio,
     tamamlananSatis: metrik.tamamlananSatis,
+    // Değerlendirme yoksa üç alan da 0 kalır; arayüz sayıya değil SAYIYA
+    // BAKARAK "henüz değerlendirilmemiş" der.
+    aliciPuan: 0,
+    aliciDegerlendirme: 0,
+    saticiPuan: 0,
+    saticiDegerlendirme: 0,
     zamanindaKargo: metrik.zamanindaKargo,
     ortYanitSaat: metrik.ortYanitSaat,
     ortKargoSaat: metrik.ortKargoSaat,
@@ -273,14 +331,37 @@ export async function kullaniciProfilGetir(
   };
   if (!degerlendirmeler.length) return temel;
 
+  /*
+   * PUAN ROLE GÖRE AYRIŞIR.
+   *
+   * Tek bir ortalama vardı ve kişinin iki rolünü harmanlıyordu. İki ayrı
+   * sorun doğuruyordu:
+   *
+   *   1. Yıldızın yanındaki sayı hiçbir soruya cevap vermiyordu — "iyi
+   *      satıcı mı" ile "iyi alıcı mı" aynı rakama sıkışmıştı.
+   *   2. Alıcı Kalitesi skoru (bkz. lib/alici-kalitesi.ts) bu karışık
+   *      ortalamadan besleniyordu; satıcı olarak alınan yıldızlar alıcı
+   *      seviyesini yükseltiyordu.
+   *
+   * Artık `aliciMetrik` YALNIZCA alıcılığına verilen yorumlardan hesaplanır;
+   * satıcı tarafı ayrı alanlarda durur. `puan`/`degerlendirme` genel
+   * toplamdır ve rolün bilinmediği yerlerde (kendi hesap kartı) kullanılır.
+   */
+  const { alici: aliciYorumlari, satici: saticiYorumlari } =
+    rolAyir(degerlendirmeler);
   const ortalama = puanOrtalamasi(degerlendirmeler);
-  const olumlu = degerlendirmeler.filter((d) => d.puan >= 4).length;
-  const olumsuz = degerlendirmeler.filter((d) => d.puan <= 2).length;
+  const aliciOrtalama = puanOrtalamasi(aliciYorumlari);
+  const olumlu = aliciYorumlari.filter((d) => d.puan >= 4).length;
+  const olumsuz = aliciYorumlari.filter((d) => d.puan <= 2).length;
 
   return {
     ...temel,
     puan: Number(ortalama.toFixed(1)),
     degerlendirme: degerlendirmeler.length,
+    aliciPuan: Number(aliciOrtalama.toFixed(1)),
+    aliciDegerlendirme: aliciYorumlari.length,
+    saticiPuan: Number(puanOrtalamasi(saticiYorumlari).toFixed(1)),
+    saticiDegerlendirme: saticiYorumlari.length,
     yorumlar: degerlendirmeler.map((d) => ({
       yazan: d.yazan,
       harf: getKullanici(d.yazan)?.harf ?? d.yazan.slice(0, 2).toUpperCase(),
@@ -288,11 +369,15 @@ export async function kullaniciProfilGetir(
       tarih: new Date(d.zaman).toLocaleDateString("tr-TR"),
       puan: d.puan,
       text: d.yorum,
+      // Yorumun hangi role verildiği kayıtta vardı ama profile taşınmıyordu;
+      // okuyan, cümleden tahmin etmek zorunda kalıyordu.
+      rol: degerlendirilenRol(d),
+      id: d.id,
     })),
     aliciMetrik: {
       ...temel.aliciMetrik,
-      puanOrtalamasi: ortalama,
-      degerlendirmeSayisi: degerlendirmeler.length,
+      puanOrtalamasi: aliciOrtalama,
+      degerlendirmeSayisi: aliciYorumlari.length,
       olumluYorum: olumlu,
       olumsuzYorum: olumsuz,
     },
@@ -351,8 +436,7 @@ export async function saticiMetrikleriniTazele(
   const metrikler = new Map(
     await Promise.all(
       saticilar.map(
-        async (ad) =>
-          [ad, await kullaniciMetrikleriGetir(ad)] as const,
+        async (ad) => [ad, await kullaniciMetrikleriGetir(ad)] as const,
       ),
     ),
   );
@@ -368,6 +452,13 @@ export async function saticiMetrikleriniTazele(
     return {
       ...kalan,
       satis: m.tamamlananSatis,
+      // Yıldız da donuyordu ve iki rolün ortalamasıydı; artık satıcılığına
+      // verilen yorumlardan, okuma anında.
+      puan: m.saticiPuan.toLocaleString("tr-TR", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      }),
+      degerlendirme: m.saticiDegerlendirme,
       ...(m.zamanindaKargo !== null
         ? { zamanindaKargo: m.zamanindaKargo }
         : {}),
@@ -407,11 +498,21 @@ export async function talebeGelenSunumlarGetir(
 export async function gonderdigimSunumlarGetir(
   kullanici: string,
 ): Promise<Sunumum[]> {
-  const [sunumlar, talepler, anlasmalar] = await Promise.all([
+  const [sunumlar, talepler, anlasmalar, degerlendirmeler] = await Promise.all([
     sunumlarOku(),
     taleplerOku(),
     anlasmalarOku(),
+    degerlendirmelerOku(),
   ]);
+
+  // Talep sahibinin ALICI puanı. Buradaki değer sabit kullanıcı kaydından
+  // okunuyordu ve o kayıtta puan her zaman 0'dır: listede herkes "0,0"
+  // görünüyordu. Rol ayrımı için bkz. lib/degerlendirme.ts → rolAyir.
+  const aliciPuani = (ad: string) => {
+    const hakkinda = degerlendirmeler.filter((d) => d.hakkinda === ad);
+    const liste = rolAyir(hakkinda).alici;
+    return { puan: puanOrtalamasi(liste), adet: liste.length };
+  };
 
   return sunumlar
     .filter((s) => s.satici === kullanici)
@@ -431,63 +532,64 @@ export async function gonderdigimSunumlarGetir(
               "inceleme",
             ]
           : s.sonuc === "arsiv"
-          ? [
-              "Arşivde",
-              "bg-subtle text-ink-500",
-              "Alıcı bu talebi yeniden yayına aldı; sunumun önceki döneme ait. Talep hâlâ açıksa yeni sunum yapabilirsin.",
-              "inceleme",
-            ]
-          : s.sonuc === "kapandi"
-          ? [
-              "Talep kapandı",
-              "bg-subtle text-ink-500",
-              "Alıcı başka bir sunumu kabul etti. Bu sunum için yapabileceğin bir şey kalmadı; başka taleplere sunum yapabilirsin.",
-              "inceleme",
-            ]
-          : s.sonuc === "suresi-doldu"
-          ? [
-              "Süresi doldu",
-              "bg-subtle text-ink-500",
-              "Alıcı 2 gün içinde yanıt vermedi; sunumun geçersiz oldu. Talep hâlâ açıksa yeniden sunum yapabilirsin.",
-              "inceleme",
-            ]
-          : durum === "kargoda"
             ? [
-                "Kargoda",
-                "bg-accent text-ink-900",
-                `${anlasma?.kargoFirma} · Takip no: ${anlasma?.takipNo}`,
-                "kargo",
+                "Arşivde",
+                "bg-subtle text-ink-500",
+                "Alıcı bu talebi yeniden yayına aldı; sunumun önceki döneme ait. Talep hâlâ açıksa yeni sunum yapabilirsin.",
+                "inceleme",
               ]
-            : durum === "kargo-bekleniyor"
+            : s.sonuc === "kapandi"
               ? [
-                  "Kargona hazırlan",
-                  "bg-accent text-ink-900",
-                  `Ödeme alındı; ${anlasma?.kargoSaat} saat içinde kargoya ver.`,
-                  "kargo",
+                  "Talep kapandı",
+                  "bg-subtle text-ink-500",
+                  "Alıcı başka bir sunumu kabul etti. Bu sunum için yapabileceğin bir şey kalmadı; başka taleplere sunum yapabilirsin.",
+                  "inceleme",
                 ]
-              : durum === "odeme-bekleniyor"
+              : s.sonuc === "suresi-doldu"
                 ? [
-                    "Anlaşıldı",
-                    "bg-primary-soft text-primary-hover",
-                    "Teklif kabul edildi; alıcının ödemesi bekleniyor.",
-                    "sohbet",
-                  ]
-                : [
-                    "İncelemede",
+                    "Süresi doldu",
                     "bg-subtle text-ink-500",
-                    "Sunumun alıcıya iletildi; yanıt bekleniyor.",
+                    "Alıcı 2 gün içinde yanıt vermedi; sunumun geçersiz oldu. Talep hâlâ açıksa yeniden sunum yapabilirsin.",
                     "inceleme",
-                  ];
+                  ]
+                : durum === "kargoda"
+                  ? [
+                      "Kargoda",
+                      "bg-accent text-ink-900",
+                      `${anlasma?.kargoFirma} · Takip no: ${anlasma?.takipNo}`,
+                      "kargo",
+                    ]
+                  : durum === "kargo-bekleniyor"
+                    ? [
+                        "Kargona hazırlan",
+                        "bg-accent text-ink-900",
+                        `Ödeme alındı; ${anlasma?.kargoSaat} saat içinde kargoya ver.`,
+                        "kargo",
+                      ]
+                    : durum === "odeme-bekleniyor"
+                      ? [
+                          "Anlaşıldı",
+                          "bg-primary-soft text-primary-hover",
+                          "Teklif kabul edildi; alıcının ödemesi bekleniyor.",
+                          "sohbet",
+                        ]
+                      : [
+                          "İncelemede",
+                          "bg-subtle text-ink-500",
+                          "Sunumun alıcıya iletildi; yanıt bekleniyor.",
+                          "inceleme",
+                        ];
 
       return {
         id: s.id,
         talepId: s.talepId,
         sahibi,
         harf: alici?.harf ?? "",
-        puan: (alici?.puan ?? 0).toLocaleString("tr-TR", {
+        puan: aliciPuani(sahibi).puan.toLocaleString("tr-TR", {
           minimumFractionDigits: 1,
           maximumFractionDigits: 1,
         }),
+        degerlendirme: aliciPuani(sahibi).adet,
         // Talebin açılış zamanı damgadan türetilir; kartta okunur bir
         // ifadeye çevrilir. `talep.eklendi` okunuyordu ve o alan her
         // kayıtta 0 olduğu için tarih HER ZAMAN "Bugün" yazıyordu.

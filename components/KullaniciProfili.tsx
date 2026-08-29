@@ -2,12 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { profilYolu, useAktifKullanici } from "@/lib/aktif-kullanici";
+import {
+  profilYolu,
+  useAktifKullanici,
+  useGirisKapisi,
+} from "@/lib/aktif-kullanici";
 import { fiyatText } from "@/lib/data";
 import type { Talep } from "@/lib/data";
 import type { Kullanici } from "@/lib/kullanicilar";
 import type { Islem } from "@/lib/islemler";
 import { aliciKalitesi, SEVIYE_STIL } from "@/lib/alici-kalitesi";
+import { KaliteKirilimi } from "@/components/KaliteKirilimi";
 import { sureMetni } from "@/lib/olcum";
 import { TalepCard } from "@/components/TalepCard";
 import { satislar } from "@/lib/islemler";
@@ -16,6 +21,36 @@ import { satislar } from "@/lib/islemler";
 function yildizText(puan: number): string {
   const dolu = Math.round(puan);
   return "★".repeat(dolu) + "☆".repeat(5 - dolu);
+}
+
+/**
+ * Tek rolün puanı. Değerlendirme yoksa "0,0" yazmak kişiyi kötü puan almış
+ * gibi gösterirdi; o durumda durum yazılır (metrik alanlarındaki "—" kuralı).
+ */
+function RolPuani({
+  etiket,
+  puan,
+  adet,
+}: {
+  etiket: string;
+  puan: number;
+  adet: number;
+}) {
+  if (!adet)
+    return (
+      <div className="text-[12px] font-semibold text-ink-400">
+        {etiket}: henüz değerlendirilmemiş
+      </div>
+    );
+  return (
+    <div className="text-[13px] font-bold text-ink-500">
+      <span className="text-ink-400">{etiket}</span>{" "}
+      <span className="text-star-ink">
+        ★ {puan.toLocaleString("tr-TR", { minimumFractionDigits: 1 })}
+      </span>{" "}
+      <span className="font-semibold text-ink-400">· {adet}</span>
+    </div>
+  );
 }
 
 /**
@@ -28,6 +63,7 @@ export function KullaniciProfili({
   acikTalepler,
   kendiProfilim = false,
   islemler = [],
+  sohbetYolu = "",
 }: {
   k: Kullanici;
   /** Bu kullanıcının tamamlanmış işlemleri (satış geçmişi). */
@@ -36,9 +72,16 @@ export function KullaniciProfili({
   acikTalepler: Talep[];
   /** Oturum sahibinin kendi profiline bakması durumu. */
   kendiProfilim?: boolean;
+  /**
+   * Bu kişiyle olan sohbetin adresi. Boşsa aramızda sohbet YOK — sohbetler
+   * yalnızca sunumdan doğar, o yüzden düğme "gider gibi yapmaz".
+   */
+  sohbetYolu?: string;
 }) {
   // Kendi adına tıklayan kullanıcı "Profilim"e gitsin.
   const aktif = useAktifKullanici();
+  // Ziyaretçi profili oturumsuz açılır; bildirme ve mesaj hesap ister.
+  const { girisli, girisGerek } = useGirisKapisi();
   const [tab, setTab] = useState<"talepler" | "satislar" | "yorumlar">(
     "talepler",
   );
@@ -48,6 +91,8 @@ export function KullaniciProfili({
 
   /** Profili destek ekibine bildirir — gerçek kayıt açar. */
   async function profiliBildir() {
+    // Ziyaretçide uç 401 döner; sessiz hata yerine giriş ekranı.
+    if (girisGerek()) return;
     if (bildiriliyor) return;
     setBildiriliyor(true);
     setBildirimHatasi("");
@@ -105,7 +150,11 @@ export function KullaniciProfili({
 
       <div className="grid items-start gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
         {/* ── Sol: kimlik kartı ── */}
-        <aside className="overflow-hidden rounded-panel border border-border bg-card lg:sticky lg:top-[150px]">
+        {/* Kart SABİT: sticky idi, ama sticky kutunun kayma alanı grid
+            satırının yüksekliğiydi — o da sağdaki sekmenin içeriğiyle
+            değişiyordu. Sekme değişince kart yukarı/aşağı zıplıyordu.
+            Artık her sekmede aynı yerde duruyor. */}
+        <aside className="self-start overflow-hidden rounded-panel border border-border bg-card">
           <div className="h-16 bg-gradient-to-br from-primary-soft via-primary/20 to-accent-soft" />
           <div className="px-5 pb-5 text-center">
             <div className="-mt-9 mx-auto flex h-[72px] w-[72px] items-center justify-center rounded-full bg-ink-900 text-xl font-extrabold text-accent ring-4 ring-card">
@@ -114,11 +163,20 @@ export function KullaniciProfili({
             <h1 className="mt-2.5 text-[21px] font-extrabold tracking-[-0.3px] text-ink-900">
               {k.kullanici}
             </h1>
-            <div className="mt-1 text-[15.5px] font-extrabold text-star-ink">
-              ★ {k.puan.toLocaleString("tr-TR", { minimumFractionDigits: 1 })}{" "}
-              <span className="text-[13px] font-semibold text-ink-400">
-                · {k.degerlendirme} değerlendirme
-              </span>
+            {/* PUAN ROLE GÖRE AYRI. Tek ortalama vardı ve iki rolü
+                harmanlıyordu: "iyi satıcı mı" ile "iyi alıcı mı" aynı
+                rakama sıkışınca sayı hiçbir soruya cevap vermiyordu. */}
+            <div className="mt-1.5 flex flex-col items-center gap-0.5">
+              <RolPuani
+                etiket="Satıcı olarak"
+                puan={k.saticiPuan}
+                adet={k.saticiDegerlendirme}
+              />
+              <RolPuani
+                etiket="Alıcı olarak"
+                puan={k.aliciPuan}
+                adet={k.aliciDegerlendirme}
+              />
             </div>
             {/* "Güvenilir Satıcı" rozeti KALDIRILDI: satıcı seviyesi diye
                 bir mekanizma yok, etiket kodda yazılı sabitti. Aşağıdaki
@@ -131,10 +189,13 @@ export function KullaniciProfili({
                 title={alici.ozet}
               >
                 {alici.seviye === "degerlendirilmedi"
-              ? "Kullanıcı kalitesi henüz değerlendirilmedi"
-              : `Kullanıcı Kalitesi: ${alici.etiket}`}
+                  ? "Kullanıcı kalitesi henüz değerlendirilmedi"
+                  : `Kullanıcı Kalitesi: ${alici.etiket}`}
               </span>
             </div>
+            {/* Rozetin gerekçesi: hesaplanan sinyal kırılımı hiçbir yerde
+                gösterilmiyordu (bkz. components/KaliteKirilimi.tsx). */}
+            <KaliteKirilimi kalite={alici} />
             <p className="mt-3.5 break-words text-pretty text-[14px] font-medium leading-relaxed text-ink-700">
               {k.bio}
             </p>
@@ -163,12 +224,31 @@ export function KullaniciProfili({
                   {/* "Takip Et" KALDIRILDI: yalnızca yerel state çeviriyordu.
                       Ortada takip diye bir kavram yok — ne kayıt tutuluyor
                       ne de takip edilenden bildirim geliyordu. */}
-                  <Link
-                    href="/mesajlar"
-                    className="rounded-[12px] border-[1.5px] border-border-input bg-card px-[18px] py-[11px] text-center text-[13.5px] font-bold text-ink-900 hover:border-primary hover:text-primary"
-                  >
-                    Mesaj Gönder
-                  </Link>
+                  {/* Düğme düz `/mesajlar`a gidiyordu: parametresiz gelen
+                      mesajlar ekranı listenin İLK sohbetini açıyor, yani
+                      profilden mesaj atmaya çalışan kişi alakasız birinin
+                      konuşmasına düşüyordu. Sohbet yoksa açılamayacağı
+                      söylenir. */}
+                  {!girisli ? (
+                    <Link
+                      href={`/giris?devam=${encodeURIComponent(`/profil/${k.kullanici}`)}`}
+                      className="rounded-[12px] border-[1.5px] border-border-input bg-card px-[18px] py-[11px] text-center text-[13.5px] font-bold text-ink-900 hover:border-primary hover:text-primary"
+                    >
+                      Mesaj göndermek için giriş yap
+                    </Link>
+                  ) : sohbetYolu ? (
+                    <Link
+                      href={sohbetYolu}
+                      className="rounded-[12px] border-[1.5px] border-border-input bg-card px-[18px] py-[11px] text-center text-[13.5px] font-bold text-ink-900 hover:border-primary hover:text-primary"
+                    >
+                      Mesaj Gönder
+                    </Link>
+                  ) : (
+                    <p className="rounded-[12px] border border-hairline bg-subtle px-[18px] py-[11px] text-center text-[12.5px] font-medium leading-snug text-ink-400">
+                      Sohbet, bir talebe sunum gönderildiğinde açılır.{" "}
+                      {k.kullanici} ile aranızda henüz sunum yok.
+                    </p>
+                  )}
                   {/* GERÇEK destek kaydı açar. Eskiden yalnızca "Bildirimin
                       alındı ✓" yazıp yerel state çeviriyordu; kötüye
                       kullanım bildirimi hiçbir yere ulaşmıyordu. */}
@@ -187,7 +267,10 @@ export function KullaniciProfili({
                     </button>
                   )}
                   {bildirimHatasi && (
-                    <span role="alert" className="p-1.5 text-center text-xs font-bold text-danger">
+                    <span
+                      role="alert"
+                      className="p-1.5 text-center text-xs font-bold text-danger"
+                    >
                       {bildirimHatasi}
                     </span>
                   )}
@@ -357,12 +440,28 @@ export function KullaniciProfili({
                       minimumFractionDigits: 1,
                     })}
                   </span>
-                  <span className="text-[15px] font-bold text-star-ink" aria-hidden>
+                  <span
+                    className="text-[15px] font-bold text-star-ink"
+                    aria-hidden
+                  >
                     {yildizText(k.puan)}
                   </span>
                 </div>
                 <div className="mt-1 text-xs font-medium text-ink-400">
                   {k.degerlendirme} değerlendirme
+                </div>
+                {/* Kırılım: aynı listede iki rol var, ortalamaları ayrı. */}
+                <div className="mt-2 flex flex-col gap-0.5">
+                  <RolPuani
+                    etiket="Satıcı olarak"
+                    puan={k.saticiPuan}
+                    adet={k.saticiDegerlendirme}
+                  />
+                  <RolPuani
+                    etiket="Alıcı olarak"
+                    puan={k.aliciPuan}
+                    adet={k.aliciDegerlendirme}
+                  />
                 </div>
                 <div className="mt-3.5 flex flex-col gap-[7px]">
                   {dagilim.map((p) => (
@@ -392,7 +491,9 @@ export function KullaniciProfili({
                 {k.yorumlar.length ? (
                   k.yorumlar.map((y) => (
                     <article
-                      key={`${y.yazan}-${y.urun}`}
+                      // Anahtar `yazan-urun` idi: aynı kişiden aynı başlıklı
+                      // ikinci alışveriş çakışıyordu. Kaydın kimliği var.
+                      key={y.id ?? `${y.yazan}-${y.urun}`}
                       className="rounded-[14px] border border-border bg-card p-4"
                     >
                       <div className="flex items-center gap-2.5">
@@ -406,17 +507,52 @@ export function KullaniciProfili({
                           >
                             {y.yazan}
                           </Link>
-                          <div className="mt-[3px] text-[11.5px] font-medium text-ink-400">
-                            {y.urun} · {y.tarih}
+                          <div className="mt-[3px] flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11.5px] font-medium text-ink-400">
+                            {/* Yorumun hangi ROLE verildiği kayıtta vardı ama
+                                gösterilmiyordu; okuyan, "bu kişi alıcı olarak
+                                mı böyle" sorusunu cümleden tahmin ediyordu. */}
+                            {y.rol && (
+                              <span
+                                /* Renk YAZANIN rolüne göre: satıcının yazdığı
+                                   değerlendirme lime yeşili, alıcınınki mor —
+                                   projedeki alıcı=mor / satıcı=yeşil eşlemesi.
+                                   Lime zeminde yazı patlıcan moru olur; beyaz
+                                   ya da lime yazı bu zeminde okunmaz
+                                   (bkz. globals.css → accent notu). */
+                                className={`rounded-full px-1.5 py-[2px] text-[10.5px] font-bold ${
+                                  y.rol === "satici"
+                                    ? "bg-primary-soft text-primary-hover"
+                                    : "bg-accent text-ink-900"
+                                }`}
+                              >
+                                {/* Rozet YAZANIN rolünü söyler: kayıttaki rol
+                                    değerlendirilenin rolü olduğu için tersi
+                                    alınır. Satıcı hakkındaki yorumu alıcı
+                                    yazmıştır. */}
+                                {y.rol === "satici" ? "Alıcı" : "Satıcı"} olarak
+                                değerlendirdi
+                              </span>
+                            )}
+                            <span>
+                              {y.urun} · {y.tarih}
+                            </span>
                           </div>
                         </div>
                         <span className="flex-none text-[13px] font-bold text-star-ink">
                           {yildizText(y.puan)}
                         </span>
                       </div>
-                      <p className="mt-3 text-[13.5px] font-medium leading-relaxed text-ink-700">
-                        {y.text}
-                      </p>
+                      {/* Yorum zorunlu değil; boş yorumda kart altında sebepsiz
+                          bir boşluk kalıyordu. Durum açıkça yazılır. */}
+                      {y.text ? (
+                        <p className="mt-3 text-[13.5px] font-medium leading-relaxed text-ink-700">
+                          {y.text}
+                        </p>
+                      ) : (
+                        <p className="mt-3 text-[13px] font-medium italic text-ink-300">
+                          Yorum yazılmadı — yalnızca puan verildi.
+                        </p>
+                      )}
                     </article>
                   ))
                 ) : (

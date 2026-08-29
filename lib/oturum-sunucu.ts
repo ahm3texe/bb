@@ -49,11 +49,6 @@ export async function istekOturumu(): Promise<string | null> {
   return getKullanici(kullanici) ? kullanici : null;
 }
 
-/** Oturum açık mı? */
-export async function oturumVarMi(): Promise<boolean> {
-  return (await istekOturumu()) !== null;
-}
-
 /**
  * İsteği yapan kullanıcının adı. Oturum yoksa HATA FIRLATIR.
  *

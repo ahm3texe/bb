@@ -6,6 +6,7 @@ import { kategoriler, binlikAyir, URUN_DURUMLARI } from "@/lib/data";
 import { ilAdlari, ilceler } from "@/lib/turkiye-il-ilce";
 import { kategoriIkonlar } from "@/components/KategoriIkon";
 import { SecimKutusu } from "@/components/ui/SecimKutusu";
+import { Baloncuk } from "@/components/ui/Baloncuk";
 import {
   RENKLER,
   cesitlerFor,
@@ -81,7 +82,8 @@ function KategoriSecici({
       if (e.key === "Escape") setOpen(false);
     }
     function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     }
     document.addEventListener("keydown", onKey);
     document.addEventListener("mousedown", onClick);
@@ -154,6 +156,13 @@ function KategoriSecici({
   );
 }
 
+/** "Nasıl çalışır?" baloncuğunun metni — kutuda yalnız başlık durur. */
+const ALARM_METNI =
+  "Bir alıcı, belirlediğin kriterlere uygun bir talep oluşturduğunda anında " +
+  "bildirim alırsın. Talebe erken sunum gönderen satıcıların satışa ulaşma " +
+  "oranı 3 kat daha yüksektir. Daha fazla kategori ve kriter için alarm " +
+  "oluşturarak daha çok talebi zamanında yakalayabilirsin.";
+
 export function TalepAlarmlariClient() {
   const [alarmlar, setAlarmlar] = useState<Alarm[]>(ilkAlarmlar);
 
@@ -204,17 +213,20 @@ export function TalepAlarmlariClient() {
   const hepsiDefo = defolar.length === 0;
   // Muadil ürün: alıcı birebir aynısı yerine muadilini de kabul ediyor mu?
   const [muadil, setMuadil] = useState<boolean | null>(null);
-  const [kanalApp, setKanalApp] = useState(true);
-  const [kanalMail, setKanalMail] = useState(false);
+  // Kanal seçimi kaldırıldı: alarm her zaman iki kanaldan da haber verir.
+  const KANALLAR = { uygulama: true, eposta: true } as const;
   const [kaydedildi, setKaydedildi] = useState(false);
   /** Kayıt başarısızsa gerekçe — sessiz başarısızlık olmasın. */
   const [kayitHatasi, setKayitHatasi] = useState("");
 
   const toastT = useRef<ReturnType<typeof setTimeout>>(null);
 
-  useEffect(() => () => {
-    if (toastT.current) clearTimeout(toastT.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (toastT.current) clearTimeout(toastT.current);
+    },
+    [],
+  );
 
   const turler = kategori ? turlerFor(kategori) : [];
   const cesitler = tur ? cesitlerFor(kategori, tur) : [];
@@ -239,7 +251,7 @@ export function TalepAlarmlariClient() {
     (t, a) => t + (a.aktif ? a.eslesme : 0),
     0,
   );
-  const kaydetOk = kategori !== "" && (kanalApp || kanalMail);
+  const kaydetOk = kategori !== "";
 
   /** Yazılanı listeye ekler; tekrarları ve sınır aşımını sessizce yutar. */
   function kelimeEkle(ham: string) {
@@ -247,7 +259,9 @@ export function TalepAlarmlariClient() {
     if (!yeni) return;
     setKelimeler((prev) =>
       prev.length >= EN_FAZLA_KELIME ||
-      prev.some((k) => k.toLocaleLowerCase("tr") === yeni.toLocaleLowerCase("tr"))
+      prev.some(
+        (k) => k.toLocaleLowerCase("tr") === yeni.toLocaleLowerCase("tr"),
+      )
         ? prev
         : [...prev, yeni],
     );
@@ -353,8 +367,7 @@ export function TalepAlarmlariClient() {
       ...(kelime.trim() ? [kelime.trim()] : []),
     ].slice(0, EN_FAZLA_KELIME);
     for (const k of tumKelimeler) kriterler.push(`"${k}"`);
-    if (!hepsiDurum && durumlar.length)
-      kriterler.push(durumlar.join(" / "));
+    if (!hepsiDurum && durumlar.length) kriterler.push(durumlar.join(" / "));
     if (muadil !== null)
       kriterler.push(muadil ? "muadil olur" : "muadil olmaz");
     if (!hepsiDefo) {
@@ -379,10 +392,7 @@ export function TalepAlarmlariClient() {
         : "Tüm Türkiye",
     );
 
-    const kanal =
-      [kanalApp ? "Uygulama" : null, kanalMail ? "E-posta" : null]
-        .filter(Boolean)
-        .join(" + ") || "Uygulama";
+    const kanal = "Uygulama + E-posta";
 
     const ana = kategori;
     const etiket = marka.trim() || tumKelimeler[0] || "";
@@ -412,7 +422,7 @@ export function TalepAlarmlariClient() {
             konumlar: tumKonumlar,
           },
           kanal,
-          kanallar: { uygulama: kanalApp, eposta: kanalMail },
+          kanallar: KANALLAR,
           // E-posta adresi gönderilmez: sunucu hesabın kaydından okur.
         }),
       }).catch(() => undefined);
@@ -478,9 +488,10 @@ export function TalepAlarmlariClient() {
         <span className="font-semibold text-ink-900">Talep Alarmı</span>
       </nav>
 
-      {/* Başlık ile "nasıl çalışır?" kutusu aynı satırda; alttaki grid ile
-          aynı sütun ölçüsünü kullanır ki iki sütun tam hizalansın. */}
-      <div className="mb-5 grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_384px]">
+      {/* "Nasıl çalışır?" kutusu buradan SAĞ SÜTUNA taşındı: başlığın
+          hizasında dururken sayfanın en üstünde asılı kalıyordu. Artık
+          "Henüz alarmın yok" kutusuyla aynı hizada, formun hemen üstünde. */}
+      <div className="mb-5">
         <div className="min-w-0">
           <h1 className="text-[28px] font-extrabold tracking-[-0.7px] text-ink-900">
             Talep Alarmı
@@ -490,11 +501,19 @@ export function TalepAlarmlariClient() {
             bildirim al. Dükkânda müşteri beklemek yerine, satın almaya hazır
             alıcıların taleplerine doğrudan ulaş.
           </p>
-          {/* Liste başlığı burada duruyor ki alttaki alarm kutucukları
-              sağdaki "Yeni Alarm Oluştur" kutusuyla tam hizalansın. */}
-          <div className="mt-5 flex items-baseline justify-between gap-3">
+        </div>
+      </div>
+
+      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_384px]">
+        {/* ── SOL: alarm listesi ── */}
+        <div className="flex min-w-0 flex-col gap-3.5">
+          {/* Liste başlığı SOL SÜTUNUN İÇİNDE: başlık bloğunda dururken tam
+              genişliğe yayılıyor, "Bu hafta toplam …" sağdaki formun üstüne
+              kayıyordu. */}
+          <div className="flex items-baseline justify-between gap-3">
             <h2 className="text-[17px] font-extrabold text-ink-900">
-              Alarmların <span className="text-accent-ink">({alarmSayisi})</span>
+              Alarmların{" "}
+              <span className="text-accent-ink">({alarmSayisi})</span>
             </h2>
             <span className="text-[13px] font-medium text-ink-500">
               Bu hafta toplam{" "}
@@ -503,25 +522,7 @@ export function TalepAlarmlariClient() {
               </strong>
             </span>
           </div>
-        </div>
-        {/* "Nasıl çalışır?" — başlıkla aynı hizada */}
-        <div className="rounded-card bg-accent p-[18px] text-ink-900">
-          <div className="text-[15px] font-extrabold">
-            Talep Alarmı nasıl çalışır?
-          </div>
-          <p className="mt-2 text-[13.5px] font-medium leading-relaxed text-accent-ink">
-            Bir alıcı, belirlediğin kriterlere uygun bir talep oluşturduğunda
-            anında bildirim alırsın. Talebe erken sunum gönderen satıcıların
-            satışa ulaşma oranı <strong className="text-ink-900">3 kat</strong>{" "}
-            daha yüksektir. Daha fazla kategori ve kriter için alarm
-            oluşturarak daha çok talebi zamanında yakalayabilirsin.
-          </p>
-        </div>
-      </div>
 
-      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_384px]">
-        {/* ── SOL: alarm listesi ── */}
-        <div className="flex min-w-0 flex-col gap-3.5">
           {alarmlar.length === 0 ? (
             <div className="rounded-card border border-dashed border-border-input bg-card px-6 py-14 text-center">
               <div className="text-[15px] font-bold text-ink-900">
@@ -543,14 +544,24 @@ export function TalepAlarmlariClient() {
                 <div className="flex items-start gap-3">
                   <div
                     className={`flex h-9 w-9 flex-none items-center justify-center rounded-[10px] text-[15px] ${
-                      a.aktif ? "bg-primary-soft" : "bg-page opacity-60 grayscale"
+                      a.aktif
+                        ? "bg-primary-soft"
+                        : "bg-page opacity-60 grayscale"
                     }`}
                   >
                     🔔
                   </div>
-                  <div className="min-w-0 flex-1">
+                  {/* Alarma tıklayınca YALNIZCA o alarmın yakaladığı
+                      talepler açılır (bkz. app/talep-alarmlari/[id]).
+                      Kartın tamamı bağlantı yapılamıyor: içinde açma/kapama
+                      anahtarı ve silme düğmesi var, HTML'de düğme içine
+                      düğme konulamaz. */}
+                  <Link
+                    href={`/talep-alarmlari/${encodeURIComponent(a.id)}`}
+                    className="group min-w-0 flex-1"
+                  >
                     <h3
-                      className={`truncate text-[14.5px] font-bold leading-tight ${
+                      className={`truncate text-[14.5px] font-bold leading-tight group-hover:text-primary ${
                         a.aktif ? "text-ink-900" : "text-ink-500"
                       }`}
                     >
@@ -559,7 +570,10 @@ export function TalepAlarmlariClient() {
                     <div className="mt-1 truncate text-[13px] font-medium text-ink-500">
                       {a.kriterler.join("  ·  ")}
                     </div>
-                  </div>
+                    <div className="mt-1.5 text-[12.5px] font-bold text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                      Uyan talepleri gör ›
+                    </div>
+                  </Link>
                   <button
                     type="button"
                     role="switch"
@@ -604,14 +618,12 @@ export function TalepAlarmlariClient() {
                       {a.son.zaman}
                     </span>
                   </Link>
-                ) : a.aktif ? (
-                  <div className="mt-3 rounded-[11px] border border-dashed border-border-input px-3 py-2.5 text-[13px] font-medium text-ink-500">
-                    Henüz eşleşme yok — uyan ilk talepte haber vereceğiz.
-                  </div>
                 ) : null}
 
                 <div className="mt-2.5 flex items-center gap-2 text-[12.5px] font-semibold text-ink-500">
-                  <span className={a.aktif ? "text-accent-ink" : "text-ink-500"}>
+                  <span
+                    className={a.aktif ? "text-accent-ink" : "text-ink-500"}
+                  >
                     {a.aktif
                       ? a.eslesme > 0
                         ? `${a.eslesme} eşleşme/hafta`
@@ -621,7 +633,10 @@ export function TalepAlarmlariClient() {
                   <span className="text-ink-300" aria-hidden>
                     ·
                   </span>
-                  <span>{a.kanal}</span>
+                  {/* Kanal etiketi KAYITTAN DEĞİL sabit: eski alarmlarda
+                      "Uygulama" yazılı kalmıştı, oysa artık hepsi iki
+                      kanaldan da haber veriyor. */}
+                  <span>Uygulama + E-posta</span>
                 </div>
               </article>
             ))
@@ -630,6 +645,40 @@ export function TalepAlarmlariClient() {
 
         {/* ── SAĞ: yeni alarm formu ── */}
         <aside className="flex flex-col gap-3.5 lg:sticky lg:top-[150px]">
+          {/* "Nasıl çalışır?" — ilan detayındaki güvence kutusunun aynısı:
+              tek satırlık başlık, açıklama başlığın yanındaki "i" işaretine
+              gelince (ya da klavyeyle odaklanınca) baloncukta açılır. */}
+          <div className="flex items-center gap-3 rounded-card bg-accent p-4">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-[24px] w-[24px] flex-none text-ink-900"
+              aria-hidden
+            >
+              <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.7 21a2 2 0 01-3.4 0" />
+            </svg>
+            <div className="flex items-center gap-2 text-[15px] font-extrabold leading-snug text-ink-900">
+              Nasıl çalışır?
+              <Baloncuk
+                icerik={ALARM_METNI}
+                baslik="Talep alarmı nasıl çalışır?"
+                className="inline-flex flex-none"
+              >
+                <span
+                  aria-hidden
+                  className="flex h-[18px] w-[18px] items-center justify-center rounded-full border border-ink-900/40 text-[11px] font-extrabold text-ink-900"
+                >
+                  i
+                </span>
+              </Baloncuk>
+            </div>
+          </div>
+
           <div className="rounded-card border border-border bg-card p-5">
             <div className="text-[16.5px] font-extrabold text-ink-900">
               Yeni Alarm Oluştur
@@ -803,7 +852,11 @@ export function TalepAlarmlariClient() {
                 if (e.key === "Enter" || e.key === ",") {
                   e.preventDefault();
                   kelimeEkle(kelime);
-                } else if (e.key === "Backspace" && !kelime && kelimeler.length) {
+                } else if (
+                  e.key === "Backspace" &&
+                  !kelime &&
+                  kelimeler.length
+                ) {
                   // Boş kutuda backspace son kelimeyi geri alır.
                   setKelimeler((prev) => prev.slice(0, -1));
                 }
@@ -876,14 +929,27 @@ export function TalepAlarmlariClient() {
               </div>
             )}
             <p className="mt-1.5 text-[12.5px] font-medium text-ink-400">
-              Eklediğiniz anahtar kelimeler, ilan başlıkları ve
-              açıklamalarında taranarak kriterlerinize uygun ilanları daha
-              kolay keşfetmenizi sağlar.
+              Eklediğiniz anahtar kelimeler, ilan başlıkları ve açıklamalarında
+              taranarak kriterlerinize uygun ilanları daha kolay keşfetmenizi
+              sağlar.
             </p>
 
-            {/* Muadil ürün */}
-            <label className="mt-3.5 mb-2 block text-[13.5px] font-bold text-ink-900">
+            {/* Muadil ürün — başlık tek başına ne sorduğunu söylemiyordu;
+                açıklama "i" işaretinde. */}
+            <label className="mt-3.5 mb-2 flex items-center gap-1.5 text-[13.5px] font-bold text-ink-900">
               Muadil ürün
+              <Baloncuk
+                icerik="Alıcı muadil ürüne de açık mı?"
+                baslik="Muadil ürün"
+                className="inline-flex flex-none"
+              >
+                <span
+                  aria-hidden
+                  className="flex h-[16px] w-[16px] items-center justify-center rounded-full border border-ink-400/50 text-[10px] font-extrabold text-ink-500"
+                >
+                  i
+                </span>
+              </Baloncuk>
             </label>
             <div className="flex flex-wrap gap-1.5">
               {[
@@ -1059,34 +1125,16 @@ export function TalepAlarmlariClient() {
               bırakırsan seçtiğin ilin tamamı kapsanır.
             </p>
 
-            {/* Bildirim kanalı */}
-            <label className="mt-3.5 mb-2 block text-[13.5px] font-bold text-ink-900">
-              Bildirim kanalı
-            </label>
-            <div className="flex gap-1.5">
-              <button
-                type="button"
-                onClick={() => setKanalApp((v) => !v)}
-                className={`flex-1 cursor-pointer rounded-[10px] border-[1.5px] p-2.5 text-[13px] font-semibold ${
-                  kanalApp
-                    ? "border-accent bg-accent-soft font-bold text-accent-ink"
-                    : "border-border-input bg-card text-ink-500"
-                }`}
-              >
-                Uygulama{kanalApp ? " ✓" : ""}
-              </button>
-              <button
-                type="button"
-                onClick={() => setKanalMail((v) => !v)}
-                className={`flex-1 cursor-pointer rounded-[10px] border-[1.5px] p-2.5 text-[13px] font-semibold ${
-                  kanalMail
-                    ? "border-accent bg-accent-soft font-bold text-accent-ink"
-                    : "border-border-input bg-card text-ink-500"
-                }`}
-              >
-                E-posta{kanalMail ? " ✓" : ""}
-              </button>
-            </div>
+            {/* BİLDİRİM KANALI SORULMUYOR.
+                İki seçenekli bir adımdı ve ikisini birden açık bırakmaktan
+                başka anlamlı bir kullanımı yoktu: alarm kuran kişi haber
+                almak istiyor. Eşleşme olduğunda hem zile hem e-postaya
+                gider (bkz. lib/alarm-tetikle.ts); e-posta yalnızca adres
+                doğrulanmışsa yazılır. */}
+            <p className="mt-3.5 text-[12.5px] font-medium leading-relaxed text-ink-400">
+              Eşleşen talep düştüğünde bildirim hem uygulamada (zil) hem de
+              doğrulanmış e-posta adresine gönderilir.
+            </p>
 
             <button
               type="button"

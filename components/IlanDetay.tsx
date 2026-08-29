@@ -16,7 +16,11 @@ import { Yildizlar } from "@/components/ui/Yildizlar";
 import { ButtonLink } from "@/components/ui/Button";
 import { TalepCard } from "@/components/TalepCard";
 import { getKullanici } from "@/lib/kullanicilar";
-import { profilYolu, useAktifKullanici } from "@/lib/aktif-kullanici";
+import {
+  profilYolu,
+  useAktifKullanici,
+  useGirisKapisi,
+} from "@/lib/aktif-kullanici";
 import { gizlenmeyeKalanSaat } from "@/lib/talep-durum";
 import { yenidenYayinlanabilirMi } from "@/lib/talep-durum";
 import type { AnlasmaDurum } from "@/lib/anlasma";
@@ -120,12 +124,17 @@ function KunyeDeger({
   );
 }
 
-
 /** Güvence baloncuğunun metni — panelde başlık, üstüne gelince tamamı. */
 const GUVENCE_METNI =
   "Kazancınız, alıcı ürünü onaylayana kadar güvenli ödeme sisteminde korunur. " +
   "İade durumunda ücret, ürün size eksiksiz ulaştıktan sonra alıcıya geri ödenir. " +
   "İade tamamlanmazsa ücret iadesi yapılmaz. Böylece kazancınız ve ürününüz korunur.";
+
+/** Aynı güvencenin alıcı tarafındaki karşılığı — kendi talebinde gösterilir. */
+const ALICI_GUVENCE_METNI =
+  "Ödemeniz, siz ürünü onaylayana kadar güvenli ödeme sisteminde tutulur. " +
+  "İade durumunda ücret, ürün satıcıya eksiksiz ulaştıktan sonra size geri ödenir. " +
+  "Fakat iade tamamlanmazsa, ücret iadesi yapılmaz. Böylece ödemeniz ve alışverişiniz korunur.";
 
 export function IlanDetay({
   talep,
@@ -175,6 +184,8 @@ export function IlanDetay({
 }) {
   // Sahiplik aktif hesaba göre belirlenir — hesap değişince ilan da el değiştirir.
   const aktif = useAktifKullanici();
+  // İlan detayı ziyaretçiye açık; favori ve bildirme hesap gerektirir.
+  const { girisGerek } = useGirisKapisi();
   // Talep sahibinin profil kaydı — kart bilgileri buradan gelir.
   const sahip = getKullanici(talep.sahibi);
   // Kapanan ilanın herkese açık kalma süresi — bilgilendirme için.
@@ -196,6 +207,8 @@ export function IlanDetay({
   }, [talep.id, aktif?.kullanici]);
 
   async function favoriDegistir() {
+    // Ziyaretçide uç 401 dönüyor ve kalp sessizce eski hâline dönüyordu.
+    if (girisGerek()) return;
     // Önce ekranda çevir (hızlı geri bildirim), sunucu reddederse geri al.
     const yeni = !takip;
     setTakip(yeni);
@@ -212,7 +225,51 @@ export function IlanDetay({
     setTakip(favoride);
   }
   const [kopyalandi, setKopyalandi] = useState(false);
-  const [bildirildi, setBildirildi] = useState(false);
+  // Şikâyet: kayıt numarası GELDİKTEN sonra "alındı" denir.
+  const [bildirimNo, setBildirimNo] = useState("");
+  const [bildiriliyor, setBildiriliyor] = useState(false);
+  const [bildirimHatasi, setBildirimHatasi] = useState("");
+
+  /**
+   * İlanı destek ekibine bildirir.
+   *
+   * Eskiden `setBildirildi(true)` istekten ÖNCE çağrılıyor ve hata
+   * `.catch(() => undefined)` ile yutuluyordu: destek ucu 429 ya da 401
+   * dönse bile ekran "Bildirimin alındı ✓" diyordu, ortada kayıt yoktu.
+   * Doğrusu iki ekran ötede zaten vardı (bkz. SunumDetayClient →
+   * sunumuBildir); aynı desen buraya da alındı.
+   */
+  async function ilaniBildir() {
+    if (girisGerek()) return;
+    if (bildiriliyor) return;
+    setBildiriliyor(true);
+    setBildirimHatasi("");
+    try {
+      const r = await fetch("/api/destek", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          konu: "İlan şikâyeti",
+          refNo: talep.id,
+          baslik: `İlan şikâyeti: ${talep.baslik}`.slice(0, 120),
+          aciklama: `Kullanıcı bu ilanı şikâyet etti. Talep: ${talep.id} · Sahibi: ${talep.sahibi}`,
+        }),
+      });
+      const v = (await r.json().catch(() => ({}))) as {
+        hata?: string;
+        kayit?: { no: string };
+      };
+      if (!r.ok || !v.kayit) {
+        setBildirimHatasi(v.hata ?? "Bildirim gönderilemedi.");
+        return;
+      }
+      setBildirimNo(v.kayit.no);
+    } catch {
+      setBildirimHatasi("Sunucuya ulaşılamadı.");
+    } finally {
+      setBildiriliyor(false);
+    }
+  }
   // Dondurma / yeniden yayına alma — talebi silmeden yayından çekme yolu.
   const [yayinIsliyor, setYayinIsliyor] = useState(false);
   const [yayinHatasi, setYayinHatasi] = useState("");
@@ -230,8 +287,7 @@ export function IlanDetay({
   // Satıcının kendi sunumunun durumu: pazarlık sürüyor mu, ödeme alındı mı,
   // ürün yolda mı? Sipariş adımına göre tek cümlede özetlenir.
   const [sunumBasligi, sunumAciklamasi] = (():
-    | [string, string]
-    | [string, string] => {
+    [string, string] | [string, string] => {
     if (!sunumumKabulEdildi)
       return [
         "Sunumun inceleniyor",
@@ -378,7 +434,9 @@ export function IlanDetay({
         </nav>
         <span className="whitespace-nowrap text-[11.5px] font-medium text-ink-400">
           Talep no:{" "}
-          <span className="font-semibold text-ink-500">{talepNo(talep.id)}</span>
+          <span className="font-semibold text-ink-500">
+            {talepNo(talep.id)}
+          </span>
         </span>
       </div>
 
@@ -434,37 +492,37 @@ export function IlanDetay({
                     />
                   </div>
                 ) : (
-                <button
-                  type="button"
-                  onClick={() => setLightbox(true)}
-                  disabled={!varMi}
-                  aria-label="Görseli büyüt ve incele"
-                  className={`group relative aspect-[3/4] w-full max-w-[290px] overflow-hidden rounded-2xl border border-border ${
-                    varMi
-                      ? "cursor-zoom-in bg-subtle"
-                      : "ref-image flex cursor-default items-center justify-center"
-                  }`}
-                >
-                  {varMi ? (
-                    <Image
-                      src={gorseller[aktifFoto]}
-                      alt={`${talep.baslik} — görsel ${aktifFoto + 1}`}
-                      fill
-                      sizes="290px"
-                      className="object-contain"
-                      priority
-                    />
-                  ) : (
-                    <span className="font-mono text-[11px] text-ink-400">
-                      referans görsel {aktifFoto + 1}
-                    </span>
-                  )}
-                  {varMi && (
-                    <span className="pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-full bg-ink-900/75 px-2.5 py-1.5 text-[11px] font-semibold text-white opacity-0 backdrop-blur transition-opacity group-hover:opacity-100">
-                      🔍 İncele
-                    </span>
-                  )}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setLightbox(true)}
+                    disabled={!varMi}
+                    aria-label="Görseli büyüt ve incele"
+                    className={`group relative aspect-[3/4] w-full max-w-[290px] overflow-hidden rounded-2xl border border-border ${
+                      varMi
+                        ? "cursor-zoom-in bg-subtle"
+                        : "ref-image flex cursor-default items-center justify-center"
+                    }`}
+                  >
+                    {varMi ? (
+                      <Image
+                        src={gorseller[aktifFoto]}
+                        alt={`${talep.baslik} — görsel ${aktifFoto + 1}`}
+                        fill
+                        sizes="290px"
+                        className="object-contain"
+                        priority
+                      />
+                    ) : (
+                      <span className="font-mono text-[11px] text-ink-400">
+                        referans görsel {aktifFoto + 1}
+                      </span>
+                    )}
+                    {varMi && (
+                      <span className="pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-full bg-ink-900/75 px-2.5 py-1.5 text-[11px] font-semibold text-white opacity-0 backdrop-blur transition-opacity group-hover:opacity-100">
+                        🔍 İncele
+                      </span>
+                    )}
+                  </button>
                 )}
 
                 <div className="flex flex-wrap gap-2.5">
@@ -553,8 +611,8 @@ export function IlanDetay({
                   })()}
                 </dl>
                 <p className="mt-3 rounded-card bg-subtle px-3.5 py-3 text-[13.5px] font-semibold leading-relaxed text-ink-900">
-                  Görseller yalnızca modeli ve beklenen genel kondisyonu anlatmak
-                  için eklendi; teslimatta{" "}
+                  Görseller yalnızca modeli ve beklenen genel kondisyonu
+                  anlatmak için eklendi; teslimatta{" "}
                   <strong className="font-extrabold text-primary-hover">
                     ürünün açıklamaya uygunluğu esastır
                   </strong>
@@ -583,11 +641,23 @@ export function IlanDetay({
                 ))}
             </div>
             <div className="mt-5 rounded-2xl border border-accent-soft bg-accent-soft/60 p-4">
-              <h3 className="text-sm font-bold text-ink-900">Olmazsa olmazlar</h3>
+              <h3 className="text-sm font-bold text-ink-900">
+                Olmazsa olmazlar
+              </h3>
               <ul className="mt-2.5 flex flex-wrap gap-x-5 gap-y-2 text-[13px] font-semibold text-ink-700">
-                <li>
-                  ✓ {talep.defoKabul ? "Defolu ürün kabul edilir" : "Ürün defosuz olmalı"}
-                </li>
+                {/* Defo yanıtı artık zorunlu (bkz. IlanAcForm → defoOk), ama
+                    eski kayıtlarda boş olabilir. Boşken "Ürün defosuz olmalı"
+                    yazılıyordu: alıcının söylemediği bir şart, üstelik
+                    "olmazsa olmaz" başlığı altında. Yanıt yoksa satır hiç
+                    yazılmaz — künye tablosundaki kuralın aynısı. */}
+                {talep.defoKabul !== undefined && (
+                  <li>
+                    ✓{" "}
+                    {talep.defoKabul
+                      ? "Defolu ürün kabul edilir"
+                      : "Ürün defosuz olmalı"}
+                  </li>
+                )}
                 <li>
                   ✓{" "}
                   {talep.muadilKabul
@@ -621,14 +691,25 @@ export function IlanDetay({
                   <h3 className="text-[19px] font-extrabold leading-tight text-ink-900 group-hover:text-primary">
                     {talep.sahibi}
                   </h3>
-                  {sahip && (
+                  {/* ALICI puanı: burada kişi talep sahibi, yani alıcı.
+                      Eskiden iki rolün ortalaması yazıyordu — satıcılığına
+                      verilen yıldızlar da bu sayıya karışıyordu. Hiç alıcı
+                      değerlendirmesi yoksa "0,0" yerine durum yazılır. */}
+                  {sahip && sahip.aliciDegerlendirme > 0 ? (
                     <span className="flex items-center gap-1.5">
-                      <Yildizlar puan={sahip.puan} />
+                      <Yildizlar puan={sahip.aliciPuan} />
                       <span className="text-[14px] font-extrabold leading-none text-ink-900">
-                        {sahip.puan.toLocaleString("tr-TR", {
+                        {sahip.aliciPuan.toLocaleString("tr-TR", {
                           minimumFractionDigits: 1,
                         })}
                       </span>
+                      <span className="text-[12.5px] font-semibold text-ink-400">
+                        ({sahip.aliciDegerlendirme})
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-[12.5px] font-semibold text-ink-400">
+                      Alıcı olarak henüz değerlendirilmemiş
                     </span>
                   )}
                 </div>
@@ -769,7 +850,13 @@ export function IlanDetay({
               </>
             )}
 
-            <div className="mt-4 flex items-center gap-3 rounded-2xl bg-accent-soft/50 p-4">
+            {/* Rozet iki tarafa da gösterilir, ama metin role göre değişir:
+                kendi talebinde kullanıcı ödeyen taraftır, kazanan değil. */}
+            <div
+              className={`mt-4 flex items-center gap-3 rounded-2xl p-4 ${
+                kendiIlanim ? "bg-fuchsia-100/70" : "bg-accent-soft/50"
+              }`}
+            >
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -777,7 +864,9 @@ export function IlanDetay({
                 strokeWidth="1.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="h-[24px] w-[24px] flex-none text-accent-ink"
+                className={`h-[24px] w-[24px] flex-none ${
+                  kendiIlanim ? "text-fuchsia-700" : "text-accent-ink"
+                }`}
                 aria-hidden
               >
                 <path d="M12 3l7 3v5c0 4.4-3 8-7 9-4-1-7-4.6-7-9V6z" />
@@ -787,15 +876,25 @@ export function IlanDetay({
                   uzatmak yerine başlığın yanındaki "i" işaretine gelince
                   (ya da klavyeyle odaklanınca) anında açılır. */}
               <div className="flex items-center gap-2 text-[15px] font-extrabold leading-snug text-ink-900">
-                Kazancınız Güvence Altında
+                {kendiIlanim
+                  ? "Ödemeniz Güvence Altında"
+                  : "Kazancınız Güvence Altında"}
                 <Baloncuk
-                  icerik={GUVENCE_METNI}
-                  baslik="Kazancınız Güvence Altında"
+                  icerik={kendiIlanim ? ALICI_GUVENCE_METNI : GUVENCE_METNI}
+                  baslik={
+                    kendiIlanim
+                      ? "Ödemeniz Güvence Altında"
+                      : "Kazancınız Güvence Altında"
+                  }
                   className="inline-flex flex-none"
                 >
                   <span
                     aria-hidden
-                    className="flex h-[18px] w-[18px] items-center justify-center rounded-full border border-accent-ink/40 text-[11px] font-extrabold text-accent-ink"
+                    className={`flex h-[18px] w-[18px] items-center justify-center rounded-full border text-[11px] font-extrabold ${
+                      kendiIlanim
+                        ? "border-fuchsia-700/40 text-fuchsia-700"
+                        : "border-accent-ink/40 text-accent-ink"
+                    }`}
                   >
                     i
                   </span>
@@ -834,7 +933,9 @@ export function IlanDetay({
                       }}
                       className="font-bold text-primary transition-colors hover:brightness-90 disabled:opacity-60"
                     >
-                      {yayinIsliyor ? "Yayınlanıyor…" : "Talebi tekrar yayına al"}
+                      {yayinIsliyor
+                        ? "Yayınlanıyor…"
+                        : "Talebi tekrar yayına al"}
                     </button>
                   ) : (
                     !talep.kapandi &&
@@ -852,36 +953,35 @@ export function IlanDetay({
                   )}
                 </>
               ) : (
-                <button
-                  type="button"
-                  disabled={bildirildi}
-                  onClick={() => {
-                    // Şikâyet gerçekten kaydedilir; destek ekibi listesinde
-                    // görünür (eskiden yalnızca ekranda teşekkür yazıyordu).
-                    setBildirildi(true);
-                    void fetch("/api/destek", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        konu: "İlan şikâyeti",
-                        refNo: talep.id,
-                        baslik: `İlan şikâyeti: ${talep.baslik}`.slice(0, 120),
-                        aciklama: `Kullanıcı bu ilanı şikâyet etti. Talep: ${talep.id} · Sahibi: ${talep.sahibi}`,
-                      }),
-                    }).catch(() => undefined);
-                  }}
-                  className="transition-colors hover:text-danger disabled:cursor-default"
-                >
-                  {bildirildi ? "Bildirimin alındı ✓" : "Şikâyet et"}
-                </button>
+                <>
+                  {bildirimNo ? (
+                    <span className="font-semibold text-accent-ink">
+                      Bildirimin alındı ✓ — {bildirimNo}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={bildiriliyor}
+                      onClick={() => void ilaniBildir()}
+                      className="transition-colors hover:text-danger disabled:cursor-default disabled:opacity-60"
+                    >
+                      {bildiriliyor ? "Gönderiliyor…" : "Şikâyet et"}
+                    </button>
+                  )}
+                  {bildirimHatasi && (
+                    <span role="alert" className="font-bold text-danger">
+                      {bildirimHatasi}
+                    </span>
+                  )}
+                </>
               )}
             </div>
 
             {kendiIlanim && yayinSoru && (
               <div className="mt-3 rounded-control border border-primary/40 bg-primary-soft/50 p-3.5 text-center">
                 <p className="text-[13px] font-bold leading-relaxed text-primary-hover">
-                  Bu talep ile aradığın ürüne ulaştın. Yeni bir arayış olarak
-                  bu talebi tekrar yayına almak istediğine emin misin?
+                  Bu talep ile aradığın ürüne ulaştın. Yeni bir arayış olarak bu
+                  talebi tekrar yayına almak istediğine emin misin?
                 </p>
                 <div className="mt-3 flex justify-center gap-2">
                   <button
@@ -907,7 +1007,10 @@ export function IlanDetay({
             )}
 
             {kendiIlanim && yayinHatasi && (
-              <p role="alert" className="mt-2 text-center text-[12.5px] font-bold text-acil">
+              <p
+                role="alert"
+                className="mt-2 text-center text-[12.5px] font-bold text-acil"
+              >
                 {yayinHatasi}
               </p>
             )}

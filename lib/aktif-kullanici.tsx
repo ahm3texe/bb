@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import { usePathname } from "next/navigation";
 import type { Kullanici } from "./kullanicilar";
 
 // ── Oturumdaki hesap (istemci tarafı) ─────────────────────────────────
@@ -39,6 +40,44 @@ export function OturumSaglayici({
  */
 export function useAktifKullanici(): Kullanici | null {
   return useContext(Baglam);
+}
+
+/**
+ * Ziyaretçiyi giriş ekranına yollayan kapı.
+ *
+ * Vitrin oturumsuz gezilebiliyor (Keşfet, filtreler, ilan detayı) ama
+ * hesap gerektiren eylemler gezinmenin İÇİNDE duruyor: favori kalbi, sunum
+ * yapma, bildirme… Bunlar bir dönem sessizce başarısız oluyordu: kalp
+ * çevriliyor, uç 401 dönüyor, kalp geri dönüyordu — ziyaretçi ne olduğunu
+ * anlamıyordu.
+ *
+ * `girisGerek()` oturum yoksa `/giris`e yollar ve `true` döner; çağıran
+ * yerde `if (girisGerek()) return;` ile eylem durdurulur. `devam`
+ * parametresi girişten sonra kullanıcıyı bulunduğu sayfaya geri getirir —
+ * korumalı sayfalarda proxy'nin yaptığı şeyin aynısı (bkz. proxy.ts).
+ */
+export function useGirisKapisi(): {
+  girisli: boolean;
+  girisGerek: () => boolean;
+} {
+  const kullanici = useContext(Baglam);
+  const yol = usePathname();
+  return {
+    girisli: Boolean(kullanici),
+    girisGerek() {
+      if (kullanici) return false;
+      /*
+       * TAM SAYFA GEÇİŞİ (`router.push` değil).
+       *
+       * Giriş, oturum çerezini değiştiren bir sınır: sonrasında sayfanın
+       * sunucuda yeniden çizilmesi gerekiyor. Yumuşak geçiş bazı ekranlarda
+       * hiç çalışmadı — ilan detayında düğme sessizce hiçbir şey yapmıyordu
+       * — ve çalıştığında da eski RSC önbelleğini taşıma riski var.
+       */
+      window.location.assign(`/giris?devam=${encodeURIComponent(yol || "/")}`);
+      return true;
+    },
+  };
 }
 
 /**

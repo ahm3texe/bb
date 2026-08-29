@@ -20,26 +20,31 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b border-border bg-card">
       {/* Üst satır — logo · arama · hesap */}
       <div className="mx-auto flex max-w-[1180px] items-center gap-3 px-6 py-[18px] sm:gap-6">
-        <Link href="/" className="flex flex-none items-center gap-3">
+        {/* MARKA KİLİDİ TEK PARÇA GÖRSEL.
+            Önceden büyüteç PNG'si + HTML metniyle kuruluyordu: yazı tipi,
+            harf aralığı ve slogan burada elle taklit ediliyordu, marka
+            dosyası değişince ikisi ayrışıyordu. Artık tek SVG — hem keskin
+            hem tek kaynak (public/logo.svg). Mobilde biraz küçülür, oran
+            (1200×320) korunur. */}
+        <Link href="/" className="flex flex-none items-center">
           <Image
-            src="/logo.png"
-            alt=""
-            width={46}
-            height={48}
-            className="block h-[46px] w-[46px]"
+            src="/logo.svg"
+            alt="bulbana — sen iste, satıcı bulsun"
+            width={1200}
+            height={320}
+            className="block h-10 w-auto sm:h-[52px]"
             priority
           />
-          <span className="leading-none">
-            <span className="block text-[23px] font-extrabold tracking-[-0.5px] text-ink-900 sm:text-[26px]">
-              bul<span className="text-primary">bana</span>
-            </span>
-            <span className="mt-1 hidden text-[10.5px] font-semibold tracking-[0.9px] text-ink-400 sm:block">
-              SEN İSTE, SATICI BULSUN
-            </span>
-          </span>
         </Link>
 
-        <HeaderSearch />
+        {/* Arama MOBİLDE ALT SATIRA iner.
+            375px'te logo ve üç ikonla aynı satırda `flex-1` olarak
+            duruyordu: forma 72px, input'a 11px kalıyordu — büyüteç ikonu ve
+            iki karakterlik bir alan. Yani telefondan arama fiilen
+            kullanılamıyordu. */}
+        <div className="hidden flex-1 sm:flex">
+          <HeaderSearch />
+        </div>
 
         <div className="ml-auto flex flex-none items-center gap-2.5 sm:gap-3.5">
           <NotificationBell />
@@ -52,6 +57,11 @@ export function Header() {
           </div>
           <MobileMenu />
         </div>
+      </div>
+
+      {/* Arama satırı — yalnızca mobil */}
+      <div className="mx-auto flex max-w-[1180px] px-6 pb-3.5 sm:hidden">
+        <HeaderSearch />
       </div>
 
       {/* Alt satır — gezinme (masaüstü) */}

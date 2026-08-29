@@ -11,22 +11,10 @@ import { istekKullaniciAdi } from "@/lib/oturum-sunucu";
 import { hizSinirla, SAAT } from "@/lib/hiz-siniri";
 import { getKullanici } from "@/lib/kullanicilar";
 import { fiyatText } from "@/lib/data";
-import {
-  gorselleriSuz,
-  sadeceFotograflar,
-  sadeceVideolar,
-} from "@/lib/gorsel";
-import {
-  kullaniciMetrikleriGetir,
-  saticiMetrikleriniTazele,
-} from "@/lib/veri";
+import { gorselleriSuz, sadeceFotograflar, sadeceVideolar } from "@/lib/gorsel";
+import { kullaniciMetrikleriGetir, saticiMetrikleriniTazele } from "@/lib/veri";
 import { paraTutari, MAX_FIYAT } from "@/lib/para";
-import {
-  tekSatir,
-  cokSatir,
-  BASLIK_SINIR,
-  BASLIK_EN_AZ,
-} from "@/lib/metin";
+import { tekSatir, cokSatir, BASLIK_SINIR, BASLIK_EN_AZ } from "@/lib/metin";
 import { KARGO_FIRMALARI } from "@/lib/anlasma";
 import type { GelenSunum } from "@/lib/gelen-sunumlar";
 
@@ -64,7 +52,6 @@ export async function GET(istek: Request) {
   });
 }
 
-
 // Açık sunum tavanı `sunumEkle` içinde, yazma kilidinin altında uygulanır
 // (bkz. MAX_ACIK_SUNUM). Uçta `talep.sunum` sayacına bakmak yetmiyordu:
 // okuma kilidin dışındaydı ve eşzamanlı istekler tavanı birlikte aşabiliyordu.
@@ -84,7 +71,10 @@ export async function POST(istek: Request) {
   try {
     govde = await istek.json();
   } catch {
-    return NextResponse.json({ hata: "Geçersiz istek gövdesi." }, { status: 400 });
+    return NextResponse.json(
+      { hata: "Geçersiz istek gövdesi." },
+      { status: 400 },
+    );
   }
 
   const talepId = tekSatir(govde.talepId, 80);
@@ -128,10 +118,12 @@ export async function POST(istek: Request) {
     talepId,
     satici,
     harf: kayit?.harf ?? satici.slice(0, 2).toLocaleUpperCase("tr"),
-    puan: (kayit?.puan ?? 0).toLocaleString("tr-TR", {
+    // Satıcılığına verilen yıldız — okuma anında yine tazelenir.
+    puan: metrik.saticiPuan.toLocaleString("tr-TR", {
       minimumFractionDigits: 1,
       maximumFractionDigits: 1,
     }),
+    degerlendirme: metrik.saticiDegerlendirme,
     // saticiTipi ve yanitSaat BİLEREK yazılmıyor: ikisi de ölçülmüyor,
     // eskiden herkese sabit "Bireysel" / "~2 saat" basılıyordu.
     //
@@ -198,15 +190,16 @@ export async function POST(istek: Request) {
   }
   if (sonuc === "sunum-siniri") {
     return NextResponse.json(
-      { hata: "Bu talep sunum sınırına ulaştı; şimdilik yeni sunum alınmıyor." },
+      {
+        hata: "Bu talep sunum sınırına ulaştı; şimdilik yeni sunum alınmıyor.",
+      },
       { status: 409 },
     );
   }
   if (sonuc === "talep-alinmiyor") {
     return NextResponse.json(
       {
-        hata:
-          "Bu talep şu anda yayında değil (dondurulmuş ya da kaldırılmış); sunum alınmıyor.",
+        hata: "Bu talep şu anda yayında değil (dondurulmuş ya da kaldırılmış); sunum alınmıyor.",
       },
       { status: 409 },
     );
@@ -215,8 +208,7 @@ export async function POST(istek: Request) {
     // 409: istek geçerli ama mevcut durumla çelişiyor.
     return NextResponse.json(
       {
-        hata:
-          "Bu talebe zaten bir sunum yaptın. Alıcı sunumunu reddetmeden yeni sunum gönderemezsin.",
+        hata: "Bu talebe zaten bir sunum yaptın. Alıcı sunumunu reddetmeden yeni sunum gönderemezsin.",
       },
       { status: 409 },
     );

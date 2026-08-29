@@ -6,7 +6,7 @@ import { Footer } from "@/components/Footer";
 import { Chrome } from "@/components/Chrome";
 import { OturumSaglayici } from "@/lib/aktif-kullanici";
 import { istekOturumu } from "@/lib/oturum-sunucu";
-import { getKullanici } from "@/lib/kullanicilar";
+import { kullaniciProfilGetir } from "@/lib/veri";
 import { OnizlemeCubugu } from "@/components/OnizlemeCubugu";
 import { onizlemeGecisiAcikMi } from "@/lib/onizleme";
 
@@ -61,7 +61,24 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const oturum = await istekOturumu();
-  const kullanici = oturum ? (getKullanici(oturum) ?? null) : null;
+  /*
+   * Oturum kaydı HESAPLANMIŞ profildir, sabit liste değil.
+   *
+   * Burada `getKullanici` çağrılıyordu: o kayıtta puan, değerlendirme
+   * sayısı, tamamlanan alım/satış ve alıcı metrikleri HER ZAMAN 0'dır.
+   * Kayıt tüm uygulamaya bu bağlamdan dağıldığı için Mali Tablom,
+   * Aldıklarım, Sattıklarım ve başlıktaki hesap menüsü, kullanıcının
+   * gerçek puanı 5,0 iken "★ 0,0 · 0 değerlendirme" ve "Kullanıcı kalitesi
+   * henüz değerlendirilmedi" yazıyordu — aynı ekranın başka bir köşesinde
+   * gerçek kazanç doğru hesaplanırken.
+   *
+   * Bedeli: her sayfa isteğinde profil hesaplanıyor (değerlendirme, işlem,
+   * anlaşma ve mesaj tabloları okunuyor). Dosya tabanlı depoda kabul
+   * edilebilir; Supabase geçişinde bu okuma tek sorguya inecek.
+   */
+  const kullanici = oturum
+    ? ((await kullaniciProfilGetir(oturum)) ?? null)
+    : null;
 
   return (
     <html lang="tr" className={`${figtree.variable} h-full antialiased`}>

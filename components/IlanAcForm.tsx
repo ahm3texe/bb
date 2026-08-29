@@ -56,7 +56,6 @@ const MAX_VIDEO_BYTE = 20 * 1024 * 1024; // 20 MB
  */
 const MAX_TOPLAM_BYTE = 24 * 1024 * 1024;
 
-
 /** Seçilen bir dosya ve önizleme için üretilmiş object URL'i. */
 type Yuklenen = { id: string; dosya: File; url: string };
 
@@ -279,8 +278,10 @@ export function IlanAcForm({
       // Toplam boyut tavanı: sunucu bunu zaten uyguluyor ama kullanıcıyı
       // formun sonunda değil, dosyayı seçerken uyarmak gerekiyor.
       const suankiToplam =
-        [...fotoDosyalar, ...videoDosyalar].reduce((t, y) => t + y.dosya.size, 0) +
-        kabul.reduce((t, y) => t + y.dosya.size, 0);
+        [...fotoDosyalar, ...videoDosyalar].reduce(
+          (t, y) => t + y.dosya.size,
+          0,
+        ) + kabul.reduce((t, y) => t + y.dosya.size, 0);
       if (suankiToplam + dosya.size > MAX_TOPLAM_BYTE) {
         hatalar.push(
           `Tek seferde en fazla ${boyutText(MAX_TOPLAM_BYTE)} yükleyebilirsin. "${dosya.name}" bu sınırı aşıyor.`,
@@ -349,7 +350,9 @@ export function IlanAcForm({
   // Düzenleme modunda formu bir kez mevcut talebin değerleriyle doldur.
   // Effect yerine render sırasında düzeltme kalıbı: hangi ilanın yüklendiği
   // state'te tutulur, id değişince alanlar yeniden kurulur.
-  const [yuklenenIlan, setYuklenenIlan] = useState<string | undefined>(undefined);
+  const [yuklenenIlan, setYuklenenIlan] = useState<string | undefined>(
+    undefined,
+  );
   if (duzenleId && duzenleId !== yuklenenIlan) {
     const t = duzenlenen;
     setYuklenenIlan(duzenleId);
@@ -362,7 +365,10 @@ export function IlanAcForm({
       setAcilSecim(!!t.acil);
       setPazarlikSecim(!!t.pazarlik);
       setMuadilSecim(!!t.muadilKabul);
-      setDefo(t.defoKabul ?? false);
+      // `?? false` YAZILIYDI: alanı boş kalmış bir talep düzenlenirken form
+      // kullanıcı adına "Hayır, defosuz" seçiyor, zorunluluk kuralı da
+      // sessizce atlanıyordu. Boş kayıt boş gelir; düzenleyen yanıtlar.
+      setDefo(t.defoKabul ?? null);
       setTur(t.tur ?? "");
       setCesit(t.cesit ?? "");
       setModel(t.model ?? "");
@@ -454,7 +460,18 @@ export function IlanAcForm({
   const fiyatOk = fiyatNum > 0;
   // Referans olarak fotoğraf da video da yeterli sayılır.
   const fotoOk = fotolar + videolar >= 1;
-  const canPublish = baslikOk && aciklamaOk && kategoriOk && fiyatOk && fotoOk;
+  /*
+   * Defo yanıtı ZORUNLU.
+   *
+   * Alan isteğe bağlıydı ve boş bırakılabiliyordu; `defoKabul` o zaman
+   * `undefined` kalıyor, ekranların çoğu da onu "Defosuz olmalı" diye
+   * okuyordu. Yani alıcının hiç vermediği yanıt, satıcıya kesin bir şart
+   * gibi gösteriliyordu — sunum ekranında kırmızı uyarıya kadar gidiyordu.
+   * Cevabı formda istemek, bu yanılgıyı kaynağında bitiriyor.
+   */
+  const defoOk = defo !== null;
+  const canPublish =
+    baslikOk && aciklamaOk && kategoriOk && fiyatOk && fotoOk && defoOk;
 
   // ── Adım adım form ─────────────────────────────────────────────────
   // Sunum formundaki akışın aynısı: her adımda yalnızca o bölüm görünür,
@@ -483,7 +500,9 @@ export function IlanAcForm({
     2: "Talebin için bir fiyat gir.",
     3: "En az bir fotoğraf ya da video ekle.",
     4: "Şehir, ilçe ve mahalle gerekli.",
-    5: "İlan açmak için tüm alanlar doldurulmalıdır.",
+    5: defoOk
+      ? "İlan açmak için tüm alanlar doldurulmalıdır."
+      : "Üründe defo kabul edip etmediğini seçmelisin.",
   };
 
   // Yayın öncesi tam sayfa önizleme: kart tıklanınca talebin alıcı
@@ -553,7 +572,6 @@ export function IlanAcForm({
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   }
 
-
   /**
    * Yayınlama: önce dosyalar sunucuya yüklenir, dönen yollarla talep
    * kaydedilir. Her iki adım da sunucuda ayrıca doğrulanır — buradaki
@@ -588,36 +606,36 @@ export function IlanAcForm({
       const r = await fetch(
         duzenleModu ? `/api/talepler/${duzenleId}` : "/api/talepler",
         {
-        method: duzenleModu ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          baslik,
-          aciklama,
-          kategori,
-          fiyatNum,
-          tur,
-          cesit,
-          marka,
-          model,
-          yil,
-          renk,
-          il,
-          ilce,
-          mahalle,
-          // Teslimat adresi: ilanda görünmez, anlaşma sonrası satıcıya açılır.
-          cadde,
-          apartman,
-          kat,
-          daire,
-          konumTarifi,
-          durum,
-          durumlar,
-          acil: acilSecim,
-          pazarlik: pazarlikSecim,
-          muadilKabul: muadilSecim,
-          defoKabul: defo,
-          ...(gorseller.length ? { gorseller } : {}),
-        }),
+          method: duzenleModu ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            baslik,
+            aciklama,
+            kategori,
+            fiyatNum,
+            tur,
+            cesit,
+            marka,
+            model,
+            yil,
+            renk,
+            il,
+            ilce,
+            mahalle,
+            // Teslimat adresi: ilanda görünmez, anlaşma sonrası satıcıya açılır.
+            cadde,
+            apartman,
+            kat,
+            daire,
+            konumTarifi,
+            durum,
+            durumlar,
+            acil: acilSecim,
+            pazarlik: pazarlikSecim,
+            muadilKabul: muadilSecim,
+            defoKabul: defo,
+            ...(gorseller.length ? { gorseller } : {}),
+          }),
         },
       );
       const v = await r.json();
@@ -638,9 +656,29 @@ export function IlanAcForm({
   function saveDraft() {
     // Yazma başarısını modül döndürür; "kaydedildi" demeden önce ona bakılır.
     const yazildi = taslakYaz({
-      kategori, baslik, aciklama, fiyat, acilSecim, pazarlikSecim,
-      muadilSecim, tur, cesit, marka, model, yil, renk, defo, durumlar,
-      il, ilce, mahalle, cadde, apartman, kat, daire, konumTarifi,
+      kategori,
+      baslik,
+      aciklama,
+      fiyat,
+      acilSecim,
+      pazarlikSecim,
+      muadilSecim,
+      tur,
+      cesit,
+      marka,
+      model,
+      yil,
+      renk,
+      defo,
+      durumlar,
+      il,
+      ilce,
+      mahalle,
+      cadde,
+      apartman,
+      kat,
+      daire,
+      konumTarifi,
     });
 
     if (yazildi) {
@@ -744,9 +782,9 @@ export function IlanAcForm({
           </h1>
           <p className="mx-auto mt-2.5 max-w-md text-sm font-medium leading-relaxed text-ink-500">
             “{baslik.trim() || "Talebin"}” talebi{" "}
-            <strong className="text-ink-900">{sure} gün</strong> boyunca satıcılara
-            açık. Sunumlar geldikçe bildirim alacaksın; sunumları yalnızca sen
-            görebilirsin.
+            <strong className="text-ink-900">{sure} gün</strong> boyunca
+            satıcılara açık. Sunumlar geldikçe bildirim alacaksın; sunumları
+            yalnızca sen görebilirsin.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-2.5">
             <ButtonLink href={`/ilan/${yayinId}`} variant="primary" size="lg">
@@ -804,107 +842,107 @@ export function IlanAcForm({
               ? "Bilgileri güncelle; değişiklikler yayındaki talebine yansır."
               : "Fiyatı sen belirle, satıcılar sunumlarıyla sana gelsin. İlan açmak ücretsizdir."}
           </p>
-  {/* Adım çubuğu — tamamlananlara geri dönülebilir. */}
-  <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-2">
-    {adimlar.map((a, i) => {
-      const aktif = a.n === adim;
-      const tamam = adimTamam[a.n] && a.n < adim;
-      return (
-        <li key={a.n} className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => a.n < adim && setAdim(a.n)}
-            disabled={a.n > adim}
-            aria-current={aktif ? "step" : undefined}
-            className={`flex items-center gap-2 rounded-full px-3 py-2 text-[13.5px] font-bold transition-colors ${
-              aktif
-                ? "bg-primary text-white"
-                : tamam
-                  ? "cursor-pointer bg-primary-soft text-primary-hover hover:brightness-95"
-                  : "cursor-not-allowed bg-page text-ink-300"
-            }`}
-          >
-            <span
-              className={`flex h-[20px] w-[20px] flex-none items-center justify-center rounded-full text-[12px] font-extrabold ${
-                aktif
-                  ? "bg-white text-primary"
-                  : tamam
-                    ? "bg-accent text-ink-900"
-                    : "bg-card text-ink-300"
-              }`}
-            >
-              {tamam ? "✓" : a.n}
-            </span>
-            {a.ad}
-          </button>
-          {i < adimlar.length - 1 && (
-            <span aria-hidden className="text-[13px] text-ink-300">
-              ›
-            </span>
-          )}
-        </li>
-      );
-    })}
-  </ol>
-  <p className="mt-3 text-[13.5px] font-medium text-ink-500">
-    Adım {adim}/{sonAdim} · {adimlar[adim - 1].ad} — her adımı
-    tamamladıkça bir sonraki açılır.
-  </p>
+          {/* Adım çubuğu — tamamlananlara geri dönülebilir. */}
+          <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-2">
+            {adimlar.map((a, i) => {
+              const aktif = a.n === adim;
+              const tamam = adimTamam[a.n] && a.n < adim;
+              return (
+                <li key={a.n} className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => a.n < adim && setAdim(a.n)}
+                    disabled={a.n > adim}
+                    aria-current={aktif ? "step" : undefined}
+                    className={`flex items-center gap-2 rounded-full px-3 py-2 text-[13.5px] font-bold transition-colors ${
+                      aktif
+                        ? "bg-primary text-white"
+                        : tamam
+                          ? "cursor-pointer bg-primary-soft text-primary-hover hover:brightness-95"
+                          : "cursor-not-allowed bg-page text-ink-300"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-[20px] w-[20px] flex-none items-center justify-center rounded-full text-[12px] font-extrabold ${
+                        aktif
+                          ? "bg-white text-primary"
+                          : tamam
+                            ? "bg-accent text-ink-900"
+                            : "bg-card text-ink-300"
+                      }`}
+                    >
+                      {tamam ? "✓" : a.n}
+                    </span>
+                    {a.ad}
+                  </button>
+                  {i < adimlar.length - 1 && (
+                    <span aria-hidden className="text-[13px] text-ink-300">
+                      ›
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+          <p className="mt-3 text-[13.5px] font-medium text-ink-500">
+            Adım {adim}/{sonAdim} · {adimlar[adim - 1].ad} — her adımı
+            tamamladıkça bir sonraki açılır.
+          </p>
 
-  {/* Kayıtlı taslak varsa geri yükleme teklifi. Bu çubuk eksikti:
+          {/* Kayıtlı taslak varsa geri yükleme teklifi. Bu çubuk eksikti:
       "Taslak Kaydet" yazıyordu ama hiçbir yer geri okumuyordu. */}
-  {taslakVar && (
-    <div className="mt-3.5 flex flex-wrap items-center gap-2.5 rounded-control border-[1.5px] border-primary bg-primary-soft px-4 py-3">
-      <p className="min-w-[220px] flex-1 text-[13.5px] font-semibold leading-snug text-primary-hover">
-        Bu cihazda yarım kalmış bir taslağın var. Fotoğraflar taslağa
-        kaydedilemez; onları yeniden eklemen gerekir.
-      </p>
-      <Button size="sm" variant="primary" onClick={taslagiYukle}>
-        Taslağı yükle
-      </Button>
-      <Button size="sm" variant="secondary" onClick={taslagiSil}>
-        Sil
-      </Button>
-    </div>
-  )}
+          {taslakVar && (
+            <div className="mt-3.5 flex flex-wrap items-center gap-2.5 rounded-control border-[1.5px] border-primary bg-primary-soft px-4 py-3">
+              <p className="min-w-[220px] flex-1 text-[13.5px] font-semibold leading-snug text-primary-hover">
+                Bu cihazda yarım kalmış bir taslağın var. Fotoğraflar taslağa
+                kaydedilemez; onları yeniden eklemen gerekir.
+              </p>
+              <Button size="sm" variant="primary" onClick={taslagiYukle}>
+                Taslağı yükle
+              </Button>
+              <Button size="sm" variant="secondary" onClick={taslagiSil}>
+                Sil
+              </Button>
+            </div>
+          )}
 
-  {/* Taslak yazılamadıysa söyle: eskiden hata yutuluyor ve toast yine
+          {/* Taslak yazılamadıysa söyle: eskiden hata yutuluyor ve toast yine
       "kaydedildi" diyordu. */}
-  {taslakHatasi && (
-    <p
-      role="alert"
-      className="mt-3.5 rounded-control border-[1.5px] border-danger-line bg-danger-soft px-4 py-3 text-[13px] font-bold text-danger"
-    >
-      {taslakHatasi}
-    </p>
-  )}
+          {taslakHatasi && (
+            <p
+              role="alert"
+              className="mt-3.5 rounded-control border-[1.5px] border-danger-line bg-danger-soft px-4 py-3 text-[13px] font-bold text-danger"
+            >
+              {taslakHatasi}
+            </p>
+          )}
         </div>
         <div className="flex flex-col gap-3.5">
-  {/* Güvence sistemi — sayfa akışında kalır, kaydırmada sabitlenmez */}
-  <div className="rounded-card bg-ink-900 p-[18px] text-white">
-    <div className="flex items-center gap-2 text-[15px] font-extrabold uppercase leading-snug tracking-[0.6px] text-accent">
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="h-[20px] w-[20px] flex-none"
-        aria-hidden
-      >
-        <path d="M12 3l7 3v5c0 4.4-3 8-7 9-4-1-7-4.6-7-9V6z" />
-        <path d="M9 12l2 2 4-4" />
-      </svg>
-      Güvence Sistemi
-    </div>
-    <p className="mt-2.5 text-[13.5px] font-semibold leading-relaxed text-[#e9e4f6]">
-      Ürünün, satıcının açıklamalarına veya belirtilen özelliklere uygun
-      olmaması durumunda iade sürecini başlatabilirsiniz. Ürün satıcıya
-      iade olarak ulaştıktan sonra ödemenizin tamamı, herhangi bir kesinti
-      uygulanmadan tarafınıza iade edilir.
-    </p>
-  </div>
+          {/* Güvence sistemi — sayfa akışında kalır, kaydırmada sabitlenmez */}
+          <div className="rounded-card bg-ink-900 p-[18px] text-white">
+            <div className="flex items-center gap-2 text-[15px] font-extrabold uppercase leading-snug tracking-[0.6px] text-accent">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-[20px] w-[20px] flex-none"
+                aria-hidden
+              >
+                <path d="M12 3l7 3v5c0 4.4-3 8-7 9-4-1-7-4.6-7-9V6z" />
+                <path d="M9 12l2 2 4-4" />
+              </svg>
+              Güvence Sistemi
+            </div>
+            <p className="mt-2.5 text-[13.5px] font-semibold leading-relaxed text-[#e9e4f6]">
+              Ürünün, satıcının açıklamalarına veya belirtilen özelliklere uygun
+              olmaması durumunda iade sürecini başlatabilirsiniz. Ürün satıcıya
+              iade olarak ulaştıktan sonra ödemenizin tamamı, herhangi bir
+              kesinti uygulanmadan tarafınıza iade edilir.
+            </p>
+          </div>
           <div className="text-[12px] font-bold uppercase tracking-[1.4px] text-ink-500">
             Canlı önizleme — talep kartın
           </div>
@@ -915,7 +953,10 @@ export function IlanAcForm({
         {/* ── FORM ── */}
         <div className="flex min-w-0 flex-col gap-4">
           {/* 1 · Kategori + başlık + talep notu */}
-          <section className="rounded-panel border border-border bg-card p-[26px]" hidden={adim !== 1}>
+          <section
+            className="rounded-panel border border-border bg-card p-[26px]"
+            hidden={adim !== 1}
+          >
             <div className="flex flex-wrap items-center gap-2.5">
               <span className={stepBadge}>1</span>
               <h2 className="text-[21px] font-extrabold tracking-[-0.3px] text-ink-900">
@@ -964,7 +1005,9 @@ export function IlanAcForm({
                       </span>
                       <span
                         className={`text-[15px] font-semibold leading-tight ${
-                          active ? "font-bold text-primary-hover" : "text-ink-700"
+                          active
+                            ? "font-bold text-primary-hover"
+                            : "text-ink-700"
                         }`}
                       >
                         {k.ad}
@@ -977,7 +1020,10 @@ export function IlanAcForm({
 
             <div className="mt-[18px]">
               <div className="mb-2 flex items-baseline justify-between">
-                <label htmlFor="ia-baslik" className="text-[15.5px] font-bold text-ink-900">
+                <label
+                  htmlFor="ia-baslik"
+                  className="text-[15.5px] font-bold text-ink-900"
+                >
                   Talep başlığı <span className="text-danger">*</span>
                 </label>
                 <span
@@ -992,7 +1038,9 @@ export function IlanAcForm({
               <input
                 id="ia-baslik"
                 value={baslik}
-                onChange={(e) => setBaslik(e.target.value.slice(0, BASLIK_SINIR))}
+                onChange={(e) =>
+                  setBaslik(e.target.value.slice(0, BASLIK_SINIR))
+                }
                 maxLength={BASLIK_SINIR}
                 placeholder={'örn. İmzalı "Dawn FM" CD arıyorum'}
                 className={inputCls}
@@ -1001,7 +1049,10 @@ export function IlanAcForm({
 
             <div className="mt-[18px]">
               <div className="mb-2 flex items-baseline justify-between">
-                <label htmlFor="ia-not" className="text-[15.5px] font-bold text-ink-900">
+                <label
+                  htmlFor="ia-not"
+                  className="text-[15.5px] font-bold text-ink-900"
+                >
                   Talep notu <span className="text-danger">*</span>
                 </label>
                 <span
@@ -1028,7 +1079,10 @@ export function IlanAcForm({
           </section>
 
           {/* 2 · Fiyat + öne çıkarma etiketleri */}
-          <section className="rounded-panel border border-border bg-card p-[26px]" hidden={adim !== 2}>
+          <section
+            className="rounded-panel border border-border bg-card p-[26px]"
+            hidden={adim !== 2}
+          >
             <div className="flex items-center gap-2.5">
               <span className={stepBadge}>2</span>
               <h2 className="text-[21px] font-extrabold tracking-[-0.3px] text-ink-900">
@@ -1039,7 +1093,9 @@ export function IlanAcForm({
             {/* Tür / Marka / Model / Yıl / Renk — fiyatın hemen üstünde */}
             <div className="mt-4 grid grid-cols-1 gap-x-3 gap-y-[18px] sm:grid-cols-2">
               <div>
-                <label htmlFor="ia-tur" className={labelCls}>Tür</label>
+                <label htmlFor="ia-tur" className={labelCls}>
+                  Tür
+                </label>
                 <SecimKutusu
                   id="ia-tur"
                   deger={tur}
@@ -1058,7 +1114,9 @@ export function IlanAcForm({
                 />
               </div>
               <div>
-                <label htmlFor="ia-cesit" className={labelCls}>Çeşit</label>
+                <label htmlFor="ia-cesit" className={labelCls}>
+                  Çeşit
+                </label>
                 <SecimKutusu
                   id="ia-cesit"
                   deger={cesit}
@@ -1076,7 +1134,9 @@ export function IlanAcForm({
                 />
               </div>
               <div>
-                <label htmlFor="ia-marka" className={labelCls}>Marka</label>
+                <label htmlFor="ia-marka" className={labelCls}>
+                  Marka
+                </label>
                 <SecimKutusu
                   id="ia-marka"
                   deger={marka}
@@ -1102,7 +1162,9 @@ export function IlanAcForm({
                   onDegis={setModel}
                   secenekler={modeller}
                   placeholder={
-                    modelSlotuCinsiyetMi(kategori) ? "Cinsiyet seç" : "Model seç"
+                    modelSlotuCinsiyetMi(kategori)
+                      ? "Cinsiyet seç"
+                      : "Model seç"
                   }
                   serbestPlaceholder={
                     modelSlotuCinsiyetMi(kategori)
@@ -1130,7 +1192,9 @@ export function IlanAcForm({
                 />
               </div>
               <div>
-                <label htmlFor="ia-renk" className={labelCls}>Renk</label>
+                <label htmlFor="ia-renk" className={labelCls}>
+                  Renk
+                </label>
                 <SecimKutusu
                   id="ia-renk"
                   deger={renk}
@@ -1158,13 +1222,18 @@ export function IlanAcForm({
                   aria-label="Fiyat (TL)"
                   className="w-[150px] border-none bg-transparent px-2.5 py-0.5 text-[26px] font-extrabold leading-none tracking-[-0.5px] text-ink-900 outline-none"
                 />
-                <span className="text-[19px] font-extrabold leading-none text-ink-400">TL</span>
+                <span className="text-[19px] font-extrabold leading-none text-ink-400">
+                  TL
+                </span>
               </div>
             </div>
           </section>
 
           {/* 3 · Fotoğraf ve video */}
-          <section className="rounded-panel border border-border bg-card p-[26px]" hidden={adim !== 3}>
+          <section
+            className="rounded-panel border border-border bg-card p-[26px]"
+            hidden={adim !== 3}
+          >
             <div className="flex items-center gap-2.5">
               <span className={stepBadge}>3</span>
               <h2 className="text-[21px] font-extrabold tracking-[-0.3px] text-ink-900">
@@ -1177,7 +1246,9 @@ export function IlanAcForm({
                 <label className="text-[15.5px] font-bold text-ink-900">
                   Fotoğraf / Video ekle <span className="text-danger">*</span>
                 </label>
-                <span className={`text-[14px] font-bold ${fotoOk ? "text-primary-hover" : "text-danger"}`}>
+                <span
+                  className={`text-[14px] font-bold ${fotoOk ? "text-primary-hover" : "text-danger"}`}
+                >
                   {fotolar}/4 fotoğraf · {videolar}/2 video
                   {fotoOk ? "" : " · en az 1 gerekli"}
                 </span>
@@ -1301,7 +1372,9 @@ export function IlanAcForm({
                         <circle cx="8.5" cy="10" r="1.6" />
                         <path d="M21 16l-5-5-6.5 8" />
                       </svg>
-                      <span className="text-[12px] font-semibold">Fotoğraf</span>
+                      <span className="text-[12px] font-semibold">
+                        Fotoğraf
+                      </span>
                     </button>
                   );
                 })}
@@ -1409,20 +1482,22 @@ export function IlanAcForm({
               )}
 
               <p className="mt-2.5 text-[13px] font-medium leading-relaxed text-ink-500">
-                En fazla <b>4 fotoğraf</b> ve <b>2 video</b> ekleyebilirsin;
-                en az biri zorunludur. Aradığın ürünün fiziksel bir örneği
-                elinde yoksa, ürünü tanımlayan bir referans görsel veya video
+                En fazla <b>4 fotoğraf</b> ve <b>2 video</b> ekleyebilirsin; en
+                az biri zorunludur. Aradığın ürünün fiziksel bir örneği elinde
+                yoksa, ürünü tanımlayan bir referans görsel veya video
                 yeterlidir. Eklediğin ilk fotoğraf kapak görseli olarak
-                kullanılır. Fotoğraflar yüklenirken 3:4 dikey ölçüye
-                (1200×1600) otomatik uyarlanır — kırpma yapılmaz. Kutulara
-                tıklayarak ekleyebilir veya
-                kaldırabilirsin.
+                kullanılır. Fotoğraflar yüklenirken 3:4 dikey ölçüye (1200×1600)
+                otomatik uyarlanır — kırpma yapılmaz. Kutulara tıklayarak
+                ekleyebilir veya kaldırabilirsin.
               </p>
             </div>
           </section>
 
           {/* 4 · Adres bilgisi */}
-          <section className="rounded-panel border border-border bg-card p-[26px]" hidden={adim !== 4}>
+          <section
+            className="rounded-panel border border-border bg-card p-[26px]"
+            hidden={adim !== 4}
+          >
             <div className="flex items-center gap-2.5">
               <span className={stepBadge}>4</span>
               <h2 className="text-[21px] font-extrabold tracking-[-0.3px] text-ink-900">
@@ -1442,11 +1517,11 @@ export function IlanAcForm({
                   id="ia-adres"
                   deger={
                     seciliAdresId
-                      ? (adresler.find((a) => a.id === seciliAdresId)
-                          ? adresEtiketi(
-                              adresler.find((a) => a.id === seciliAdresId)!,
-                            )
-                          : "")
+                      ? adresler.find((a) => a.id === seciliAdresId)
+                        ? adresEtiketi(
+                            adresler.find((a) => a.id === seciliAdresId)!,
+                          )
+                        : ""
                       : BASKA_KONUM
                   }
                   onDegis={(etiket) => {
@@ -1479,8 +1554,8 @@ export function IlanAcForm({
                   >
                     Ayarlar › Adresler
                   </Link>{" "}
-                  bölümünden yönetebilirsin. İlanda yalnızca il, ilçe ve
-                  mahalle görünür.
+                  bölümünden yönetebilirsin. İlanda yalnızca il, ilçe ve mahalle
+                  görünür.
                 </p>
               </div>
             )}
@@ -1508,168 +1583,177 @@ export function IlanAcForm({
                   {[ilce, il].filter(Boolean).join(", ")}
                 </p>
                 <p className="mt-2 text-[12px] font-medium text-ink-400">
-                  Bu talep için farklı bir konum girmek istersen yukarıdan
-                  “{BASKA_KONUM}” seç.
+                  Bu talep için farklı bir konum girmek istersen yukarıdan “
+                  {BASKA_KONUM}” seç.
                 </p>
               </div>
             ) : (
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label htmlFor="ia-il" className={labelCls}>Şehir</label>
-                <select
-                  id="ia-il"
-                  value={il}
-                  onChange={(e) => {
-                    setIl(e.target.value);
-                    setIlce("");
-                  }}
-                  className={`${inputCls} cursor-pointer bg-card`}
-                >
-                  <option value="" disabled>
-                    Şehir seç
-                  </option>
-                  {ilList.map((i) => (
-                    <option key={i} value={i}>
-                      {i}
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="ia-il" className={labelCls}>
+                    Şehir
+                  </label>
+                  <select
+                    id="ia-il"
+                    value={il}
+                    onChange={(e) => {
+                      setIl(e.target.value);
+                      setIlce("");
+                    }}
+                    className={`${inputCls} cursor-pointer bg-card`}
+                  >
+                    <option value="" disabled>
+                      Şehir seç
                     </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="ia-ilce" className={labelCls}>İlçe</label>
-                <select
-                  id="ia-ilce"
-                  value={ilce}
-                  onChange={(e) => {
-                    setIlce(e.target.value);
-                    setMahalle("");
-                  }}
-                  disabled={!il}
-                  className={`${inputCls} cursor-pointer bg-card disabled:cursor-not-allowed disabled:bg-subtle disabled:text-ink-300`}
-                >
-                  <option value="" disabled>
-                    {il ? "İlçe seç" : "Önce şehir seç"}
-                  </option>
-                  {ilceList.map((i) => (
-                    <option key={i} value={i}>
-                      {i}
+                    {ilList.map((i) => (
+                      <option key={i} value={i}>
+                        {i}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="ia-ilce" className={labelCls}>
+                    İlçe
+                  </label>
+                  <select
+                    id="ia-ilce"
+                    value={ilce}
+                    onChange={(e) => {
+                      setIlce(e.target.value);
+                      setMahalle("");
+                    }}
+                    disabled={!il}
+                    className={`${inputCls} cursor-pointer bg-card disabled:cursor-not-allowed disabled:bg-subtle disabled:text-ink-300`}
+                  >
+                    <option value="" disabled>
+                      {il ? "İlçe seç" : "Önce şehir seç"}
                     </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="ia-mahalle" className={labelCls}>Mahalle</label>
-                <select
-                  id="ia-mahalle"
-                  value={mahalle}
-                  onChange={(e) => setMahalle(e.target.value)}
-                  disabled={!il || !ilce || mahalleList.length === 0}
-                  className={`${inputCls} cursor-pointer bg-card disabled:cursor-not-allowed disabled:bg-subtle disabled:text-ink-300`}
-                >
-                  <option value="" disabled>
-                    {!il || !ilce
-                      ? "Önce ilçe seç"
-                      : mahalleYukleniyor
+                    {ilceList.map((i) => (
+                      <option key={i} value={i}>
+                        {i}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="ia-mahalle" className={labelCls}>
+                    Mahalle
+                  </label>
+                  <select
+                    id="ia-mahalle"
+                    value={mahalle}
+                    onChange={(e) => setMahalle(e.target.value)}
+                    disabled={!il || !ilce || mahalleList.length === 0}
+                    className={`${inputCls} cursor-pointer bg-card disabled:cursor-not-allowed disabled:bg-subtle disabled:text-ink-300`}
+                  >
+                    <option value="" disabled>
+                      {!il || !ilce
+                        ? "Önce ilçe seç"
+                        : mahalleYukleniyor
                           ? "Mahalleler yükleniyor…"
                           : mahalleList.length === 0
                             ? "Mahalle bulunamadı"
                             : "Mahalle seç"}
-                  </option>
-                  {mahalleList.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
                     </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="ia-cadde" className={labelCls}>
-                  Cadde / Sokak
-                </label>
-                <input
-                  id="ia-cadde"
-                  value={cadde}
-                  onChange={(e) => setCadde(e.target.value.slice(0, 80))}
-                  maxLength={80}
-                  placeholder="Örn. Üniversite Caddesi"
-                  className={inputCls}
-                />
-              </div>
-              {/* Apartman / kat / daire — ayarlardaki adres formuyla aynı
+                    {mahalleList.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="ia-cadde" className={labelCls}>
+                    Cadde / Sokak
+                  </label>
+                  <input
+                    id="ia-cadde"
+                    value={cadde}
+                    onChange={(e) => setCadde(e.target.value.slice(0, 80))}
+                    maxLength={80}
+                    placeholder="Örn. Üniversite Caddesi"
+                    className={inputCls}
+                  />
+                </div>
+                {/* Apartman / kat / daire — ayarlardaki adres formuyla aynı
                   sırada ve elle doldurulur. */}
-              <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-3">
-                <div>
-                  <label htmlFor="ia-apartman" className={labelCls}>
-                    Apartman
-                  </label>
-                  <input
-                    id="ia-apartman"
-                    value={apartman}
-                    onChange={(e) => setApartman(e.target.value.slice(0, 60))}
-                    maxLength={60}
-                    placeholder="Apartman adı veya numarası"
-                    className={inputCls}
-                  />
+                <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-3">
+                  <div>
+                    <label htmlFor="ia-apartman" className={labelCls}>
+                      Apartman
+                    </label>
+                    <input
+                      id="ia-apartman"
+                      value={apartman}
+                      onChange={(e) => setApartman(e.target.value.slice(0, 60))}
+                      maxLength={60}
+                      placeholder="Apartman adı veya numarası"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="ia-kat" className={labelCls}>
+                      Kat
+                    </label>
+                    <input
+                      id="ia-kat"
+                      inputMode="numeric"
+                      value={kat}
+                      onChange={(e) => setKat(e.target.value.slice(0, 10))}
+                      maxLength={10}
+                      placeholder="Örn. 3"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="ia-daire" className={labelCls}>
+                      Daire
+                    </label>
+                    <input
+                      id="ia-daire"
+                      inputMode="numeric"
+                      value={daire}
+                      onChange={(e) => setDaire(e.target.value.slice(0, 10))}
+                      maxLength={10}
+                      placeholder="Örn. 7"
+                      className={inputCls}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label htmlFor="ia-kat" className={labelCls}>
-                    Kat
-                  </label>
-                  <input
-                    id="ia-kat"
-                    inputMode="numeric"
-                    value={kat}
-                    onChange={(e) => setKat(e.target.value.slice(0, 10))}
-                    maxLength={10}
-                    placeholder="Örn. 3"
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="ia-daire" className={labelCls}>
-                    Daire
-                  </label>
-                  <input
-                    id="ia-daire"
-                    inputMode="numeric"
-                    value={daire}
-                    onChange={(e) => setDaire(e.target.value.slice(0, 10))}
-                    maxLength={10}
-                    placeholder="Örn. 7"
-                    className={inputCls}
-                  />
-                </div>
-              </div>
-              {/* Adres tarifi tek satırı hak ediyor: serbest metin ve
+                {/* Adres tarifi tek satırı hak ediyor: serbest metin ve
                   adres seçim kutusuyla aynı genişlikte duruyor. */}
-              <div className="sm:col-span-2">
-                {/* Etiket diğer konum alanlarıyla aynı düzende; sayaç
+                <div className="sm:col-span-2">
+                  {/* Etiket diğer konum alanlarıyla aynı düzende; sayaç
                     etiketin sağında kalıyor. */}
-                <div className="flex items-baseline justify-between">
-                  <label htmlFor="ia-konum-tarifi" className={labelCls}>
-                    Adres tarifi
-                  </label>
-                  <span className="mb-1.5 text-[12.5px] font-semibold text-ink-500">
-                    {konumTarifi.length}/60
-                  </span>
+                  <div className="flex items-baseline justify-between">
+                    <label htmlFor="ia-konum-tarifi" className={labelCls}>
+                      Adres tarifi
+                    </label>
+                    <span className="mb-1.5 text-[12.5px] font-semibold text-ink-500">
+                      {konumTarifi.length}/60
+                    </span>
+                  </div>
+                  <input
+                    id="ia-konum-tarifi"
+                    value={konumTarifi}
+                    onChange={(e) =>
+                      setKonumTarifi(e.target.value.slice(0, 60))
+                    }
+                    maxLength={60}
+                    placeholder="Zil adı, giriş, yol tarifi…"
+                    className={inputCls}
+                  />
                 </div>
-                <input
-                  id="ia-konum-tarifi"
-                  value={konumTarifi}
-                  onChange={(e) => setKonumTarifi(e.target.value.slice(0, 60))}
-                  maxLength={60}
-                  placeholder="Zil adı, giriş, yol tarifi…"
-                  className={inputCls}
-                />
               </div>
-            </div>
             )}
-
-
           </section>
 
           {/* 5 · Görünürlük + kabul şartları */}
-          <section className="rounded-panel border border-border bg-card p-[26px]" hidden={adim !== 5}>
+          <section
+            className="rounded-panel border border-border bg-card p-[26px]"
+            hidden={adim !== 5}
+          >
             <div className="flex items-center gap-2.5">
               <span className={stepBadge}>5</span>
               <h2 className="text-[21px] font-extrabold tracking-[-0.3px] text-ink-900">
@@ -1759,15 +1843,17 @@ export function IlanAcForm({
               </div>
             </div>
             <p className="mt-2 text-[13px] font-medium leading-relaxed text-ink-500">
-              “Evet” dersen aradığın ürünün muadili (eşdeğeri) olan sunumları
-              da değerlendirdiğini belirtirsin; talebin, filtreden{" "}
-              <strong className="text-ink-700">“Muadil kabul”</strong> seçeneğini
-              işaretleyen satıcıların karşısına çıkar.
+              “Evet” dersen aradığın ürünün muadili (eşdeğeri) olan sunumları da
+              değerlendirdiğini belirtirsin; talebin, filtreden{" "}
+              <strong className="text-ink-700">“Muadil kabul”</strong>{" "}
+              seçeneğini işaretleyen satıcıların karşısına çıkar.
             </p>
 
+            {/* Zorunlu alan: yanıtlanmadan ilan yayınlanamaz. */}
             <div className="mt-[18px] flex flex-wrap items-center gap-x-4 gap-y-2">
               <label className={`${labelCls} mb-0 flex-1 min-w-[220px]`}>
-                Üründe defo kabul eder misin?
+                Üründe defo kabul eder misin?{" "}
+                <span className="text-danger">*</span>
               </label>
               <div className="flex flex-none gap-2">
                 {[
@@ -1785,6 +1871,12 @@ export function IlanAcForm({
                 ))}
               </div>
             </div>
+            {!defoOk && (
+              <p className="mt-2 text-[13px] font-semibold leading-relaxed text-ink-500">
+                Bu soruyu yanıtlamadan ilan yayınlanamaz: satıcı, defolu bir
+                ürünü sunup sunamayacağını bilmeli.
+              </p>
+            )}
 
             <div className="mt-[18px]">
               <label className={labelCls}>Kabul ettiğin ürün durumu</label>
@@ -1873,85 +1965,75 @@ export function IlanAcForm({
         <aside className="flex flex-col gap-3.5 lg:self-stretch">
           {/* Önizleme — kaydırmada ekrana kilitlenir */}
           <div className="lg:sticky lg:top-[150px]">
-            {/* Tüm adımlar tamamlanınca kart tıklanabilir olur: alıcının
-                göreceği talep sayfasının tam önizlemesi açılır. */}
-            <button
-              type="button"
-              disabled={!canPublish}
-              onClick={() => setOnizlemeAcik(true)}
-              title={
-                canPublish
-                  ? "Talep sayfasının önizlemesini aç"
-                  : "Tüm adımlar tamamlanınca önizleme açılır"
-              }
-              className={`block w-full text-left ${
-                canPublish ? "cursor-pointer" : "cursor-default"
-              }`}
-            >
-            <div
-              className={`mx-auto w-[260px] max-w-full overflow-hidden rounded-card border shadow-[var(--shadow-pop)] transition-colors ${
-                // Üst sıra: etiket yerine hafif yeşil zemin — kartlardaki davranışın aynısı.
-                pazarlikSecim
-                  ? "border-accent bg-accent/45"
-                  : "border-border bg-card"
-              }`}
-            >
-              {/* Dikey görsel alanı — ölçü kartla AYNI sabitten gelir. */}
+            {/* Kart TIKLANMAZ — yalnızca canlı önizlemedir.
+                Karta tıklayınca talep sayfasının tam önizlemesi açılıyordu:
+                form doldurulurken, yarım bir talebin "alıcıya böyle
+                görünecek" sayfasını açmak akışı bölüyordu. Önizleme artık
+                tek bir yerde, son adımda ("İlanı Yayınla" → "Evet, önizle")
+                açılır. */}
+            <div className="block w-full text-left">
               <div
-                className={`relative flex ${KART_GORSEL_ORANI} items-center justify-center overflow-hidden ${
-                  kapakGorsel ? "bg-subtle" : "ref-image"
+                className={`mx-auto w-[260px] max-w-full overflow-hidden rounded-card border shadow-[var(--shadow-pop)] transition-colors ${
+                  // Üst sıra: etiket yerine hafif yeşil zemin — kartlardaki davranışın aynısı.
+                  pazarlikSecim
+                    ? "border-accent bg-accent/45"
+                    : "border-border bg-card"
                 }`}
               >
-                {kapakGorsel ? (
-                  /* Kapak = kayıtlı ilk fotoğraf, yoksa eklenen ilk fotoğraf. */
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={kapakGorsel}
-                    alt="Kapak görseli önizlemesi"
-                    className="h-full w-full object-contain"
-                  />
-                ) : (
-                  <span className="font-mono text-[11.5px] text-[#7d738f]">
-                    {fotoText}
-                  </span>
-                )}
-                {/* Sağ üst: yalnızca acil seçiliyse etiket çıkar. */}
-                {acilSecim && (
-                  <span className="absolute right-2.5 top-2.5 rounded-md bg-acil px-2 py-[5px] text-[11px] font-extrabold uppercase tracking-[1px] text-white">
-                    ! Acil
-                  </span>
-                )}
-              </div>
-              <div className="p-[14px]">
-                <div className="text-base font-extrabold text-ink-900">
-                  {fiyatOk ? fiyatText(fiyatNum) : "— TL"}
+                {/* Dikey görsel alanı — ölçü kartla AYNI sabitten gelir. */}
+                <div
+                  className={`relative flex ${KART_GORSEL_ORANI} items-center justify-center overflow-hidden ${
+                    kapakGorsel ? "bg-subtle" : "ref-image"
+                  }`}
+                >
+                  {kapakGorsel ? (
+                    /* Kapak = kayıtlı ilk fotoğraf, yoksa eklenen ilk fotoğraf. */
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={kapakGorsel}
+                      alt="Kapak görseli önizlemesi"
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <span className="font-mono text-[11.5px] text-[#7d738f]">
+                      {fotoText}
+                    </span>
+                  )}
+                  {/* Sağ üst: yalnızca acil seçiliyse etiket çıkar. */}
+                  {acilSecim && (
+                    <span className="absolute right-2.5 top-2.5 rounded-md bg-acil px-2 py-[5px] text-[11px] font-extrabold uppercase tracking-[1px] text-white">
+                      ! Acil
+                    </span>
+                  )}
                 </div>
-                <div className="mt-[9px] text-[11px] font-extrabold uppercase tracking-[0.8px] text-primary">
-                  {marka.trim() || "MARKA"}
-                </div>
-                <div className="mt-0.5 text-[13px] font-semibold leading-snug text-ink-900">
-                  {baslik.trim() || "Talep başlığın burada görünecek"}
-                </div>
-                <div className="mt-1 line-clamp-2 text-[13px] font-medium leading-snug text-ink-500">
-                  {aciklama.trim() || "Kısa açıklaman burada görünecek."}
-                </div>
-                {/* Üst sıra çip olarak gösterilmez — kart zemini yeşile döner.
+                <div className="p-[14px]">
+                  <div className="text-base font-extrabold text-ink-900">
+                    {fiyatOk ? fiyatText(fiyatNum) : "— TL"}
+                  </div>
+                  <div className="mt-[9px] text-[11px] font-extrabold uppercase tracking-[0.8px] text-primary">
+                    {marka.trim() || "MARKA"}
+                  </div>
+                  <div className="mt-0.5 text-[13px] font-semibold leading-snug text-ink-900">
+                    {baslik.trim() || "Talep başlığın burada görünecek"}
+                  </div>
+                  <div className="mt-1 line-clamp-2 text-[13px] font-medium leading-snug text-ink-500">
+                    {aciklama.trim() || "Kısa açıklaman burada görünecek."}
+                  </div>
+                  {/* Üst sıra çip olarak gösterilmez — kart zemini yeşile döner.
                     "Muadil kabul" çipi de KALDIRILDI: gerçek ilan kartında
                     böyle bir etiket yok, önizleme yanıltıyordu. Tercih artık
                     yalnızca Keşfet'teki muadil filtresinde işe yarıyor. */}
-                <div className="mt-2.5 border-t border-hairline pt-2 text-[12.5px] font-medium text-ink-500">
-                  {konumText} · 0 sunum
+                  <div className="mt-2.5 border-t border-hairline pt-2 text-[12.5px] font-medium text-ink-500">
+                    {konumText} · 0 sunum
+                  </div>
                 </div>
               </div>
             </div>
-            </button>
             <p className="mt-2.5 text-center text-[12.5px] font-medium leading-relaxed text-ink-400">
-              {canPublish
-                ? "Karta tıkla — talep sayfan alıcıya böyle görünecek."
-                : "Adımları tamamlayınca karta tıklayıp talep sayfanı önizleyebilirsin."}
+              Talebin Keşfet listesinde böyle görünecek. Tam sayfa önizleme son
+              adımda, “İlanı Yayınla” dedikten sonra açılır.
             </p>
           </div>
-
         </aside>
       </div>
 
@@ -1959,48 +2041,48 @@ export function IlanAcForm({
       {monte &&
         onaySorusu &&
         createPortal(
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Yayın onayı"
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-ink-900/70 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setOnaySorusu(false);
-          }}
-        >
-          <div className="w-full max-w-[420px] rounded-panel bg-card p-6 shadow-pop">
-            <div className="text-[19px] font-extrabold text-ink-900">
-              İlanı önizlemek ister misin?
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Yayın onayı"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-ink-900/70 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setOnaySorusu(false);
+            }}
+          >
+            <div className="w-full max-w-[420px] rounded-panel bg-card p-6 shadow-pop">
+              <div className="text-[19px] font-extrabold text-ink-900">
+                İlanı önizlemek ister misin?
+              </div>
+              <p className="mt-2 text-[14px] font-medium leading-relaxed text-ink-700">
+                Talebin, satıcıların göreceği haliyle açılır; kontrol ettikten
+                sonra oradan yayınlayabilirsin.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2.5">
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    setOnaySorusu(false);
+                    setOnizlemeAcik(true);
+                  }}
+                  className="flex-1"
+                >
+                  Evet, önizle
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={gonderiliyor}
+                  onClick={() => {
+                    setOnaySorusu(false);
+                    void yayinla();
+                  }}
+                  className="flex-1"
+                >
+                  Hayır, yayınla
+                </Button>
+              </div>
             </div>
-            <p className="mt-2 text-[14px] font-medium leading-relaxed text-ink-700">
-              Talebin, satıcıların göreceği haliyle açılır; kontrol ettikten
-              sonra oradan yayınlayabilirsin.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2.5">
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setOnaySorusu(false);
-                  setOnizlemeAcik(true);
-                }}
-                className="flex-1"
-              >
-                Evet, önizle
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={gonderiliyor}
-                onClick={() => {
-                  setOnaySorusu(false);
-                  void yayinla();
-                }}
-                className="flex-1"
-              >
-                Hayır, yayınla
-              </Button>
-            </div>
-          </div>
-        </div>,
+          </div>,
           document.body,
         )}
 
@@ -2008,92 +2090,92 @@ export function IlanAcForm({
       {monte &&
         onizlemeAcik &&
         createPortal(
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Talep sayfası önizlemesi"
-          className="fixed inset-0 z-[100] flex items-start justify-center overflow-hidden bg-ink-900/70 p-3 sm:p-5"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setOnizlemeAcik(false);
-          }}
-        >
-          {/* Kaydırma panelin kendi içinde: üstteki ve alttaki eylem
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Talep sayfası önizlemesi"
+            className="fixed inset-0 z-[100] flex items-start justify-center overflow-hidden bg-ink-900/70 p-3 sm:p-5"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setOnizlemeAcik(false);
+            }}
+          >
+            {/* Kaydırma panelin kendi içinde: üstteki ve alttaki eylem
               çubukları böylece her zaman ekranda kalır. */}
-          <div className="mx-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-panel bg-page shadow-pop sm:max-h-[calc(100dvh-2.5rem)]">
-            {/* Üst çubuk — panelin sabit başlığı */}
-            <div className="flex flex-none flex-wrap items-center gap-3 border-b border-border bg-card px-5 py-3.5">
-              <div className="min-w-[220px] flex-1">
-                <div className="text-[15px] font-extrabold text-ink-900">
-                  Talebin satıcılara böyle görünecek
+            <div className="mx-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-panel bg-page shadow-pop sm:max-h-[calc(100dvh-2.5rem)]">
+              {/* Üst çubuk — panelin sabit başlığı */}
+              <div className="flex flex-none flex-wrap items-center gap-3 border-b border-border bg-card px-5 py-3.5">
+                <div className="min-w-[220px] flex-1">
+                  <div className="text-[15px] font-extrabold text-ink-900">
+                    Talebin satıcılara böyle görünecek
+                  </div>
+                  <p className="mt-0.5 text-[13px] font-medium text-ink-500">
+                    Bu bir önizlemedir — talep henüz yayınlanmadı, buradaki
+                    düğmeler çalışmaz.
+                  </p>
                 </div>
-                <p className="mt-0.5 text-[13px] font-medium text-ink-500">
-                  Bu bir önizlemedir — talep henüz yayınlanmadı, buradaki
-                  düğmeler çalışmaz.
-                </p>
-              </div>
-              {/* Sağ üstte, kaldırılan düğmelerin yerinde: bakış açısını
+                {/* Sağ üstte, kaldırılan düğmelerin yerinde: bakış açısını
                   tek bakışta söyleyen lime rozet. */}
-              <div className="flex flex-none items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-[13px] font-extrabold uppercase tracking-[0.6px] text-ink-900">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-[17px] w-[17px] flex-none"
-                  aria-hidden
-                >
-                  <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-                Satıcılar böyle görecek
+                <div className="flex flex-none items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-[13px] font-extrabold uppercase tracking-[0.6px] text-ink-900">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.9"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-[17px] w-[17px] flex-none"
+                    aria-hidden
+                  >
+                    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  Satıcılar böyle görecek
+                </div>
               </div>
-            </div>
 
-            {/* Gerçek talep sayfası — talebi gören bir satıcının gözünden
+              {/* Gerçek talep sayfası — talebi gören bir satıcının gözünden
                 (kendiIlanim=false). Önizlemede etkileşim kapalıdır. */}
-            {/* Önizlemede sayfa üstü çubuk yok: sağdaki talep sahibi kartı
+              {/* Önizlemede sayfa üstü çubuk yok: sağdaki talep sahibi kartı
                 gerçek sayfadaki 150px ofsetle değil, panelin kendi üstüne
                 yapışsın ki iki sütun aynı hizada kalsın. */}
-            {/* Kayan bölüm: yalnızca talep sayfası kayar, çubuklar sabit. */}
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [&_aside]:lg:top-4">
-              {/* Kaydırma dış kapsayıcıda kalır; tıklama engeli yalnızca
+              {/* Kayan bölüm: yalnızca talep sayfası kayar, çubuklar sabit. */}
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [&_aside]:lg:top-4">
+                {/* Kaydırma dış kapsayıcıda kalır; tıklama engeli yalnızca
                   içeriğe uygulanır, yoksa fare tekerleği de çalışmıyordu. */}
-              <div className="pointer-events-none select-none">
-                <IlanDetay
-                  talep={onizlemeTalebi}
-                  benzer={[]}
-                  kendiIlanim={false}
-                />
+                <div className="pointer-events-none select-none">
+                  <IlanDetay
+                    talep={onizlemeTalebi}
+                    benzer={[]}
+                    kendiIlanim={false}
+                  />
+                </div>
+              </div>
+
+              {/* Alt eylem çubuğu — sayfanın sonuna inen kullanıcı da
+                buradan yayınlayabilsin diye ekranda sabit kalır. */}
+              <div className="flex flex-none flex-wrap items-center justify-end gap-3 border-t border-border bg-card px-5 py-3.5">
+                <span className="mr-auto text-[13px] font-medium text-ink-500">
+                  Kontrol ettiysen talebini şimdi yayınlayabilirsin.
+                </span>
+                <Button
+                  variant="secondary"
+                  onClick={() => setOnizlemeAcik(false)}
+                >
+                  Düzenlemeye dön
+                </Button>
+                <Button
+                  variant="primary"
+                  disabled={!canPublish || gonderiliyor}
+                  onClick={() => {
+                    setOnizlemeAcik(false);
+                    void yayinla();
+                  }}
+                >
+                  {gonderiliyor ? "Yayınlanıyor…" : "Onayla ve Talebi Yayınla"}
+                </Button>
               </div>
             </div>
-
-            {/* Alt eylem çubuğu — sayfanın sonuna inen kullanıcı da
-                buradan yayınlayabilsin diye ekranda sabit kalır. */}
-            <div className="flex flex-none flex-wrap items-center justify-end gap-3 border-t border-border bg-card px-5 py-3.5">
-              <span className="mr-auto text-[13px] font-medium text-ink-500">
-                Kontrol ettiysen talebini şimdi yayınlayabilirsin.
-              </span>
-              <Button
-                variant="secondary"
-                onClick={() => setOnizlemeAcik(false)}
-              >
-                Düzenlemeye dön
-              </Button>
-              <Button
-                variant="primary"
-                disabled={!canPublish || gonderiliyor}
-                onClick={() => {
-                  setOnizlemeAcik(false);
-                  void yayinla();
-                }}
-              >
-                {gonderiliyor ? "Yayınlanıyor…" : "Onayla ve Talebi Yayınla"}
-              </Button>
-            </div>
-          </div>
-        </div>,
+          </div>,
           document.body,
         )}
 

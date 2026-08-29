@@ -19,7 +19,9 @@ export type Sunumum = {
   /** Talep sahibi — sunumu gönderdiğim kişi. */
   sahibi: string;
   harf: string;
+  /** Talep sahibinin ALICI olarak aldığı puan ve değerlendirme sayısı. */
   puan: string;
+  degerlendirme?: number;
   tarih: string;
   grup: "kargo" | "sohbet" | "inceleme";
   st: string;
@@ -38,5 +40,3 @@ export type Sunumum = {
     | "arsiv"
     | "kapandi";
 };
-
-

@@ -2,7 +2,13 @@
 // Her bildirim bir kullanıcıya aittir (`kime`). Hesap değiştirildiğinde
 // zil ve bildirim sayfası o hesabın kayıtlarını gösterir.
 
-export type BildirimTip = "sunum" | "teklif" | "kargo" | "sistem";
+/**
+ * Bildirim türleri. "mesaj" SONRADAN EKLENDİ: Ayarlar'da "Mesajlar —
+ * sohbetlere gelen yeni mesajlar" diye kapatılabilir bir tercih vardı ama
+ * ne böyle bir tür ne de onu üreten bir kod vardı; kullanıcı olmayan bir
+ * bildirimi açıp kapatıyordu (bkz. app/api/mesajlar → POST).
+ */
+export type BildirimTip = "sunum" | "teklif" | "kargo" | "sistem" | "mesaj";
 export type BildirimGrup = "Bugün" | "Dün" | "Daha önce";
 
 export type Bildirim = {

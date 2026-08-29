@@ -5,6 +5,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { useHesapProfil } from "@/lib/hesap-profil";
 import { useOturumSahibi } from "@/lib/aktif-kullanici";
 import { aliciKalitesi, SEVIYE_STIL } from "@/lib/alici-kalitesi";
+import { KaliteKirilimi } from "@/components/KaliteKirilimi";
 import type { AliciMetrik } from "@/lib/alici-kalitesi";
 import { SEBEP_METNI } from "@/lib/iptal";
 import type { IptalSebep } from "@/lib/iptal";
@@ -78,6 +79,9 @@ export function HesapKart({
               : `Kullanıcı Kalitesi: ${alici.etiket}`}
           </span>
         </div>
+        {/* Seviyenin gerekçesi — hesaplanan sinyal kırılımı bir yere
+            çıkmıyordu (bkz. components/KaliteKirilimi.tsx). */}
+        <KaliteKirilimi kalite={alici} />
         {/* Düşen siparişlerin gerekçesi — yalnızca kendi kartında ve
             yalnızca gerçekten kusur kaydı varsa. */}
         {kendisi && kusurlar.length > 0 && (

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { mesajlarOku, mesajEkle, metinKimlik } from "@/lib/depo";
+import {
+  mesajlarOku,
+  mesajEkle,
+  metinKimlik,
+  mesajBildirimiGonder,
+} from "@/lib/depo";
 import { sohbetTaraflari } from "@/lib/veri";
 import { paraTutari, MAX_FIYAT } from "@/lib/para";
 import { cokSatir } from "@/lib/metin";
@@ -8,7 +13,6 @@ import { hizSinirla, DAKIKA } from "@/lib/hiz-siniri";
 import type { Mesaj } from "@/lib/depo";
 
 export const dynamic = "force-dynamic";
-
 
 /** GET /api/mesajlar?sohbet=<id> */
 export async function GET(istek: Request) {
@@ -22,7 +26,10 @@ export async function GET(istek: Request) {
   }
   // Sohbeti yalnızca tarafları okuyabilir.
   if (!kisiler.includes(await istekKullaniciAdi())) {
-    return NextResponse.json({ hata: "Bu sohbete erişimin yok." }, { status: 403 });
+    return NextResponse.json(
+      { hata: "Bu sohbete erişimin yok." },
+      { status: 403 },
+    );
   }
   return NextResponse.json({ mesajlar: await mesajlarOku(sohbetId) });
 }
@@ -41,7 +48,10 @@ export async function POST(istek: Request) {
   try {
     govde = await istek.json();
   } catch {
-    return NextResponse.json({ hata: "Geçersiz istek gövdesi." }, { status: 400 });
+    return NextResponse.json(
+      { hata: "Geçersiz istek gövdesi." },
+      { status: 400 },
+    );
   }
 
   const sohbetId = typeof govde.sohbetId === "string" ? govde.sohbetId : "";
@@ -62,7 +72,10 @@ export async function POST(istek: Request) {
     );
 
   if (!metin && !teklifMi) {
-    return NextResponse.json({ hata: "Boş mesaj gönderilemez." }, { status: 400 });
+    return NextResponse.json(
+      { hata: "Boş mesaj gönderilemez." },
+      { status: 400 },
+    );
   }
 
   const kisiler = await sohbetTaraflari(sohbetId);
@@ -71,7 +84,10 @@ export async function POST(istek: Request) {
   }
   const ben = gonderen;
   if (!kisiler.includes(ben)) {
-    return NextResponse.json({ hata: "Bu sohbete yazamazsın." }, { status: 403 });
+    return NextResponse.json(
+      { hata: "Bu sohbete yazamazsın." },
+      { status: 403 },
+    );
   }
 
   const mesaj: Mesaj = {
@@ -83,5 +99,19 @@ export async function POST(istek: Request) {
     zaman: new Date().toISOString(),
   };
   await mesajEkle(mesaj);
+
+  // Karşı taraf haberdar edilir. Bu bildirim hiç yazılmıyordu: Ayarlar'da
+  // "Mesajlar" tercihi duruyor ama sohbete mesaj gelince zil çalmıyordu
+  // (bkz. lib/depo.ts → mesajBildirimiGonder).
+  const karsiTaraf = kisiler.find((k) => k !== ben);
+  if (karsiTaraf)
+    await mesajBildirimiGonder({
+      kime: karsiTaraf,
+      gonderen: ben,
+      sohbetId,
+      metin,
+      ...(teklifMi ? { tutar: tutar! } : {}),
+    }).catch(() => undefined);
+
   return NextResponse.json({ mesaj }, { status: 201 });
 }

@@ -14,7 +14,9 @@ import { tekSatir } from "@/lib/metin";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json({ alarmlar: await alarmlarOku(await istekKullaniciAdi()) });
+  return NextResponse.json({
+    alarmlar: await alarmlarOku(await istekKullaniciAdi()),
+  });
 }
 
 /** Yeni talep alarmı kurar. */
@@ -23,7 +25,10 @@ export async function POST(istek: Request) {
   try {
     govde = await istek.json();
   } catch {
-    return NextResponse.json({ hata: "Geçersiz istek gövdesi." }, { status: 400 });
+    return NextResponse.json(
+      { hata: "Geçersiz istek gövdesi." },
+      { status: 400 },
+    );
   }
 
   const ad = tekSatir(govde.ad, 80);
@@ -38,17 +43,14 @@ export async function POST(istek: Request) {
   if (!ad)
     return NextResponse.json({ hata: "Alarma bir ad ver." }, { status: 400 });
 
-  // Kanal seçimi: en az biri açık olmalı, yoksa alarm kimseye ulaşmaz.
-  const kanalGovde = (govde.kanallar ?? {}) as Record<string, unknown>;
-  const kanallar = {
-    uygulama: kanalGovde.uygulama !== false,
-    eposta: kanalGovde.eposta === true,
-  };
-  if (!kanallar.uygulama && !kanallar.eposta)
-    return NextResponse.json(
-      { hata: "En az bir bildirim kanalı seç." },
-      { status: 400 },
-    );
+  /*
+   * KANAL SEÇİMİ YOK: alarm her iki kanaldan da haber verir.
+   *
+   * Formda iki düğmeydi ve ikisini birden açık bırakmaktan başka anlamlı
+   * kullanımı yoktu — alarm kuran kişi haber almak istiyor. İstemciden
+   * gelen değer okunmuyor: kural burada sabit.
+   */
+  const kanallar = { uygulama: true, eposta: true };
 
   // E-posta adresi İSTEMCİDEN ALINMAZ: hesabın kendi kaydından okunur.
   // Aksi halde başkasının adresine bildirim yönlendirilebilirdi.
@@ -57,14 +59,13 @@ export async function POST(istek: Request) {
   // sessizce hiçbir yere ulaşmayan bir kanalla çalışmış olurdu.
   const epostaKayit = await hesapEpostasiOku(kullanici);
   const eposta = epostaKayit?.dogrulandi ? epostaKayit.adres : "";
-  if (kanallar.eposta && !eposta.includes("@"))
-    return NextResponse.json(
-      {
-        hata:
-          "E-posta bildirimi için önce Ayarlar > Bildirim tercihleri'nden adresini doğrulaman gerekiyor.",
-      },
-      { status: 400 },
-    );
+  /*
+   * Doğrulanmamış adres alarmı ENGELLEMEZ, yalnızca o kanalı sessizce
+   * devre dışı bırakır. Eskiden 400 dönüyordu; kanal seçimi kalktığına
+   * göre e-postası doğrulanmamış herkesin alarm kurması engellenirdi.
+   * Uygulama bildirimi (zil) her hâlükârda gider.
+   */
+  if (!eposta.includes("@")) kanallar.eposta = false;
 
   const filtre: AlarmFiltre = { ...BOS_FILTRE, ...temizFiltre(govde.filtre) };
 
@@ -89,7 +90,8 @@ export async function POST(istek: Request) {
     aktif: true,
     // Ekranda görünen kanal etiketi. Diğer tüm metinler sınırlıyken bu
     // alan sınırsızdı.
-    kanal: tekSatir(govde.kanal, 40) || "Uygulama",
+    // Ekranda görünen etiket; kanal seçimi olmadığı için sabit.
+    kanal: kanallar.eposta ? "Uygulama + E-posta" : "Uygulama",
     kanallar,
     eposta,
     eslesme: 0,
@@ -111,7 +113,8 @@ export async function POST(istek: Request) {
   // Tarama sayacı ve son eşleşmeyi güncellediği için alarmın güncel hali
   // döndürülür; liste sayfa yenilenmeden doğru görünsün.
   const guncel =
-    (await alarmlarOku(alarm.kullanici)).find((a) => a.id === alarm.id) ?? alarm;
+    (await alarmlarOku(alarm.kullanici)).find((a) => a.id === alarm.id) ??
+    alarm;
 
   return NextResponse.json({ alarm: guncel, gecmisEslesme }, { status: 201 });
 }
@@ -147,7 +150,9 @@ function temizFiltre(ham: unknown): Partial<AlarmFiltre> {
     maxFiyat: sayi(g.maxFiyat),
     konumlar: Array.isArray(g.konumlar)
       ? g.konumlar
-          .filter((k): k is Record<string, unknown> => !!k && typeof k === "object")
+          .filter(
+            (k): k is Record<string, unknown> => !!k && typeof k === "object",
+          )
           .map((k) => ({ il: yazi(k.il, 40), ilce: yazi(k.ilce, 40) }))
           .filter((k) => k.il)
           .slice(0, 5)

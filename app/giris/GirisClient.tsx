@@ -7,7 +7,6 @@ import Image from "next/image";
 type Sekme = "giris" | "kayit";
 type Done = null | "giris" | "kayit";
 
-
 // Ortak stiller
 const inputCls =
   "w-full box-border rounded-xl border border-border-input bg-white px-4 py-2.5 text-[14px] font-medium text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -113,19 +112,16 @@ export function GirisClient() {
       />
 
       {/* Logo */}
-      <Link href="/" className="mt-[3vh] flex items-center gap-2.5">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-white shadow-[0_2px_10px_rgb(46_26_71/0.08)]">
-          <Image
-            src="/logo.png"
-            alt=""
-            width={24}
-            height={25}
-            className="block h-auto w-6"
-          />
-        </span>
-        <span className="text-[19px] font-extrabold leading-none tracking-[-0.4px] text-ink-900">
-          bul<span className="text-primary">bana</span>
-        </span>
+      {/* Tek parça marka kilidi (bkz. components/Header.tsx). */}
+      <Link href="/" className="mt-[3vh] flex items-center">
+        <Image
+          src="/logo.svg"
+          alt="bulbana — sen iste, satıcı bulsun"
+          width={1200}
+          height={320}
+          className="block h-[52px] w-auto"
+          priority
+        />
       </Link>
 
       {done === null && (
@@ -323,15 +319,11 @@ export function GirisClient() {
                 role="note"
                 className="mb-3 rounded-xl bg-primary-soft px-3.5 py-2.5 text-[12.5px] font-semibold leading-[1.5] text-primary-hover"
               >
-                Yeni hesap açma henüz kullanıma açık değil. Hesabın varsa
-                “Giriş yap” sekmesinden devam edebilirsin.
+                Yeni hesap açma henüz kullanıma açık değil. Hesabın varsa “Giriş
+                yap” sekmesinden devam edebilirsin.
               </p>
 
-              <button
-                type="button"
-                disabled
-                className={primaryBtn(false)}
-              >
+              <button type="button" disabled className={primaryBtn(false)}>
                 Hesabımı Oluştur
               </button>
             </div>

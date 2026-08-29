@@ -18,9 +18,24 @@ import { MIN_AKTARIM } from "@/lib/aktarim";
 import type { AktarimTalebi } from "@/lib/aktarim";
 import { useOturumSahibi } from "@/lib/aktif-kullanici";
 
-/** İşaretli tutar: gelir "+", gider "−" önekiyle gösterilir. */
-function isaretliTutar(n: number): string {
-  return `${n < 0 ? "−" : "+"}${fiyatText(Math.abs(n))}`;
+/**
+ * Tutar gösterimi — BİLEREK İŞARETSİZ.
+ *
+ * Alım bir zarar değil, takastır: para çıkar ama karşılığında ürün gelir.
+ * Kırmızı "−10.000 ₺" banka ekstresi dili konuşur ve alıcıya zarara
+ * uğramış hissi verir; oysa kullanıcı istediği ürünü almıştır. Bu yüzden
+ * yön, işaret ve renkle değil ETİKETLE anlatılır ("Alım" / "Satış").
+ *
+ * Tek istisna `dengeTutar`: orada iki yönün farkı gösterilir ve işaret
+ * gerçekten bilgi taşır.
+ */
+function tutarText(n: number): string {
+  return fiyatText(Math.abs(n));
+}
+
+/** Denge satırı — burada işaret bilgi taşır, gelir tarafı "+" alır. */
+function dengeTutar(n: number): string {
+  return `${n < 0 ? "" : "+"}${fiyatText(Math.abs(n))}`;
 }
 
 export function CuzdanClient({
@@ -101,7 +116,7 @@ export function CuzdanClient({
     {
       ad: "Bulbana komisyonu",
       aciklama: "Satış bedelinin %4'ü",
-      tutar: -komisyon,
+      tutar: komisyon,
       tip: "gider",
     },
     {
@@ -113,12 +128,12 @@ export function CuzdanClient({
     {
       ad: "Ürün alımları",
       aciklama: `${alimListesi.length} tamamlanan alım`,
-      tutar: -urunToplam,
+      tutar: urunToplam,
       tip: "gider",
     },
     {
-      ad: "Net durum",
-      aciklama: "Net satış geliri − toplam harcama",
+      ad: "Alışveriş dengesi",
+      aciklama: "Net satış gelirin ile alımlarının farkı",
       tutar: netDurum,
       tip: "toplam",
     },
@@ -174,18 +189,18 @@ export function CuzdanClient({
 
             <div className="rounded-card bg-ink-900 p-5 text-white">
               <div className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#8b7bb0]">
-                Net durum
+                Alışveriş dengesi
               </div>
               <div
                 className={`mt-2.5 text-[30px] font-extrabold leading-none ${
                   netDurum < 0 ? "text-white" : "text-accent"
                 }`}
               >
-                {isaretliTutar(netDurum)}
+                {dengeTutar(netDurum)}
               </div>
               <div className="mt-3 text-[11.5px] font-medium leading-[1.5] text-[#b6a9d4]">
                 {netDurum < 0
-                  ? "Aldıkların sattıklarından fazla."
+                  ? `Bu hesapta alıcı taraftasın — ${alimListesi.length} ürün aldın.`
                   : "Sattıkların aldıklarından fazla."}
               </div>
             </div>
@@ -224,12 +239,12 @@ export function CuzdanClient({
                   className={`flex-none whitespace-nowrap text-right text-[14px] tabular-nums ${
                     s.tip === "toplam"
                       ? "text-[15px] font-extrabold text-ink-900"
-                      : s.tutar < 0
-                        ? "font-bold text-danger"
-                        : "font-bold text-accent-ink"
+                      : s.tip === "gelir"
+                        ? "font-bold text-accent-ink"
+                        : "font-bold text-ink-500"
                   }`}
                 >
-                  {isaretliTutar(s.tutar)}
+                  {s.tip === "toplam" ? dengeTutar(s.tutar) : tutarText(s.tutar)}
                 </span>
               </div>
             ))}
@@ -326,10 +341,10 @@ export function CuzdanClient({
                   </span>
                   <span
                     className={`flex-[0.9] text-right font-extrabold tabular-nums ${
-                      h.tutar < 0 ? "text-danger" : "text-accent-ink"
+                      h.tur === "satis" ? "text-accent-ink" : "text-ink-700"
                     }`}
                   >
-                    {isaretliTutar(h.tutar)}
+                    {tutarText(h.tutar)}
                   </span>
                 </Link>
               ))}

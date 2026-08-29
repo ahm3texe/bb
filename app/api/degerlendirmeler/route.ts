@@ -42,7 +42,10 @@ export async function GET(istek: Request) {
  *   • Her taraf bir kez.
  */
 export async function POST(istek: Request) {
-  const govde = (await istek.json().catch(() => ({}))) as Record<string, unknown>;
+  const govde = (await istek.json().catch(() => ({}))) as Record<
+    string,
+    unknown
+  >;
   const sunumId = typeof govde.sunumId === "string" ? govde.sunumId : "";
   const puan = Number(govde.puan);
   // Tek cümlelik izlenim; satır sonu ve görünmez karakter beklenmez.
@@ -56,7 +59,10 @@ export async function POST(istek: Request) {
 
   const anlasma = (await anlasmalarOku()).find((a) => a.sunumId === sunumId);
   if (!anlasma)
-    return NextResponse.json({ hata: "Alışveriş bulunamadı." }, { status: 404 });
+    return NextResponse.json(
+      { hata: "Alışveriş bulunamadı." },
+      { status: 404 },
+    );
 
   const ben = await istekKullaniciAdi();
   if (ben !== anlasma.alici && ben !== anlasma.satici)
@@ -75,8 +81,7 @@ export async function POST(istek: Request) {
   if (siparisSuruyor(anlasma))
     return NextResponse.json(
       {
-        hata:
-          "Değerlendirme, sipariş sonuçlandıktan sonra yapılabilir. Süren bir itiraz varsa önce o kapanmalı.",
+        hata: "Değerlendirme, sipariş sonuçlandıktan sonra yapılabilir. Süren bir itiraz varsa önce o kapanmalı.",
       },
       { status: 409 },
     );

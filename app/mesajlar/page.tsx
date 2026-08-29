@@ -17,9 +17,11 @@ export const metadata: Metadata = {
 export default async function MesajlarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ satici?: string }>;
+  searchParams: Promise<{ satici?: string; sunum?: string; sohbet?: string }>;
 }) {
-  const { satici } = await searchParams;
+  // `?sunum=` sohbeti DOĞRUDAN adresler; `?satici=` karşı tarafın adından
+  // arar ve kendi sunumuna bakan satıcıda eşleşme bulamıyordu.
+  const { satici, sunum, sohbet } = await searchParams;
   const [konusmalar, talepler] = await Promise.all([
     sohbetlerGetir(await istekKullaniciAdi()),
     tumTaleplerGetir(),
@@ -27,6 +29,8 @@ export default async function MesajlarPage({
   return (
     <MesajlarClient
       satici={satici}
+      sunumId={sunum}
+      sohbetId={sohbet}
       konusmalar={konusmalar}
       talepler={talepler}
     />

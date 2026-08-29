@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { teslimIsaretle, bildirimEkle, kimlik } from "@/lib/depo";
-import { harfFor } from "@/lib/sohbetler";
+import { teslimIsaretle, teslimBildirimiGonder } from "@/lib/depo";
 import { kargoWebhookGecerli } from "@/lib/roller";
 
 export const dynamic = "force-dynamic";
@@ -41,20 +40,11 @@ export async function POST(
   if (sonuc.durum === "zaten-teslim")
     return NextResponse.json({ anlasma: sonuc.anlasma, tekrar: true });
 
-  // Alıcı teslimi ve kendisinden beklenen yanıtı bilmeli.
-  await bildirimEkle({
-    id: kimlik(),
-    kime: sonuc.anlasma.alici,
-    grup: "Bugün",
-    tip: "kargo",
-    harf: harfFor(sonuc.anlasma.satici),
-    avatar: "bg-accent-soft text-accent-ink",
-    text: "Kargon teslim edildi.",
-    sub: "Ürün anlatıldığı gibi mi? Sohbetten yanıtla.",
-    zaman: "Az önce",
-    href: "/mesajlar",
-    yeni: true,
-  });
+  // Alıcı teslimi ve kendisinden beklenen yanıtı bilmeli. Metin ortak
+  // yardımcıda: teslim bilgisi firmadan SORGULAMAYLA da gelebiliyor ve o
+  // yolda alıcıya hiçbir şey söylenmiyordu (bkz. lib/depo.ts →
+  // teslimBildirimiGonder).
+  await teslimBildirimiGonder(sonuc.anlasma);
 
   return NextResponse.json({ anlasma: sonuc.anlasma });
 }

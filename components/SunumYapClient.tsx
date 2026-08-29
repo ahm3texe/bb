@@ -54,7 +54,6 @@ const MAX_VIDEO_BYTE = 20 * 1024 * 1024; // 20 MB
  */
 const MAX_TOPLAM_BYTE = 24 * 1024 * 1024;
 
-
 /** Seçilen dosya + önizleme için üretilen object URL. */
 type Yuklenen = { id: string; dosya: File; url: string };
 
@@ -232,7 +231,9 @@ function SecYaAdaYaz({
                   setAcik(false);
                 }}
                 className={`w-full px-3.5 py-2 text-left text-[14px] font-medium transition-colors hover:bg-primary-soft hover:text-primary-hover ${
-                  s === value ? "bg-primary-soft font-bold text-primary-hover" : "text-ink-900"
+                  s === value
+                    ? "bg-primary-soft font-bold text-primary-hover"
+                    : "text-ink-900"
                 }`}
               >
                 {s}
@@ -290,8 +291,10 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
       // Toplam boyut tavanı: sunucu bunu zaten uyguluyor ama kullanıcıyı
       // formun sonunda değil, dosyayı seçerken uyarmak gerekiyor.
       const suankiToplam =
-        [...fotoDosyalar, ...videoDosyalar].reduce((t, y) => t + y.dosya.size, 0) +
-        kabul.reduce((t, y) => t + y.dosya.size, 0);
+        [...fotoDosyalar, ...videoDosyalar].reduce(
+          (t, y) => t + y.dosya.size,
+          0,
+        ) + kabul.reduce((t, y) => t + y.dosya.size, 0);
       if (suankiToplam + dosya.size > MAX_TOPLAM_BYTE) {
         hatalar.push(
           `Tek seferde en fazla ${boyutText(MAX_TOPLAM_BYTE)} yükleyebilirsin. "${dosya.name}" bu sınırı aşıyor.`,
@@ -577,7 +580,11 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
             <ButtonLink href="/profil?tab=sunumlar" variant="primary" size="lg">
               Sunumlarım
             </ButtonLink>
-            <ButtonLink href={`/ilan/${talep.id}`} variant="secondary" size="lg">
+            <ButtonLink
+              href={`/ilan/${talep.id}`}
+              variant="secondary"
+              size="lg"
+            >
               Talebe dön
             </ButtonLink>
           </div>
@@ -631,7 +638,6 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
                   {fiyatText(talep.fiyatNum)}
                 </span>
               </div>
-
             </div>
 
             {/* Sağ: beklentiler — iki/üç sütun, kaydırmasız */}
@@ -687,7 +693,8 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
                 className="min-w-[200px]"
                 onClick={() => {
                   setBasladi(true);
-                  if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+                  if (typeof window !== "undefined")
+                    window.scrollTo({ top: 0 });
                 }}
               >
                 Devam Et ›
@@ -828,7 +835,9 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
               <input
                 id="s-baslik"
                 value={baslik}
-                onChange={(e) => setBaslik(e.target.value.slice(0, BASLIK_SINIR))}
+                onChange={(e) =>
+                  setBaslik(e.target.value.slice(0, BASLIK_SINIR))
+                }
                 maxLength={BASLIK_SINIR}
                 placeholder="örn. Jelatininde Dawn FM CD · imza kartlı"
                 className={inputCls}
@@ -847,7 +856,10 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
               </Beklenti>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { v: false, l: `Evet — ${talep.marka} ${talep.model ?? ""}`.trim() },
+                  {
+                    v: false,
+                    l: `Evet — ${talep.marka} ${talep.model ?? ""}`.trim(),
+                  },
                   { v: true, l: "Hayır — muadili / eşdeğeri" },
                 ].map((o) => (
                   <button
@@ -901,7 +913,9 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
                   {markaSecim === DIGER_MARKA && (
                     <input
                       value={markaDiger}
-                      onChange={(e) => setMarkaDiger(e.target.value.slice(0, 40))}
+                      onChange={(e) =>
+                        setMarkaDiger(e.target.value.slice(0, 40))
+                      }
                       placeholder="Markayı yaz"
                       className={`${inputCls} mt-2`}
                     />
@@ -945,7 +959,9 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
                   inputMode={beden ? "text" : "numeric"}
                   onChange={(v) =>
                     setYil(
-                      beden ? v.slice(0, 24) : v.replace(/[^0-9]/g, "").slice(0, 4),
+                      beden
+                        ? v.slice(0, 24)
+                        : v.replace(/[^0-9]/g, "").slice(0, 4),
                     )
                   }
                   secenekler={[
@@ -957,7 +973,9 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
                   ]}
                   placeholder={
                     talep.yil ??
-                    (beden ? "Seç ya da yaz — örn. L" : "Seç ya da yaz — örn. 2022")
+                    (beden
+                      ? "Seç ya da yaz — örn. L"
+                      : "Seç ya da yaz — örn. 2022")
                   }
                 />
               </div>
@@ -1145,8 +1163,14 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
 
             <div className="mt-[18px]">
               <label className={labelCls}>Üründe defo var mı?</label>
+              {/* Alıcı yanıt vermediyse ona söz atfedilmez; eskiden boş
+                  kayıt "Defosuz olmalı." diye okunuyordu. */}
               <Beklenti>
-                {talep.defoKabul ? "Defolu da olabilir." : "Defosuz olmalı."}
+                {talep.defoKabul === undefined
+                  ? "Alıcı belirtmedi."
+                  : talep.defoKabul
+                    ? "Defolu da olabilir."
+                    : "Defosuz olmalı."}
               </Beklenti>
               <div className="flex gap-2">
                 {[
@@ -1165,15 +1189,19 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
               </div>
               {/* Defo tarifi ayrı bir alanda değil; satıcı defoyu açıklamada
                   ya da sohbette anlatır — akış tek yerde toplanır. */}
+              {/* KIRMIZI UYARI YALNIZCA GERÇEK BİR ŞARTTA.
+                  Alıcı soruyu yanıtlamamışken de "Alıcı defosuz ürün istiyor"
+                  diye kırmızı uyarı çıkıyordu — satıcıyı olmayan bir şarta
+                  göre caydırıyordu. */}
               {defoVar === true && (
                 <p
                   className={`mt-3 text-[12.5px] font-semibold leading-normal ${
-                    talep.defoKabul ? "text-ink-500" : "text-danger"
+                    talep.defoKabul === false ? "text-danger" : "text-ink-500"
                   }`}
                 >
-                  {talep.defoKabul
-                    ? "Defoyu aşağıdaki açıklama alanında ya da sohbette ayrıntılı anlat."
-                    : "Alıcı defosuz ürün istiyor. Yine de sunabilirsin; defoyu aşağıdaki açıklama alanında ya da sohbette açıkça belirt."}
+                  {talep.defoKabul === false
+                    ? "Alıcı defosuz ürün istiyor. Yine de sunabilirsin; defoyu aşağıdaki açıklama alanında ya da sohbette açıkça belirt."
+                    : "Defoyu aşağıdaki açıklama alanında ya da sohbette ayrıntılı anlat."}
                 </p>
               )}
             </div>
@@ -1367,18 +1395,22 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
               // `/api/sunumlar` 600'e kırpıyordu, yani satıcının yazdığı
               // son 200 karakter sessizce kayboluyordu — üstelik sayaç
               // "0/800" diyerek 800 yazılabileceğini söylüyordu.
-              onChange={(e) => setAciklama(e.target.value.slice(0, MAX_ACIKLAMA))}
+              onChange={(e) =>
+                setAciklama(e.target.value.slice(0, MAX_ACIKLAMA))
+              }
               placeholder="Ürünün kondisyonunu, kutu ve fatura durumunu, elinde nasıl olduğunu anlat."
               className={`${inputCls} mt-3.5 resize-y`}
             />
             <small
               className={`mt-1.5 block text-[12px] font-medium ${
-                aciklama.trim().length > 0 && aciklama.trim().length < MIN_ACIKLAMA
+                aciklama.trim().length > 0 &&
+                aciklama.trim().length < MIN_ACIKLAMA
                   ? "text-danger"
                   : "text-ink-400"
               }`}
             >
-              {aciklama.trim().length}/{MAX_ACIKLAMA} · en az {MIN_ACIKLAMA} karakter
+              {aciklama.trim().length}/{MAX_ACIKLAMA} · en az {MIN_ACIKLAMA}{" "}
+              karakter
             </small>
           </section>
 
@@ -1418,7 +1450,9 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
               {/* Künye */}
               <div className="flex min-w-0 flex-1 flex-col self-stretch">
                 <SunumKunye
-                  satirlar={kunyeSatirlari(sunum, talep, { kendiSunumum: true })}
+                  satirlar={kunyeSatirlari(sunum, talep, {
+                    kendiSunumum: true,
+                  })}
                 />
 
                 {/* Künye ile galerinin alt hizası arasındaki boşlukta durur. */}
@@ -1462,13 +1496,17 @@ export function SunumYapClient({ talep }: { talep: Talep }) {
                 }
               />
             </div>
-
           </section>
 
           {/* Adım gezinmesi */}
           <div className="flex items-center justify-between gap-3">
             {adim > 1 ? (
-              <Button type="button" variant="secondary" size="lg" onClick={geri}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                onClick={geri}
+              >
                 ‹ Geri
               </Button>
             ) : (

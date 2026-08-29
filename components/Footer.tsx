@@ -42,17 +42,23 @@ export function Footer() {
           <div>
             <div className="flex items-center gap-2.5">
               <div className="flex h-[38px] w-[38px] flex-none items-center justify-center rounded-[10px] bg-white">
+                {/* Koyu zeminde tam logo okunmuyor (kapsül ve slogan
+                    patlıcan moru), o yüzden beyaz kutuda yalnız işaret;
+                    marka adı zaten yanında açık renkli metin olarak
+                    duruyor (bkz. public/logo-isaret.svg). */}
                 <Image
-                  src="/logo.png"
+                  src="/logo-isaret.svg"
                   alt=""
-                  width={26}
-                  height={28}
-                  className="block"
+                  width={312}
+                  height={316}
+                  className="block h-[26px] w-[26px]"
                 />
               </div>
               <div className="leading-none">
                 <div className="text-xl font-extrabold">
-                  bul<span className="text-[#a78bfa]">bana</span>
+                  {/* "bana" logodaki gibi lime yeşili; mor tonu marka
+                      kilidiyle çelişiyordu (bkz. public/logo.svg). */}
+                  bul<span className="text-accent">bana</span>
                 </div>
                 <div className="mt-[3px] text-[9px] font-semibold tracking-[0.8px] text-[#8b7bb0]">
                   SEN İSTE, SATICI BULSUN
